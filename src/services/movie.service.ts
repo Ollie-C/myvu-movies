@@ -51,12 +51,17 @@ export const movieService = {
   async updateRating(userId: string, movieId: number, rating: number) {
     const { data, error } = await supabase
       .from('user_movies')
-      .upsert({
-        user_id: userId,
-        movie_id: movieId,
-        rating: rating * 2, // Convert 5-star to 10-point scale
-        updated_at: new Date().toISOString(),
-      })
+      .upsert(
+        {
+          user_id: userId,
+          movie_id: movieId,
+          rating: rating * 2, // Convert 5-star to 10-point scale
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'user_id,movie_id',
+        }
+      )
       .select()
       .single();
 
@@ -65,14 +70,33 @@ export const movieService = {
   },
 
   async toggleWatched(userId: string, movieId: number, watched: boolean) {
+    // Get current state to preserve other fields
+    const { data: currentMovie } = await supabase
+      .from('user_movies')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .single();
+
+    const updateData: any = {
+      user_id: userId,
+      movie_id: movieId,
+      watched,
+      watched_date: watched ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+      // Preserve existing rating
+      rating: currentMovie?.rating || null,
+      // Scenario 1: If marking as watched, remove from watchlist
+      watch_list: watched ? false : currentMovie?.watch_list || false,
+      watchlist_added_date: watched
+        ? null
+        : currentMovie?.watchlist_added_date || null,
+    };
+
     const { data, error } = await supabase
       .from('user_movies')
-      .upsert({
-        user_id: userId,
-        movie_id: movieId,
-        watched,
-        watched_date: watched ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
+      .upsert(updateData, {
+        onConflict: 'user_id,movie_id',
       })
       .select()
       .single();
@@ -82,14 +106,30 @@ export const movieService = {
   },
 
   async toggleWatchlist(userId: string, movieId: number, inWatchlist: boolean) {
+    // Get current state to preserve other fields
+    const { data: currentMovie } = await supabase
+      .from('user_movies')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .single();
+
+    const updateData: any = {
+      user_id: userId,
+      movie_id: movieId,
+      watch_list: inWatchlist,
+      watchlist_added_date: inWatchlist ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
+      // Scenario 2: Preserve watched status and rating when toggling watchlist
+      watched: currentMovie?.watched || false,
+      watched_date: currentMovie?.watched_date || null,
+      rating: currentMovie?.rating || null,
+    };
+
     const { data, error } = await supabase
       .from('user_movies')
-      .upsert({
-        user_id: userId,
-        movie_id: movieId,
-        watch_list: inWatchlist,
-        watchlist_added_date: inWatchlist ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString(),
+      .upsert(updateData, {
+        onConflict: 'user_id,movie_id',
       })
       .select()
       .single();
