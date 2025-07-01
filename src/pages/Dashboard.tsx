@@ -1,7 +1,10 @@
 import { Card } from '@/components/common/Card';
 import { Film, Trophy, BarChart3, TrendingUp } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const Dashboard = () => {
+  const { user } = useAuth();
+
   // Mock data
   const stats = {
     moviesWatched: 127,
@@ -13,7 +16,9 @@ const Dashboard = () => {
   return (
     <div className='space-y-8 animate-fade-in'>
       {/* Header */}
-      <h1 className='text-3xl font-bold text-primary'>Welcome back!</h1>
+      <h1 className='text-3xl font-bold text-primary'>
+        Welcome back, {user?.user_metadata.username}!
+      </h1>
 
       {/* Stats Grid */}
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>

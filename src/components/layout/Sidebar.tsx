@@ -6,7 +6,7 @@ const navigation = [
   { name: 'Collections', href: '/collections', icon: Layers },
   { name: 'Movies', href: '/movies', icon: Film },
   { name: 'Rankings', href: '/rankings', icon: ListOrdered },
-  { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
+  // { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -17,7 +17,7 @@ const Sidebar = () => {
     <aside className='fixed left-0 top-0 z-20 h-full w-20 bg-surface shadow-neo-sm'>
       <div className='flex h-full flex-col overflow-y-auto'>
         <div className='flex flex-col gap-2 p-4'>
-          <h1 className='text-lg mb-8'>myVu</h1>
+          <h1 className='text-lg mb-8'>Myvu</h1>
           {navigation.map((item) => (
             <Link
               key={item.name}

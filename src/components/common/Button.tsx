@@ -14,7 +14,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'font-medium rounded-lg transition-all',
+        'font-medium rounded-sm transition-all',
         {
           'bg-primary text-white hover:bg-primary-hover': variant === 'primary',
           'bg-surface border border-border hover:bg-surface-hover':

@@ -1,18 +1,28 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-
-// Components & Pages
-import Collections from '@/pages/Collections';
-import Dashboard from '@/pages/Dashboard';
+import { AuthProvider } from '@/context/AuthContext';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import Layout from '@/components/layout/Layout';
+
+// Pages
+import { Login } from '@/pages/auth/Login';
+import { Signup } from '@/pages/auth/Signup';
+import Dashboard from '@/pages/Dashboard';
 import Movies from '@/pages/Movies';
 import Rankings from '@/pages/Rankings';
+import Collections from '@/pages/Collections';
+import { AuthCallback } from './pages/auth/AuthCallback';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 10, // 10 minutes
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
     },
   },
 });
@@ -21,14 +31,32 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <Layout>
+        <AuthProvider>
           <Routes>
-            <Route path='/' element={<Dashboard />} />
-            <Route path='/movies' element={<Movies />} />
-            <Route path='/rankings' element={<Rankings />} />
-            <Route path='/collections' element={<Collections />} />
+            {/* Auth routes */}
+            <Route path='/auth/callback' element={<AuthCallback />} />
+            <Route path='/login' element={<Login />} />
+            <Route path='/signup' element={<Signup />} />
+
+            {/* Protected routes */}
+            <Route
+              path='/*'
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Routes>
+                      <Route path='/' element={<Dashboard />} />
+                      <Route path='/movies' element={<Movies />} />
+                      <Route path='/rankings' element={<Rankings />} />
+                      <Route path='/collections' element={<Collections />} />
+                      <Route path='*' element={<Navigate to='/' replace />} />
+                    </Routes>
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </Layout>
+        </AuthProvider>
       </Router>
     </QueryClientProvider>
   );
