@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -26,6 +26,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      setInitialLoad(false);
     });
 
     // Listen for auth changes
@@ -42,16 +45,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-
-      if (event === 'SIGNED_IN') {
-        navigate('/');
-      } else if (event === 'SIGNED_OUT') {
-        navigate('/login');
+      if (!initialLoad) {
+        if (event === 'SIGNED_IN') {
+          if (
+            location.pathname === '/login' ||
+            location.pathname === '/signup'
+          ) {
+            navigate('/');
+          }
+        } else if (event === 'SIGNED_OUT') {
+          navigate('/login');
+        }
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, location, initialLoad]);
 
   const signUp = async (email: string, password: string, username: string) => {
     const { data, error } = await supabase.auth.signUp({

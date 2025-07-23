@@ -1,6 +1,6 @@
 // src/components/layout/Header.tsx
 import { useState, useEffect, useRef } from 'react';
-import { Search, Bell, User, X, Loader2 } from 'lucide-react';
+import { Search, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/common/Input';
 import { SearchResults } from '@/components/features/search/SearchResults';
 import { useQuery } from '@tanstack/react-query';
@@ -51,8 +51,8 @@ const Header = () => {
   const showResults = isSearchFocused && searchQuery.length > 2;
 
   return (
-    <header className='h-16 bg-surface border-b border-border flex items-center justify-end px-6'>
-      <div className='flex-1 max-w-xl'>
+    <header className='h-16 bg-transparent flex items-center justify-center px-6'>
+      <div className='w-full max-w-xl'>
         <div className='relative' ref={searchRef}>
           <Search className='absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-tertiary' />
 
@@ -89,12 +89,6 @@ const Header = () => {
             />
           )}
         </div>
-      </div>
-
-      <div className='flex items-center gap-4 ml-6'>
-        <button className='p-2 hover:bg-surface-hover rounded-lg transition-colors'>
-          <User className='w-5 h-5 text-secondary' />
-        </button>
       </div>
     </header>
   );

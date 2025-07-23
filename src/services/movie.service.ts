@@ -1,6 +1,33 @@
 import { supabase } from '@/lib/supabase';
 import type { TMDBMovie } from '@/lib/api/tmdb';
 
+export interface UserMovie {
+  user_id: string;
+  movie_id: number;
+  rating: number | null;
+  watched: boolean;
+  watched_date: string | null;
+  watch_list: boolean;
+  watchlist_added_date: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  movie: {
+    id: number;
+    tmdb_id: number;
+    title: string;
+    poster_path: string | null;
+    backdrop_path: string | null;
+    overview: string | null;
+    release_date: string | null;
+    vote_average: number | null;
+    genres: any[];
+    original_language: string | null;
+    original_title: string | null;
+    popularity: number | null;
+  };
+}
+
 export const movieService = {
   // MOVIES TABLE
   async cacheMovie(tmdbMovie: TMDBMovie) {
@@ -37,6 +64,82 @@ export const movieService = {
   },
 
   // USER_MOVIES TABLE
+  async getUserMovies(
+    userId: string,
+    options?: {
+      filter?: 'all' | 'watched' | 'watchlist' | 'rated';
+      sortBy?: 'added_date' | 'rating' | 'title' | 'release_date';
+      sortOrder?: 'asc' | 'desc';
+      page?: number;
+      limit?: number;
+    }
+  ): Promise<{ data: UserMovie[]; count: number | null }> {
+    const {
+      filter = 'all',
+      sortBy = 'added_date',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 24,
+    } = options || {};
+
+    let query = supabase
+      .from('user_movies')
+      .select(
+        `
+        *,
+        movie:movies (*)
+      `,
+        { count: 'exact' }
+      )
+      .eq('user_id', userId);
+
+    // Apply filters
+    switch (filter) {
+      case 'watched':
+        query = query.eq('watched', true);
+        break;
+      case 'watchlist':
+        query = query.eq('watch_list', true);
+        break;
+      case 'rated':
+        query = query.not('rating', 'is', null);
+        break;
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'rating':
+        query = query.order('rating', {
+          ascending: sortOrder === 'asc',
+          nullsFirst: false,
+        });
+        break;
+      case 'title':
+        query = query.order('movie.title', { ascending: sortOrder === 'asc' });
+        break;
+      case 'release_date':
+        query = query.order('movie.release_date', {
+          ascending: sortOrder === 'asc',
+          nullsFirst: false,
+        });
+        break;
+      case 'added_date':
+      default:
+        query = query.order('updated_at', { ascending: sortOrder === 'asc' });
+        break;
+    }
+
+    // Apply pagination
+    const start = (page - 1) * limit;
+    const end = start + limit - 1;
+    query = query.range(start, end);
+
+    const { data, error, count } = await query;
+
+    if (error) throw error;
+    return { data: data || [], count };
+  },
+
   async getUserMovie(userId: string, movieId: number) {
     const { data } = await supabase
       .from('user_movies')
