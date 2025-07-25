@@ -1,11 +1,19 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { movieService, type UserMovie } from '@/services/movie.service';
+import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
+import { watchlistService } from '@/services/supabase/watchlist.service';
 import MovieCard from '@/components/common/MovieCard';
+import type { WatchedMovie } from '@/schemas/watched-movie.schema';
+import type { Watchlist } from '@/schemas/watchlist.schema';
+import { useWatchlistInfinite } from '@/utils/hooks/supabase/queries/useWatchlist';
+import { useWatchedMoviesInfinite } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+
+// Union type for both movie types
+type UserMovie = WatchedMovie | Watchlist;
 
 const Movies = () => {
   const { user } = useAuth();
@@ -13,7 +21,18 @@ const Movies = () => {
   const [showWatchlist, setShowWatchlist] = useState(false);
   const queryClient = useQueryClient();
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  const watchedQuery = useWatchedMoviesInfinite({
+    sortBy: 'watched_date',
+    sortOrder: 'desc',
+    limit: 24,
+  });
+
+  const watchlistQuery = useWatchlistInfinite({
+    sortBy: 'priority',
+    sortOrder: 'asc',
+    limit: 24,
+  });
 
   const {
     data: moviesData,
@@ -22,38 +41,7 @@ const Movies = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: [
-      'user-movies-infinite',
-      user?.id,
-      showWatchlist ? 'watchlist' : 'watched',
-    ],
-    queryFn: async ({ pageParam = 1 }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      return movieService.getUserMovies(user.id, {
-        filter: showWatchlist ? 'watchlist' : 'watched',
-        sortOrder: 'desc',
-        page: pageParam as number,
-        limit: 24, // Smaller page size for better infinite scroll
-      });
-    },
-    getNextPageParam: (
-      lastPage: { data: UserMovie[]; count: number | null },
-      allPages
-    ) => {
-      const totalCount = lastPage.count || 0;
-      const currentCount = allPages.reduce(
-        (acc, page) => acc + page.data.length,
-        0
-      );
-      return currentCount < totalCount ? allPages.length + 1 : undefined;
-    },
-    initialPageParam: 1,
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
-  });
+  } = showWatchlist ? watchlistQuery : watchedQuery;
 
   // Flatten all pages into a single array
   const userMovies = moviesData?.pages.flatMap((page) => page.data) || [];
@@ -81,10 +69,9 @@ const Movies = () => {
     if (!user?.id) return;
 
     try {
-      await movieService.toggleWatched(user.id, movieId, false);
-      // Invalidate and refetch the movies query
+      await watchedMoviesService.removeWatched(user.id, movieId);
       queryClient.invalidateQueries({
-        queryKey: ['user-movies-infinite', user.id],
+        queryKey: ['user-movies-infinite', user.id, 'watched'],
       });
       showToast('success', 'Movie removed from watched list');
     } catch (error) {
@@ -98,10 +85,9 @@ const Movies = () => {
     if (!user?.id) return;
 
     try {
-      await movieService.toggleWatchlist(user.id, movieId, false);
-      // Invalidate and refetch the movies query
+      await watchlistService.removeFromWatchlist(user.id, movieId);
       queryClient.invalidateQueries({
-        queryKey: ['user-movies-infinite', user.id],
+        queryKey: ['user-movies-infinite', user.id, 'watchlist'],
       });
       showToast('success', 'Movie removed from watchlist');
     } catch (error) {
@@ -115,8 +101,12 @@ const Movies = () => {
     if (!user?.id) return;
 
     try {
-      await movieService.toggleWatched(user.id, movieId, true);
-      // Invalidate and refetch the movies query
+      // Add to watched movies
+      await watchedMoviesService.markAsWatched(user.id, movieId);
+      // Remove from watchlist
+      await watchlistService.removeFromWatchlist(user.id, movieId);
+
+      // Invalidate both queries
       queryClient.invalidateQueries({
         queryKey: ['user-movies-infinite', user.id],
       });
@@ -127,15 +117,14 @@ const Movies = () => {
     }
   };
 
+  // Type guard to check if item is from watchlist
+  const isWatchlistItem = (item: UserMovie): item is Watchlist => {
+    return 'priority' in item;
+  };
+
   const SkeletonCard = () => (
-    <div className='flex-shrink-0 w-full sm:w-[calc(50%-0.5rem)] md:w-[calc(33.333%-0.667rem)] lg:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)] 2xl:w-[calc(16.666%-0.833rem)]'>
-      <div className='relative overflow-hidden rounded-2xl bg-slate-800 animate-pulse'>
-        <div className='aspect-[2/3] bg-slate-700' />
-        <div className='absolute bottom-0 left-0 right-0 p-4'>
-          <div className='h-5 bg-slate-700 rounded w-3/4 mb-2' />
-          <div className='h-4 bg-slate-700 rounded w-1/2' />
-        </div>
-      </div>
+    <div className='animate-pulse'>
+      <div className='aspect-[2/3] bg-slate-700 rounded-lg' />
     </div>
   );
 
@@ -179,12 +168,10 @@ const Movies = () => {
 
       {/* Loading State */}
       {isLoading && (
-        <div className='w-full'>
-          <div className='flex flex-wrap gap-4'>
-            {[...Array(12)].map((_, index) => (
-              <SkeletonCard key={index} />
-            ))}
-          </div>
+        <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2'>
+          {[...Array(24)].map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
         </div>
       )}
 
@@ -217,45 +204,45 @@ const Movies = () => {
 
       {/* Movies Grid */}
       {!isLoading && !error && userMovies.length > 0 && (
-        <div className='w-full'>
+        <>
           <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2'>
             {userMovies.map((userMovie, index) => {
-              // Add ref to the last element for infinite scroll
-              if (index === userMovies.length - 1) {
-                return (
-                  <div key={userMovie.movie.id} ref={lastElementRef}>
-                    <MovieCard
-                      userMovie={userMovie}
-                      onRemoveFromWatched={handleRemoveFromWatched}
-                      onRemoveFromWatchlist={handleRemoveFromWatchlist}
-                      onMarkAsWatched={handleMarkAsWatched}
-                      isWatchlistView={showWatchlist}
-                    />
-                  </div>
-                );
-              }
+              const isLastElement = index === userMovies.length - 1;
 
               return (
-                <MovieCard
+                <div
                   key={userMovie.movie.id}
-                  userMovie={userMovie}
-                  onRemoveFromWatched={handleRemoveFromWatched}
-                  onRemoveFromWatchlist={handleRemoveFromWatchlist}
-                  onMarkAsWatched={handleMarkAsWatched}
-                  isWatchlistView={showWatchlist}
-                />
+                  ref={isLastElement ? lastElementRef : null}>
+                  <MovieCard
+                    userMovie={userMovie}
+                    onRemoveFromWatched={
+                      !isWatchlistItem(userMovie)
+                        ? handleRemoveFromWatched
+                        : undefined
+                    }
+                    onRemoveFromWatchlist={
+                      isWatchlistItem(userMovie)
+                        ? handleRemoveFromWatchlist
+                        : undefined
+                    }
+                    onMarkAsWatched={
+                      isWatchlistItem(userMovie)
+                        ? handleMarkAsWatched
+                        : undefined
+                    }
+                    isWatchlistView={showWatchlist}
+                  />
+                </div>
               );
             })}
           </div>
 
           {/* Loading indicator for next page */}
           {isFetchingNextPage && (
-            <div className='flex justify-center mt-8'>
-              <div className='flex flex-wrap gap-4'>
-                {[...Array(6)].map((_, index) => (
-                  <SkeletonCard key={`loading-${index}`} />
-                ))}
-              </div>
+            <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 mt-4'>
+              {[...Array(12)].map((_, index) => (
+                <SkeletonCard key={`loading-${index}`} />
+              ))}
             </div>
           )}
 
@@ -268,7 +255,7 @@ const Movies = () => {
               </p>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

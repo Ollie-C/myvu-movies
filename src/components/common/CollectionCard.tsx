@@ -1,11 +1,13 @@
 import { Card } from './Card';
-import { type CollectionWithItems } from '@/services/collection.service';
+import {
+  type Collection,
+  type CollectionWithItems,
+} from '@/services/supabase/collection.service';
 import { ChartBar } from 'lucide-react';
 import MovieCollectionPreview from './MovieCollectionPreview';
 
-// Collection Card Component
 interface CollectionCardProps {
-  collection: CollectionWithItems;
+  collection: Collection | CollectionWithItems;
   onNavigate: (id: string) => void;
   previewSize?: 'small' | 'medium' | 'large';
 }
@@ -23,39 +25,65 @@ const CollectionCard = ({
     onNavigate(collection.id);
   };
 
+  // Type guard to check if we have collection items
+  const hasItems = 'collection_items' in collection;
+  const itemCount = hasItems
+    ? collection.collection_items.length
+    : collection._count?.collection_items || 0;
+
   console.log('collection', collection);
 
   return (
     <Card
-      className='cursor-pointer relative flex items-center justify-between h-50'
+      className='cursor-pointer relative overflow-hidden'
       onClick={handleClick}>
-      {/* Ranked/Non-ranked tag */}
-      <div className='absolute top-2 right-2 z-10'>
-        {collection.is_ranked && (
-          <div className='bg-amber-500 text-white p-1 rounded-full shadow-lg'>
-            <ChartBar className='w-4 h-4' />
+      {/* Content layout depends on whether we have preview data */}
+      {hasItems && collection.collection_items.length > 0 ? (
+        <div className='flex items-center justify-between'>
+          <div className='flex-1'>
+            <MovieCollectionPreview
+              collectionTitle={collection.name}
+              // movies={collection.collection_items.map((item) => item.movie)}
+              movies={[]}
+              onCollectionClick={handleClick}
+              size={previewSize}
+            />
           </div>
-        )}
-      </div>
-      {collection.collection_items.length > 0 ? (
-        <MovieCollectionPreview
-          collectionTitle={collection.name}
-          movies={collection.collection_items.map((item) => item.movie) as any}
-          onCollectionClick={handleClick}
-          size={previewSize}
-        />
+          <div className='w-1/4 p-4'>
+            <h3 className='text-xl font-semibold mb-2'>{collection.name}</h3>
+            <p className='text-sm text-secondary mb-1'>{itemCount} movies</p>
+            {collection.description && (
+              <p className='text-sm text-secondary line-clamp-2'>
+                {collection.description}
+              </p>
+            )}
+          </div>
+        </div>
       ) : (
-        <p className='text-sm text-secondary'>No movies in collection</p>
+        <div className='p-6'>
+          <h3 className='text-xl font-semibold mb-2'>{collection.name}</h3>
+          <p className='text-sm text-secondary mb-1'>{itemCount} movies</p>
+          {collection.description && (
+            <p className='text-sm text-secondary mb-2'>
+              {collection.description}
+            </p>
+          )}
+          {itemCount === 0 && (
+            <p className='text-sm text-gray-400 italic mt-4'>
+              No movies in collection yet
+            </p>
+          )}
+        </div>
       )}
 
-      <div className='w-1/4'>
-        {' '}
-        <h3 className='text-xl font-semibold mb-4'>{collection.name}</h3>
-        <p className='text-sm text-secondary'>
-          {collection._count?.collection_items || 0} movies
-        </p>
-        <p className='text-sm text-secondary'>{collection.description}</p>
-      </div>
+      {/* Ranked indicator */}
+      {collection.is_ranked && (
+        <div className='absolute top-4 right-4 z-10'>
+          <div className='bg-amber-500 text-white p-1.5 rounded-full shadow-lg'>
+            <ChartBar className='w-4 h-4' />
+          </div>
+        </div>
+      )}
     </Card>
   );
 };

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { X, Search, Heart } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { userService } from '@/services/user.service';
-import { movieService } from '@/services/movie.service';
-import { useAuth } from '@/lib/utils/hooks/useAuth';
+import { userService } from '@/services/supabase/user.service';
+import { movieService } from '@/services/supabase/movies.service';
+import { useAuth } from '@/utils/hooks/supabase/useAuth';
 import { Input } from './Input';
 import TopTenMovieCard from '../moviecard/TopTenMovieCard';
 
@@ -31,27 +31,27 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
     enabled: !!user?.id && isOpen,
   });
 
-  // Toggle favorite mutation
-  const toggleFavoriteMutation = useMutation({
-    mutationFn: async ({
-      movieId,
-      isFavorite,
-    }: {
-      movieId: number;
-      isFavorite: boolean;
-    }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-      return movieService.toggleFavorite(user.id, movieId, isFavorite);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['favorite-movies', user?.id],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['all-user-movies', user?.id],
-      });
-    },
-  });
+  // // Toggle favorite mutation
+  // const toggleFavoriteMutation = useMutation({
+  //   mutationFn: async ({
+  //     movieId,
+  //     isFavorite,
+  //   }: {
+  //     movieId: number;
+  //     isFavorite: boolean;
+  //   }) => {
+  //     if (!user?.id) throw new Error('User not authenticated');
+  //     return movieService.toggleFavorite(user.id, movieId, isFavorite);
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({
+  //       queryKey: ['favorite-movies', user?.id],
+  //     });
+  //     queryClient.invalidateQueries({
+  //       queryKey: ['all-user-movies', user?.id],
+  //     });
+  //   },
+  // });
 
   // Filter movies based on search query
   const filteredMovies = allUserMovies.filter((userMovie: any) =>
@@ -62,7 +62,8 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
   const favoriteMovieIds = new Set(currentFavorites.map((fav) => fav.movie.id));
 
   const handleToggleFavorite = (movieId: number, isFavorite: boolean) => {
-    toggleFavoriteMutation.mutate({ movieId, isFavorite });
+    console.log('fix');
+    // toggleFavoriteMutation.mutate({ movieId, isFavorite });
   };
 
   if (!isOpen) return null;

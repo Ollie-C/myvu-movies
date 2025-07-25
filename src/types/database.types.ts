@@ -312,7 +312,7 @@ export type Database = {
         }
         Relationships: []
       }
-      user_movies: {
+      user_movies_legacy: {
         Row: {
           created_at: string | null
           favorite: boolean | null
@@ -374,6 +374,111 @@ export type Database = {
           },
           {
             foreignKeyName: "user_movies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watched_movies: {
+        Row: {
+          created_at: string | null
+          favorite: boolean | null
+          id: string
+          movie_id: number | null
+          notes: string | null
+          rating: number | null
+          rewatch_count: number | null
+          updated_at: string | null
+          user_id: string | null
+          watched_date: string
+        }
+        Insert: {
+          created_at?: string | null
+          favorite?: boolean | null
+          id?: string
+          movie_id?: number | null
+          notes?: string | null
+          rating?: number | null
+          rewatch_count?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          watched_date: string
+        }
+        Update: {
+          created_at?: string | null
+          favorite?: boolean | null
+          id?: string
+          movie_id?: number | null
+          notes?: string | null
+          rating?: number | null
+          rewatch_count?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          watched_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watched_movies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist: {
+        Row: {
+          added_date: string | null
+          created_at: string | null
+          id: string
+          movie_id: number | null
+          notes: string | null
+          priority: string | null
+          reminder_date: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          added_date?: string | null
+          created_at?: string | null
+          id?: string
+          movie_id?: number | null
+          notes?: string | null
+          priority?: string | null
+          reminder_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          added_date?: string | null
+          created_at?: string | null
+          id?: string
+          movie_id?: number | null
+          notes?: string | null
+          priority?: string | null
+          reminder_date?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watchlist_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"

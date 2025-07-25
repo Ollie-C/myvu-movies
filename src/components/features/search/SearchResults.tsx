@@ -3,14 +3,22 @@ import { Check, Eye, Clock, Loader2 } from 'lucide-react';
 import type { TMDBMovie } from '@/lib/api/tmdb';
 import { tmdb } from '@/lib/api/tmdb';
 import { Button } from '@/components/common/Button';
-import { movieService } from '@/services/movie.service';
-import { useAuth } from '@/lib/utils/hooks/useAuth';
+import { movieService } from '@/services/supabase/movies.service';
+import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
+import { watchlistService } from '@/services/supabase/watchlist.service';
+import { useAuth } from '@/utils/hooks/supabase/useAuth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
 interface SearchResultsProps {
   results: TMDBMovie[];
   onClose: () => void;
+}
+
+interface MovieStatus {
+  isWatched: boolean;
+  isInWatchlist: boolean;
+  movieId?: number;
 }
 
 export function SearchResults({ results, onClose }: SearchResultsProps) {
@@ -21,29 +29,62 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
   );
 
   const tmdbIds = results.map((movie) => movie.id);
-  const { data: userMoviesData } = useQuery({
-    queryKey: ['user-movies-search', tmdbIds],
+
+  // Fetch movie statuses
+  const { data: movieStatuses } = useQuery({
+    queryKey: ['movie-statuses', tmdbIds],
     queryFn: async () => {
-      if (!user) return new Map();
+      if (!user) return new Map<number, MovieStatus>();
 
-      const { data, error } = await supabase
-        .from('user_movies')
-        .select(
-          `
-          *,
-          movies!inner(id, tmdb_id)
-        `
-        )
-        .eq('user_id', user.id)
-        .in('movies.tmdb_id', tmdbIds);
+      // First, get all movies from our database that match these TMDB IDs
+      const { data: movies, error: moviesError } = await supabase
+        .from('movies')
+        .select('id, tmdb_id')
+        .in('tmdb_id', tmdbIds);
 
-      if (error) throw error;
+      if (moviesError) throw moviesError;
 
-      const map = new Map();
-      data?.forEach((item) => {
-        map.set(item.movies.tmdb_id, item);
+      const movieIdMap = new Map<number, number>();
+      movies?.forEach((movie) => {
+        movieIdMap.set(movie.tmdb_id, movie.id);
       });
-      return map;
+
+      // Get watched movies
+      const { data: watchedMovies, error: watchedError } = await supabase
+        .from('watched_movies')
+        .select('movie_id')
+        .eq('user_id', user.id)
+        .in('movie_id', Array.from(movieIdMap.values()));
+
+      if (watchedError) throw watchedError;
+
+      const watchedSet = new Set(watchedMovies?.map((w) => w.movie_id) || []);
+
+      // Get watchlist items
+      const { data: watchlistItems, error: watchlistError } = await supabase
+        .from('watchlist')
+        .select('movie_id')
+        .eq('user_id', user.id)
+        .in('movie_id', Array.from(movieIdMap.values()));
+
+      if (watchlistError) throw watchlistError;
+
+      const watchlistSet = new Set(
+        watchlistItems?.map((w) => w.movie_id) || []
+      );
+
+      // Build status map
+      const statusMap = new Map<number, MovieStatus>();
+      tmdbIds.forEach((tmdbId) => {
+        const movieId = movieIdMap.get(tmdbId);
+        statusMap.set(tmdbId, {
+          isWatched: movieId ? watchedSet.has(movieId) : false,
+          isInWatchlist: movieId ? watchlistSet.has(movieId) : false,
+          movieId,
+        });
+      });
+
+      return statusMap;
     },
     enabled: !!user && tmdbIds.length > 0,
   });
@@ -59,15 +100,16 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
       if (!user) throw new Error('Must be logged in');
 
       const cachedMovie = await movieService.cacheMovie(tmdbMovie);
-      return movieService.toggleWatched(
-        user.id,
-        cachedMovie.id,
-        !currentlyWatched
-      );
+
+      if (currentlyWatched) {
+        return watchedMoviesService.removeWatched(user.id, cachedMovie.id);
+      } else {
+        return watchedMoviesService.markAsWatched(user.id, cachedMovie.id);
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-movies-search'] });
-      queryClient.invalidateQueries({ queryKey: ['user-movies'] });
+      queryClient.invalidateQueries({ queryKey: ['movie-statuses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-movies-infinite'] });
     },
   });
 
@@ -82,25 +124,30 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
       if (!user) throw new Error('Must be logged in');
 
       const cachedMovie = await movieService.cacheMovie(tmdbMovie);
-      return movieService.toggleWatchlist(
-        user.id,
-        cachedMovie.id,
-        !currentlyInWatchlist
-      );
+
+      if (currentlyInWatchlist) {
+        return watchlistService.removeFromWatchlist(user.id, cachedMovie.id);
+      } else {
+        return watchlistService.addToWatchlist(
+          user.id,
+          cachedMovie.id,
+          'medium'
+        );
+      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-movies-search'] });
-      queryClient.invalidateQueries({ queryKey: ['user-movies'] });
+      queryClient.invalidateQueries({ queryKey: ['movie-statuses'] });
+      queryClient.invalidateQueries({ queryKey: ['user-movies-infinite'] });
     },
   });
 
   const toggleWatched = async (movie: TMDBMovie) => {
     setLoadingStates((prev) => ({ ...prev, [movie.id]: 'watched' }));
-    const userMovie = userMoviesData?.get(movie.id);
+    const status = movieStatuses?.get(movie.id);
     try {
       await watchedMutation.mutateAsync({
         tmdbMovie: movie,
-        currentlyWatched: userMovie?.watched || false,
+        currentlyWatched: status?.isWatched || false,
       });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [movie.id]: '' }));
@@ -109,11 +156,11 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
 
   const toggleWatchlist = async (movie: TMDBMovie) => {
     setLoadingStates((prev) => ({ ...prev, [movie.id]: 'watchlist' }));
-    const userMovie = userMoviesData?.get(movie.id);
+    const status = movieStatuses?.get(movie.id);
     try {
       await watchlistMutation.mutateAsync({
         tmdbMovie: movie,
-        currentlyInWatchlist: userMovie?.watch_list || false,
+        currentlyInWatchlist: status?.isInWatchlist || false,
       });
     } finally {
       setLoadingStates((prev) => ({ ...prev, [movie.id]: '' }));
@@ -132,9 +179,10 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
     <div className='absolute top-full mt-2 w-full bg-surface rounded-lg shadow-neo-lg border border-border max-h-[600px] overflow-y-auto scrollbar-thin z-20'>
       <div className='p-2'>
         {results.map((movie) => {
-          const userMovie = userMoviesData?.get(movie.id);
-          const isWatched = userMovie?.watched || false;
-          const isInWatchlist = userMovie?.watch_list || false;
+          const status = movieStatuses?.get(movie.id) || {
+            isWatched: false,
+            isInWatchlist: false,
+          };
           const isLoadingWatched = loadingStates[movie.id] === 'watched';
           const isLoadingWatchlist = loadingStates[movie.id] === 'watchlist';
 
@@ -167,13 +215,15 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
                 <div className='flex gap-1'>
                   <Button
                     size='sm'
-                    variant={isWatched ? 'primary' : 'secondary'}
+                    variant={status.isWatched ? 'primary' : 'secondary'}
                     onClick={() => toggleWatched(movie)}
                     disabled={isLoadingWatched}
-                    title={isWatched ? 'Mark as unwatched' : 'Mark as watched'}>
+                    title={
+                      status.isWatched ? 'Mark as unwatched' : 'Mark as watched'
+                    }>
                     {isLoadingWatched ? (
                       <Loader2 className='w-4 h-4 animate-spin' />
-                    ) : isWatched ? (
+                    ) : status.isWatched ? (
                       <Check className='w-4 h-4' />
                     ) : (
                       <Eye className='w-4 h-4' />
@@ -182,17 +232,17 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
 
                   <Button
                     size='sm'
-                    variant={isInWatchlist ? 'primary' : 'secondary'}
+                    variant={status.isInWatchlist ? 'primary' : 'secondary'}
                     onClick={() => toggleWatchlist(movie)}
                     disabled={isLoadingWatchlist}
                     title={
-                      isInWatchlist
+                      status.isInWatchlist
                         ? 'Remove from watchlist'
                         : 'Add to watchlist'
                     }>
                     {isLoadingWatchlist ? (
                       <Loader2 className='w-4 h-4 animate-spin' />
-                    ) : isInWatchlist ? (
+                    ) : status.isInWatchlist ? (
                       <Check className='w-4 h-4' />
                     ) : (
                       <Clock className='w-4 h-4' />

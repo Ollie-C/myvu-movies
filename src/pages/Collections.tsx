@@ -8,7 +8,7 @@ import {
   collectionService,
   type Collection,
   type CollectionWithItems,
-} from '@/services/collection.service';
+} from '@/services/supabase/collection.service';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 import MovieCollectionPreview from '@/components/common/MovieCollectionPreview';
 import CollectionCard from '@/components/common/CollectionCard';

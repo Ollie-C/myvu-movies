@@ -5,7 +5,7 @@ import { ArrowLeft, Edit2, Trash2, Users, Calendar, X } from 'lucide-react';
 import {
   collectionService,
   type CollectionWithItems,
-} from '@/services/collection.service';
+} from '@/services/supabase/collection.service';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';

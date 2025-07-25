@@ -6,7 +6,7 @@ import { Textarea } from '@/components/common/Textarea';
 import type {
   Collection,
   CreateCollectionData,
-} from '@/services/collection.service';
+} from '@/services/supabase/collection.service';
 
 interface CollectionModalProps {
   isOpen: boolean;

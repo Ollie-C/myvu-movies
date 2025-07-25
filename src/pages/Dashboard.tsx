@@ -1,52 +1,58 @@
 import { Plus, TrendingUp, BarChart3, Star, Folder } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { userService } from '@/services/user.service';
+// import { useAuth } from '@/context/AuthContext';
+import {
+  useFavoriteMovies,
+  useRecentMovies,
+} from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
+// import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
+import { useCollections } from '@/utils/hooks/supabase/queries/useCollections';
+import type { CollectionWithItems } from '@/services/supabase/collection.service';
+
+// import { useActiveRankings } from '@/utils/hooks/supabase/queries/useRankings';
 import CollectionCard from '@/components/common/CollectionCard';
-import { collectionService } from '@/services/collection.service';
 import MovieCard from '@/components/common/MovieCard';
 import TopTenMoviesModal from '@/components/common/TopTenMoviesModal';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const [isFavoriteModalOpen, setIsFavoriteModalOpen] = useState(false);
 
-  // Fetch user statistics
-  const { data: userStats } = useQuery({
-    queryKey: ['user-stats', user?.id],
-    queryFn: () => userService.getUserStats(user?.id || ''),
-    enabled: !!user?.id,
+  // Use the new custom hooks
+  // const { data: userStats } = useUserStats();
+  const userStats = {
+    totalWatched: 100,
+    totalRankings: 10,
+    totalCollections: 10,
+    averageRating: 4.5,
+    favoriteGenre: 'Action',
+  };
+  const { data: favoriteMovies } = useFavoriteMovies(10);
+  const { data: recentMovies } = useRecentMovies(5);
+  const { data: collections = [], isError: collectionsError } = useCollections({
+    limit: 3,
+    withPreviews: true,
   });
 
-  // Fetch favorite movies (top 10)
-  const { data: favoriteMovies } = useQuery({
-    queryKey: ['favorite-movies', user?.id],
-    queryFn: () => userService.getFavoriteMovies(user?.id || '', 10),
-    enabled: !!user?.id,
-  });
-
-  // Fetch recent movies (5 most recent)
-  const { data: recentMovies } = useQuery({
-    queryKey: ['recent-movies', user?.id],
-    queryFn: () => userService.getRecentMovies(user?.id || '', 5),
-    enabled: !!user?.id,
-  });
-
-  // Fetch featured collections (3 collections)
-  const { data: collections = [] } = useQuery({
-    queryKey: ['user-collections-with-previews', user?.id],
-    queryFn: () => collectionService.getUserCollectionsWithPreviews(user!.id),
-    enabled: !!user?.id,
-  });
-
-  // Fetch active rankings
-  const { data: activeRankings } = useQuery({
-    queryKey: ['active-rankings', user?.id],
-    queryFn: () => userService.getActiveRankings(user?.id || '', 3),
-    enabled: !!user?.id,
-  });
+  // const { data: activeRankings } = useActiveRankings(3);
+  const activeRankings = [
+    {
+      id: '1',
+      name: 'Top 100 Movies',
+      movieCount: 100,
+      updated_at: '2024-01-01',
+    },
+    { id: '2', name: 'Best Sci-Fi', movieCount: 50, updated_at: '2024-01-02' },
+    {
+      id: '3',
+      name: 'Classic Horror',
+      movieCount: 30,
+      updated_at: '2024-01-03',
+    },
+  ];
+  const { data: watchlistStats } = useWatchlistStats();
 
   const formatWatchedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -119,21 +125,27 @@ const Dashboard = () => {
           </div>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {userStats?.moviesWatched || 0}
+              {userStats?.totalWatched || 0}
             </span>
             <span className='text-gray-500'>total movies</span>
           </div>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {userStats?.rankingsCount || 0}
+              {userStats?.totalRankings || 0}
             </span>
             <span className='text-gray-500'>active rankings</span>
           </div>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {userStats?.collectionsCount || 0}
+              {userStats?.totalCollections || 0}
             </span>
             <span className='text-gray-500'>collections</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <span className='font-medium text-gray-900'>
+              {watchlistStats?.total || 0}
+            </span>
+            <span className='text-gray-500'>watchlist</span>
           </div>
         </div>
       </div>
@@ -156,9 +168,11 @@ const Dashboard = () => {
 
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-5 gap-2'>
             {favoriteMovies && favoriteMovies.length > 0 ? (
-              favoriteMovies.map((item) => (
-                <MovieCard key={item.movie.id} userMovie={item} />
-              ))
+              favoriteMovies
+                .slice(0, 10)
+                .map((item) => (
+                  <MovieCard key={item.movie.id} userMovie={item} />
+                ))
             ) : (
               <div className='col-span-full text-center py-8 text-gray-500'>
                 <p>No favorite movies yet</p>
@@ -185,16 +199,18 @@ const Dashboard = () => {
 
           <div className='grid grid-cols-1 gap-4'>
             {collections && collections.length > 0 ? (
-              collections
-                .slice(0, 3)
-                .map((collection) => (
+              collections.slice(0, 3).map(
+                (
+                  collection // No type annotation needed
+                ) => (
                   <CollectionCard
                     key={collection.id}
                     collection={collection}
                     onNavigate={() => {}}
                     previewSize='small'
                   />
-                ))
+                )
+              )
             ) : (
               <div className='col-span-full text-center py-8 text-gray-500'>
                 <p>No collections yet</p>
@@ -206,6 +222,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
       <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
         {/* Recent Activity */}
         <div className='lg:col-span-2'>
@@ -271,7 +288,7 @@ const Dashboard = () => {
           <div className='space-y-3'>
             {activeRankings && activeRankings.length > 0 ? (
               activeRankings.map((ranking) => (
-                <Link key={ranking.id} to={`/collections/${ranking.id}`}>
+                <Link key={ranking.id} to={`/rankings/${ranking.id}`}>
                   <div className='bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer'>
                     <h3 className='font-medium text-gray-900 mb-2'>
                       {ranking.name}
@@ -292,7 +309,7 @@ const Dashboard = () => {
           </div>
 
           {/* Quick Insights */}
-          {userStats && userStats.moviesWatched > 0 && (
+          {userStats && userStats.totalWatched > 0 && (
             <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
               <div className='flex items-center space-x-2 mb-2'>
                 <TrendingUp className='w-4 h-4 text-gray-400' />
@@ -304,6 +321,11 @@ const Dashboard = () => {
               {userStats.favoriteGenre && (
                 <p className='text-sm text-gray-600 mt-1'>
                   Favorite genre: {userStats.favoriteGenre}
+                </p>
+              )}
+              {watchlistStats && watchlistStats.byPriority.high > 0 && (
+                <p className='text-sm text-gray-600 mt-1'>
+                  High priority watchlist: {watchlistStats.byPriority.high}
                 </p>
               )}
             </div>

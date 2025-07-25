@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   collectionService,
   type Collection,
-} from '@/services/collection.service';
-import { movieService } from '@/services/movie.service';
+} from '@/services/supabase/collection.service';
+import { movieService } from '@/services/supabase/movies.service';
 import { useAuth } from '@/context/AuthContext';
 import { CollectionModal } from './CollectionModal';
 import type { TMDBMovie } from '@/lib/api/tmdb';

@@ -13,9 +13,9 @@ import { Input } from '@/components/common/Input';
 import { SearchResults } from '@/components/features/search/SearchResults';
 import { useQuery } from '@tanstack/react-query';
 import { tmdb } from '@/lib/api/tmdb';
-import { useDebounce } from '@/lib/utils/hooks/useDebounce';
-import { useAuth } from '@/lib/utils/hooks/useAuth';
-import { userService } from '@/services/user.service';
+import { useDebounce } from '@/utils/hooks/useDebounce';
+import { useAuth } from '@/utils/hooks/supabase/useAuth';
+import { userService } from '@/services/supabase/user.service';
 
 const Header = () => {
   const { user } = useAuth();
