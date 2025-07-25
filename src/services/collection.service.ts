@@ -290,4 +290,30 @@ export const collectionService = {
       inCollection: collectionsWithMovieSet.has(collection.id),
     }));
   },
+
+  async getUserCollectionsWithPreviews(
+    userId: string
+  ): Promise<CollectionWithItems[]> {
+    const { data, error } = await supabase
+      .from('collections')
+      .select(
+        `
+        *,
+        collection_items(
+          *,
+          movie:movies(*)
+        )
+      `
+      )
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Limit to first 6 items for preview
+    return (data || []).map((collection) => ({
+      ...collection,
+      collection_items: collection.collection_items?.slice(0, 6) || [],
+    }));
+  },
 };

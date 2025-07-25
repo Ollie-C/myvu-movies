@@ -9,6 +9,7 @@ export interface UserMovie {
   watched_date: string | null;
   watch_list: boolean;
   watchlist_added_date: string | null;
+  favorite: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -227,6 +228,42 @@ export const movieService = {
       watched: currentMovie?.watched || false,
       watched_date: currentMovie?.watched_date || null,
       rating: currentMovie?.rating || null,
+      favorite: currentMovie?.favorite || false,
+    };
+
+    const { data, error } = await supabase
+      .from('user_movies')
+      .upsert(updateData, {
+        onConflict: 'user_id,movie_id',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async toggleFavorite(userId: string, movieId: number, isFavorite: boolean) {
+    // Get current state to preserve other fields
+    const { data: currentMovie } = await supabase
+      .from('user_movies')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .single();
+
+    const updateData: any = {
+      user_id: userId,
+      movie_id: movieId,
+      favorite: isFavorite,
+      updated_at: new Date().toISOString(),
+      // Preserve all other fields
+      watched: currentMovie?.watched || false,
+      watched_date: currentMovie?.watched_date || null,
+      rating: currentMovie?.rating || null,
+      watch_list: currentMovie?.watch_list || false,
+      watchlist_added_date: currentMovie?.watchlist_added_date || null,
+      notes: currentMovie?.notes || null,
     };
 
     const { data, error } = await supabase

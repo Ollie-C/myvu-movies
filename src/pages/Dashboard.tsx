@@ -1,298 +1,320 @@
-import { useState } from 'react';
-import { Card } from '@/components/common/Card';
-import { Button } from '@/components/common/Button';
-import { MoviePoster } from '@/components/common/MoviePoster';
-import {
-  Settings,
-  User,
-  ChevronRight,
-  Upload,
-  Download,
-  Trash2,
-} from 'lucide-react';
+import { Plus, TrendingUp, BarChart3, Star, Folder } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { LetterboxdImportModal } from '@/components/import/LetterboxdImportModal';
-import { ClearLibraryModal } from '@/components/common/ClearLibraryModal';
+import { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { userService } from '@/services/user.service';
+import CollectionCard from '@/components/common/CollectionCard';
+import { collectionService } from '@/services/collection.service';
+import MovieCard from '@/components/common/MovieCard';
+import TopTenMoviesModal from '@/components/common/TopTenMoviesModal';
 
 const Dashboard = () => {
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isClearLibraryModalOpen, setIsClearLibraryModalOpen] = useState(false);
+  const { user } = useAuth();
+  const [isFavoriteModalOpen, setIsFavoriteModalOpen] = useState(false);
 
-  // Mock user data
-  const user = {
-    username: 'movie_enthusiast',
-    email: 'user@example.com',
-    avatar: null,
-    joinDate: 'March 2024',
-    moviesWatched: 247,
-    collectionsCreated: 8,
-    rankingsCompleted: 12,
+  // Fetch user statistics
+  const { data: userStats } = useQuery({
+    queryKey: ['user-stats', user?.id],
+    queryFn: () => userService.getUserStats(user?.id || ''),
+    enabled: !!user?.id,
+  });
+
+  // Fetch favorite movies (top 10)
+  const { data: favoriteMovies } = useQuery({
+    queryKey: ['favorite-movies', user?.id],
+    queryFn: () => userService.getFavoriteMovies(user?.id || '', 10),
+    enabled: !!user?.id,
+  });
+
+  // Fetch recent movies (5 most recent)
+  const { data: recentMovies } = useQuery({
+    queryKey: ['recent-movies', user?.id],
+    queryFn: () => userService.getRecentMovies(user?.id || '', 5),
+    enabled: !!user?.id,
+  });
+
+  // Fetch featured collections (3 collections)
+  const { data: collections = [] } = useQuery({
+    queryKey: ['user-collections-with-previews', user?.id],
+    queryFn: () => collectionService.getUserCollectionsWithPreviews(user!.id),
+    enabled: !!user?.id,
+  });
+
+  // Fetch active rankings
+  const { data: activeRankings } = useQuery({
+    queryKey: ['active-rankings', user?.id],
+    queryFn: () => userService.getActiveRankings(user?.id || '', 3),
+    enabled: !!user?.id,
+  });
+
+  const formatWatchedDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
   };
 
-  // Mock movies data
-  const recentMovies = [
-    { id: 1, title: 'Inception', poster_path: '/path1.jpg', rating: 5 },
-    { id: 2, title: 'Interstellar', poster_path: '/path2.jpg', rating: 4 },
-    { id: 3, title: 'The Dark Knight', poster_path: '/path3.jpg', rating: 5 },
-    { id: 4, title: 'Dunkirk', poster_path: '/path4.jpg', rating: 4 },
-    { id: 5, title: 'Memento', poster_path: '/path5.jpg', rating: 4 },
-    { id: 6, title: 'Tenet', poster_path: '/path6.jpg', rating: 3 },
-  ];
+  // Calculate movies watched this month
+  const getMoviesThisMonth = () => {
+    if (!recentMovies) return 0;
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
 
-  // Mock collections data
-  const featuredCollections = [
-    { id: 1, name: 'Top Nolan Movies', movieCount: 8, isRanked: true },
-    { id: 2, name: 'Must Watch Again', movieCount: 12, isRanked: false },
-    { id: 3, name: 'Best Sci-Fi Films', movieCount: 15, isRanked: true },
-  ];
-
-  // Mock ranking stats
-  const rankingStats = {
-    totalRankings: 12,
-    moviesRanked: 156,
-    averageRating: 4.2,
-    favoriteGenre: 'Sci-Fi',
-    rankingStreak: 5,
+    return recentMovies.filter((item) => {
+      const watchDate = new Date(item.watched_date);
+      return (
+        watchDate.getMonth() === thisMonth &&
+        watchDate.getFullYear() === thisYear
+      );
+    }).length;
   };
 
   return (
-    <div className='space-y-8 animate-fade-in'>
-      {/* Header with Settings */}
-      <div className='flex items-center justify-between'>
+    <div className='mx-auto px-0 py-8'>
+      {/* Header with Lounge Title and Actions */}
+      <div className='mb-8 flex items-center justify-between'>
         <div>
-          <h1 className='text-3xl font-bold text-primary'>Dashboard</h1>
-          <p className='text-secondary mt-2'>
-            Welcome back! Here's your movie journey overview
-          </p>
+          <h1 className='text-2xl font-semibold text-gray-900'>Your Lounge</h1>
         </div>
-        <button className='p-3 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors'>
-          <Settings className='w-5 h-5 text-primary' />
-        </button>
+
+        {/* Action Buttons */}
+        <div className='flex items-center space-x-3'>
+          <Link to='/movies'>
+            <button className='flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors'>
+              <Plus className='w-4 h-4' />
+              <span>Add movie</span>
+            </button>
+          </Link>
+          <Link to='/collections/new'>
+            <button className='flex items-center space-x-2 px-4 py-2 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors'>
+              <Folder className='w-4 h-4' />
+              <span>Add collection</span>
+            </button>
+          </Link>
+          <Link to='/rankings/new'>
+            <button className='flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors'>
+              <BarChart3 className='w-4 h-4' />
+              <span>Create ranking</span>
+            </button>
+          </Link>
+        </div>
       </div>
 
-      <div className='grid grid-cols-1 lg:grid-cols-4 gap-8'>
-        {/* Left Side - User Profile */}
-        <div className='lg:col-span-1'>
-          <Card className='p-6'>
-            {/* Avatar */}
-            <div className='w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4'>
-              <User className='w-10 h-10 text-primary' />
-            </div>
+      {/* Stats Section */}
+      <div className='bg-white border border-gray-200 rounded-lg p-4 mb-8'>
+        <div className='flex flex-wrap gap-6 text-sm'>
+          <div className='flex items-center gap-2'>
+            <span className='font-medium text-gray-900'>
+              {getMoviesThisMonth()}
+            </span>
+            <span className='text-gray-500'>movies this month</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <span className='font-medium text-gray-900'>
+              {userStats?.moviesWatched || 0}
+            </span>
+            <span className='text-gray-500'>total movies</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <span className='font-medium text-gray-900'>
+              {userStats?.rankingsCount || 0}
+            </span>
+            <span className='text-gray-500'>active rankings</span>
+          </div>
+          <div className='flex items-center gap-2'>
+            <span className='font-medium text-gray-900'>
+              {userStats?.collectionsCount || 0}
+            </span>
+            <span className='text-gray-500'>collections</span>
+          </div>
+        </div>
+      </div>
 
-            {/* User Info */}
-            <div className='text-center mb-6'>
-              <h2 className='text-lg font-semibold mb-1'>{user.username}</h2>
-              <p className='text-secondary text-sm mb-2'>{user.email}</p>
-              <p className='text-secondary text-xs'>Joined {user.joinDate}</p>
-            </div>
+      {/* Favourite Films and Featured Collections */}
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
+        {/* Favourite Films */}
+        <div>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-gray-900 flex items-center'>
+              <Star className='w-5 h-5 mr-2 text-gray-400' />
+              Favourite films
+            </h2>
+            <button
+              onClick={() => setIsFavoriteModalOpen(true)}
+              className='text-sm text-gray-500 hover:text-gray-700'>
+              Edit
+            </button>
+          </div>
 
-            {/* Quick Stats */}
-            <div className='space-y-3 mb-6'>
-              <div className='flex justify-between items-center text-sm'>
-                <span className='text-secondary'>Movies</span>
-                <span className='font-medium'>{user.moviesWatched}</span>
+          <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-5 gap-2'>
+            {favoriteMovies && favoriteMovies.length > 0 ? (
+              favoriteMovies.map((item) => (
+                <MovieCard key={item.movie.id} userMovie={item} />
+              ))
+            ) : (
+              <div className='col-span-full text-center py-8 text-gray-500'>
+                <p>No favorite movies yet</p>
+                <p className='text-sm mt-1'>
+                  Mark movies as favorites to see them here
+                </p>
               </div>
-              <div className='flex justify-between items-center text-sm'>
-                <span className='text-secondary'>Collections</span>
-                <span className='font-medium'>{user.collectionsCreated}</span>
-              </div>
-              <div className='flex justify-between items-center text-sm'>
-                <span className='text-secondary'>Rankings</span>
-                <span className='font-medium'>{user.rankingsCompleted}</span>
-              </div>
-            </div>
-
-            {/* Edit Profile Button */}
-            <Button size='sm' variant='ghost' className='w-full text-xs'>
-              Edit Profile
-            </Button>
-          </Card>
+            )}
+          </div>
         </div>
 
-        {/* Right Side - Page Snippets */}
-        <div className='lg:col-span-3 space-y-8'>
-          {/* Import Section */}
-          <div>
-            <div className='flex items-center gap-2 mb-4'>
-              <h3 className='text-lg font-semibold'>Import Data</h3>
-            </div>
-
-            <Card className='p-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='p-2 bg-blue-100 rounded-lg'>
-                    <Download className='w-5 h-5 text-blue-600' />
-                  </div>
-                  <div>
-                    <h4 className='font-medium'>Import from Letterboxd</h4>
-                    <p className='text-sm text-secondary'>
-                      Import your watched movies and ratings
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => setIsImportModalOpen(true)}
-                  size='sm'
-                  className='bg-primary hover:bg-primary/90'>
-                  <Upload className='w-4 h-4 mr-2' />
-                  Import
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          {/* Library Management Section */}
-          <div>
-            <div className='flex items-center gap-2 mb-4'>
-              <h3 className='text-lg font-semibold'>Library Management</h3>
-            </div>
-
-            <Card className='p-4'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='p-2 bg-red-100 rounded-lg'>
-                    <Trash2 className='w-5 h-5 text-red-600' />
-                  </div>
-                  <div>
-                    <h4 className='font-medium'>Clear Library</h4>
-                    <p className='text-sm text-secondary'>
-                      Remove all movies from your library
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => setIsClearLibraryModalOpen(true)}
-                  size='sm'
-                  variant='ghost'
-                  className='text-red-600 hover:text-red-700 hover:bg-red-50'>
-                  <Trash2 className='w-4 h-4 mr-2' />
-                  Clear
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          {/* Movies Section */}
-          <div>
-            <Link
-              to='/movies'
-              className='flex items-center gap-2 mb-4 hover:text-primary transition-colors group'>
-              <h3 className='text-lg font-semibold'>Recent Movies</h3>
-              <ChevronRight className='w-4 h-4 text-secondary group-hover:text-primary transition-colors' />
-            </Link>
-
-            <Card className='p-4'>
-              <div className='grid grid-cols-4 sm:grid-cols-8 gap-3'>
-                {recentMovies.map((movie) => (
-                  <div key={movie.id} className='text-center'>
-                    <MoviePoster
-                      src={movie.poster_path}
-                      alt={movie.title}
-                      size='sm'
-                    />
-                    <div className='text-center mt-2'>
-                      <span className='text-xs text-secondary'>
-                        {movie.rating}/5
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* Collections Section */}
-          <div>
+        {/* Featured Collections */}
+        <div>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-gray-900'>
+              Featured collections
+            </h2>
             <Link
               to='/collections'
-              className='flex items-center gap-2 mb-4 hover:text-primary transition-colors group'>
-              <h3 className='text-lg font-semibold'>Featured Collections</h3>
-              <ChevronRight className='w-4 h-4 text-secondary group-hover:text-primary transition-colors' />
+              className='text-sm text-gray-500 hover:text-gray-700'>
+              View all
             </Link>
-
-            <Card className='p-4'>
-              <div className='space-y-3'>
-                {featuredCollections.map((collection) => (
-                  <div
-                    key={collection.id}
-                    className='flex items-center justify-between p-3 bg-surface-hover rounded-lg hover:bg-border transition-colors cursor-pointer'>
-                    <div>
-                      <h4 className='font-medium'>{collection.name}</h4>
-                      <p className='text-sm text-secondary'>
-                        {collection.movieCount} movies
-                        {collection.isRanked && ' • Ranked'}
-                      </p>
-                    </div>
-                    <ChevronRight className='w-4 h-4 text-tertiary' />
-                  </div>
-                ))}
-              </div>
-            </Card>
           </div>
 
-          {/* Rankings Section */}
-          <div>
-            <Link
-              to='/rankings'
-              className='flex items-center gap-2 mb-4 hover:text-primary transition-colors group'>
-              <h3 className='text-lg font-semibold'>Ranking Statistics</h3>
-              <ChevronRight className='w-4 h-4 text-secondary group-hover:text-primary transition-colors' />
-            </Link>
-
-            <Card className='p-4'>
-              <div className='grid grid-cols-2 md:grid-cols-4 gap-4 mb-4'>
-                <div className='text-center p-3 bg-surface-hover rounded-lg'>
-                  <div className='text-xl font-bold'>
-                    {rankingStats.totalRankings}
-                  </div>
-                  <div className='text-sm text-secondary'>Rankings</div>
-                </div>
-
-                <div className='text-center p-3 bg-surface-hover rounded-lg'>
-                  <div className='text-xl font-bold'>
-                    {rankingStats.moviesRanked}
-                  </div>
-                  <div className='text-sm text-secondary'>Movies Ranked</div>
-                </div>
-
-                <div className='text-center p-3 bg-surface-hover rounded-lg'>
-                  <div className='text-xl font-bold'>
-                    {rankingStats.averageRating}
-                  </div>
-                  <div className='text-sm text-secondary'>Avg Rating</div>
-                </div>
-
-                <div className='text-center p-3 bg-surface-hover rounded-lg'>
-                  <div className='text-xl font-bold'>
-                    {rankingStats.rankingStreak}
-                  </div>
-                  <div className='text-sm text-secondary'>Day Streak</div>
-                </div>
+          <div className='grid grid-cols-1 gap-4'>
+            {collections && collections.length > 0 ? (
+              collections
+                .slice(0, 3)
+                .map((collection) => (
+                  <CollectionCard
+                    key={collection.id}
+                    collection={collection}
+                    onNavigate={() => {}}
+                    previewSize='small'
+                  />
+                ))
+            ) : (
+              <div className='col-span-full text-center py-8 text-gray-500'>
+                <p>No collections yet</p>
+                <p className='text-sm mt-1'>
+                  Create collections to organize your movies
+                </p>
               </div>
-
-              <div className='p-3 bg-surface-hover rounded-lg'>
-                <div className='flex items-center justify-between'>
-                  <span className='text-secondary'>Favorite Genre</span>
-                  <span className='font-medium'>
-                    {rankingStats.favoriteGenre}
-                  </span>
-                </div>
-              </div>
-            </Card>
+            )}
           </div>
         </div>
       </div>
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+        {/* Recent Activity */}
+        <div className='lg:col-span-2'>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-gray-900'>
+              Recent activity
+            </h2>
+            <Link
+              to='/movies'
+              className='text-sm text-gray-500 hover:text-gray-700'>
+              View all
+            </Link>
+          </div>
 
-      {/* Letterboxd Import Modal */}
-      <LetterboxdImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-      />
+          <div className='bg-white border border-gray-200 rounded-lg divide-y divide-gray-100'>
+            {recentMovies && recentMovies.length > 0 ? (
+              recentMovies.map((item) => (
+                <Link key={item.movie.id} to={`/movies/${item.movie.id}`}>
+                  <div className='p-4 hover:bg-gray-50 transition-colors'>
+                    <div className='flex items-center justify-between'>
+                      <div>
+                        <h3 className='font-medium text-gray-900'>
+                          {item.movie.title}
+                        </h3>
+                        <p className='text-sm text-gray-500 mt-1'>
+                          {formatWatchedDate(item.watched_date)}
+                        </p>
+                      </div>
+                      <div className='text-right'>
+                        <div className='text-lg font-semibold text-gray-900'>
+                          {item.rating ? (item.rating / 2).toFixed(1) : '—'}
+                        </div>
+                        <div className='text-xs text-gray-500'>/ 5</div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className='p-8 text-center text-gray-500'>
+                <p>No recent movies</p>
+                <p className='text-sm mt-1'>
+                  Mark movies as watched to see them here
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
 
-      {/* Clear Library Modal */}
-      <ClearLibraryModal
-        isOpen={isClearLibraryModalOpen}
-        onClose={() => setIsClearLibraryModalOpen(false)}
+        {/* Active Rankings */}
+        <div>
+          <div className='flex items-center justify-between mb-4'>
+            <h2 className='text-lg font-semibold text-gray-900'>
+              Active rankings
+            </h2>
+            <Link
+              to='/rankings'
+              className='text-sm text-gray-500 hover:text-gray-700'>
+              View all
+            </Link>
+          </div>
+
+          <div className='space-y-3'>
+            {activeRankings && activeRankings.length > 0 ? (
+              activeRankings.map((ranking) => (
+                <Link key={ranking.id} to={`/collections/${ranking.id}`}>
+                  <div className='bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer'>
+                    <h3 className='font-medium text-gray-900 mb-2'>
+                      {ranking.name}
+                    </h3>
+                    <div className='flex items-center justify-between text-sm text-gray-500'>
+                      <span>{ranking.movieCount} movies</span>
+                      <span>{formatWatchedDate(ranking.updated_at)}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className='bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500'>
+                <p>No active rankings</p>
+                <p className='text-sm mt-1'>Create a ranking to get started</p>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Insights */}
+          {userStats && userStats.moviesWatched > 0 && (
+            <div className='mt-6 p-4 bg-gray-50 rounded-lg'>
+              <div className='flex items-center space-x-2 mb-2'>
+                <TrendingUp className='w-4 h-4 text-gray-400' />
+                <h3 className='text-sm font-medium text-gray-900'>Stats</h3>
+              </div>
+              <p className='text-sm text-gray-600'>
+                Average rating: {userStats.averageRating?.toFixed(1) || '0'}/5
+              </p>
+              {userStats.favoriteGenre && (
+                <p className='text-sm text-gray-600 mt-1'>
+                  Favorite genre: {userStats.favoriteGenre}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Ten Movies Modal */}
+      <TopTenMoviesModal
+        isOpen={isFavoriteModalOpen}
+        onClose={() => setIsFavoriteModalOpen(false)}
       />
     </div>
   );

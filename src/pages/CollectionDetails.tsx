@@ -294,6 +294,7 @@ const CollectionDetails = () => {
                         watched_date: null,
                         watch_list: false,
                         watchlist_added_date: null,
+                        favorite: false,
                         notes: null,
                         created_at: item.added_at,
                         updated_at: item.added_at,

@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
-import { Plus, Folder } from 'lucide-react';
+import { Plus, Folder, Trophy, ChartBar } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
   collectionService,
   type Collection,
+  type CollectionWithItems,
 } from '@/services/collection.service';
 import { CollectionModal } from '@/components/collections/CollectionModal';
+import MovieCollectionPreview from '@/components/common/MovieCollectionPreview';
+import CollectionCard from '@/components/common/CollectionCard';
 
 const Collections = () => {
   const { user } = useAuth();
@@ -16,14 +19,14 @@ const Collections = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch user collections
+  // Fetch user collections with previews
   const {
     data: collections = [],
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['user-collections', user?.id],
-    queryFn: () => collectionService.getUserCollections(user!.id),
+    queryKey: ['user-collections-with-previews', user?.id],
+    queryFn: () => collectionService.getUserCollectionsWithPreviews(user!.id),
     enabled: !!user?.id,
   });
 
@@ -38,15 +41,7 @@ const Collections = () => {
     },
   });
 
-  // Split collections by type
-  const rankedCollections = collections.filter((c) => c.is_ranked);
-  const unrankedCollections = collections.filter((c) => !c.is_ranked);
-
-  console.log('Collections data:', {
-    collections,
-    rankedCollections,
-    unrankedCollections,
-  });
+  console.log('Collections data:', collections);
 
   if (!user) {
     return (
@@ -67,9 +62,6 @@ const Collections = () => {
       <div className='flex items-center justify-between'>
         <div>
           <h1 className='text-3xl font-bold text-primary'>Collections</h1>
-          <p className='text-secondary mt-2'>
-            Organize your favorite movies into themed collections
-          </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -116,39 +108,17 @@ const Collections = () => {
         </Card>
       )}
 
-      {/* Ranked Collections Section */}
-      {!isLoading && rankedCollections.length > 0 && (
-        <div>
-          <h2 className='text-xl font-semibold mb-4 text-primary'>
-            Ranked Collections
-          </h2>
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {rankedCollections.map((collection) => (
-              <CollectionCard
-                key={collection.id}
-                collection={collection}
-                onNavigate={(id) => navigate(`/collections/${id}`)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Non-Ranked Collections Section */}
-      {!isLoading && unrankedCollections.length > 0 && (
-        <div>
-          <h2 className='text-xl font-semibold mb-4 text-primary'>
-            Non-Ranked Collections
-          </h2>
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {unrankedCollections.map((collection) => (
-              <CollectionCard
-                key={collection.id}
-                collection={collection}
-                onNavigate={(id) => navigate(`/collections/${id}`)}
-              />
-            ))}
-          </div>
+      {/* All Collections */}
+      {!isLoading && collections.length > 0 && (
+        <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>
+          {collections.map((collection) => (
+            <CollectionCard
+              key={collection.id}
+              collection={collection}
+              onNavigate={(id) => navigate(`/collections/${id}`)}
+              previewSize='medium'
+            />
+          ))}
         </div>
       )}
 
@@ -164,43 +134,5 @@ const Collections = () => {
     </div>
   );
 };
-
-// Collection Card Component
-interface CollectionCardProps {
-  collection: Collection;
-  onNavigate: (id: string) => void;
-}
-
-function CollectionCard({ collection, onNavigate }: CollectionCardProps) {
-  const handleClick = () => {
-    console.log('Collection card clicked:', {
-      id: collection.id,
-      name: collection.name,
-    });
-    onNavigate(collection.id);
-  };
-
-  return (
-    <Card hover className='cursor-pointer' onClick={handleClick}>
-      <div className='flex items-center gap-4'>
-        <div className='p-3 bg-primary/5 rounded-lg'>
-          <Folder className='w-6 h-6 text-primary' />
-        </div>
-        <div className='flex-1 min-w-0'>
-          <h3 className='font-semibold truncate'>{collection.name}</h3>
-          <p className='text-sm text-secondary'>
-            {collection._count?.collection_items || 0} movies
-            {collection.is_ranked && ' • Ranked'}
-          </p>
-          {collection.description && (
-            <p className='text-xs text-tertiary truncate mt-1'>
-              {collection.description}
-            </p>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
-}
 
 export default Collections;
