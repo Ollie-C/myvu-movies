@@ -2,15 +2,24 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tmdb } from '@/lib/api/tmdb';
+
+// Services
 import { movieService } from '@/services/supabase/movies.service';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { watchlistService } from '@/services/supabase/watchlist.service';
+
+// Contexts
 import { useAuth } from '@/context/AuthContext';
+
+// Schemas
 import type { Movie } from '@/schemas/movie.schema';
 import type { WatchedMovie } from '@/schemas/watched-movie.schema';
 import type { Watchlist } from '@/schemas/watchlist.schema';
-import type { TMDBMovie } from '@/lib/api/tmdb';
 
+// Types
+import type { TMDBMovie } from '@/schemas/movie.schema';
+
+// Interfaces
 interface MovieDetailsData extends TMDBMovie {
   movieId: number;
   tmdbId: number;
@@ -26,6 +35,7 @@ interface UserMovieStatus {
   isFavorite: boolean;
 }
 
+// Queries
 export const movieKeys = {
   all: ['movies'] as const,
   tmdb: (id: string | number) =>
@@ -37,6 +47,7 @@ export const movieKeys = {
     [...movieKeys.all, 'enriched', movieId] as const,
 };
 
+// Fetches movie details from TMDB and caches them in Supabase
 export const useMovieDetails = (tmdbId: string | undefined) => {
   return useQuery<MovieDetailsData | null, Error>({
     queryKey: movieKeys.tmdb(tmdbId || ''),
@@ -68,6 +79,7 @@ export const useMovieDetails = (tmdbId: string | undefined) => {
   });
 };
 
+// Fetches user movie status from Supabase
 export const useUserMovieStatus = (tmdbId: number | undefined) => {
   const { user } = useAuth();
 
@@ -99,6 +111,7 @@ export const useUserMovieStatus = (tmdbId: number | undefined) => {
   });
 };
 
+// Fetches a cached movie from Supabase
 export const useCachedMovie = (movieId: number | undefined) => {
   return useQuery<Movie | null, Error>({
     queryKey: movieKeys.enriched(movieId || 0),
@@ -111,6 +124,7 @@ export const useCachedMovie = (movieId: number | undefined) => {
   });
 };
 
+// Fetches a movie with its user status
 export const useMovieWithStatus = (tmdbId: string | undefined) => {
   const movieQuery = useMovieDetails(tmdbId);
   const statusQuery = useUserMovieStatus(movieQuery.data?.tmdbId);

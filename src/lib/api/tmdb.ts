@@ -1,20 +1,8 @@
+import type { TMDBMovie } from '@/schemas/movie.schema';
+
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-
-export interface TMDBMovie {
-  id: number;
-  title: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  overview: string;
-  release_date: string;
-  vote_average: number;
-  genres: { id: number; name: string }[];
-  original_language: string;
-  original_title: string;
-  popularity: number;
-}
 
 export interface TMDBSearchResponse {
   page: number;
@@ -46,7 +34,7 @@ export const tmdb = {
     return `${TMDB_IMAGE_BASE}/${size}${path}`;
   },
 
-  getMovie: async (id: number) => {
+  getMovie: async (id: number): Promise<TMDBMovie> => {
     const response = await fetch(
       `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits`
     );

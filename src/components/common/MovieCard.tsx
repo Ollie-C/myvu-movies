@@ -3,7 +3,8 @@ import { X, Plus, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
-import type { UserMovie } from '@/services/movie.service';
+import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
+import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
 
 // Unique Rating Display Component
 const RatingDisplay = ({ rating }: { rating: number }) => {
@@ -39,7 +40,7 @@ const RatingDisplay = ({ rating }: { rating: number }) => {
 };
 
 interface MovieCardProps {
-  userMovie: UserMovie;
+  userMovie: WatchedMovieWithMovie | WatchlistWithMovie;
   onRemoveFromWatched?: (movieId: number) => void;
   onRemoveFromWatchlist?: (movieId: number) => void;
   onMarkAsWatched?: (movieId: number) => void;
@@ -59,7 +60,7 @@ const MovieCard = ({
   isWatchedList = false,
   disableLink = false,
 }: MovieCardProps) => {
-  const { movie, rating: userRating } = userMovie;
+  const { movie, rating: userRating } = userMovie as WatchedMovieWithMovie;
   const navigate = useNavigate();
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [isHovered, setIsHovered] = useState(false);

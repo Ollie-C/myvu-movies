@@ -1,8 +1,8 @@
 import Papa from 'papaparse';
 import { tmdb } from '@/lib/api/tmdb';
-import { movieService } from '@/services/movie.service';
+import type { TMDBMovie } from '@/schemas/movie.schema';
+import { movieService } from '@/services/supabase/movies.service';
 import { supabase } from '@/lib/supabase';
-import type { TMDBMovie } from '@/lib/api/tmdb';
 
 export interface LetterboxdEntry {
   Name: string;

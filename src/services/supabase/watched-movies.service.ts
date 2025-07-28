@@ -1,13 +1,18 @@
 // DONE
 import { supabase } from '@/lib/supabase';
+
+// Schemas
 import {
   WatchedMovieSchema,
   WatchedMovieWithMovieSchema,
   type WatchedMovie,
   type WatchedMovieWithMovie,
 } from '@/schemas/watched-movie.schema';
+
+// Utils
 import { z } from 'zod';
 
+// Services
 export const watchedMoviesService = {
   async getWatchedMovies(
     userId: string,

@@ -1,78 +1,94 @@
 import { supabase } from '@/lib/supabase';
-
-export interface Collection {
-  id: string; // Changed from number to string for UUID
-  user_id: string;
-  name: string;
-  description: string | null;
-  is_ranked: boolean;
-  created_at: string;
-  updated_at: string;
-  _count?: {
-    collection_items: number;
-  };
-}
-
-export interface CollectionItem {
-  id: number;
-  collection_id: string; // Changed from number to string for UUID
-  movie_id: number;
-  position: number | null;
-  added_at: string;
-  movie: {
-    id: number;
-    tmdb_id: number;
-    title: string;
-    poster_path: string | null;
-    backdrop_path: string | null;
-    overview: string | null;
-    release_date: string | null;
-    vote_average: number | null;
-    genres: any[];
-  };
-}
-
-export interface CollectionWithItems extends Collection {
-  collection_items: CollectionItem[];
-}
-
-export interface CreateCollectionData {
-  name: string;
-  description?: string;
-  is_ranked?: boolean;
-}
+import {
+  CollectionSchema,
+  CollectionWithCountSchema,
+  CollectionInsertSchema,
+  CollectionUpdateSchema,
+  collectionHelpers,
+  type Collection,
+  type CollectionWithCount,
+  type CollectionInsert,
+  type CollectionUpdate,
+} from '@/schemas/collection.schema';
+import {
+  CollectionItemWithMovieSchema,
+  CollectionItemInsertSchema,
+  CollectionItemReorderSchema,
+  type CollectionItemWithMovie,
+} from '@/schemas/collection-item.schema';
+import {
+  CollectionWithItemsSchema,
+  CollectionPreviewSchema,
+  collectionItemHelpers,
+  type CollectionWithItems,
+  type CollectionPreview,
+} from '@/schemas/collection-combined.schema';
+import { z } from 'zod';
 
 export const collectionService = {
   // Get all collections for a user
-  async getUserCollections(userId: string): Promise<Collection[]> {
-    const { data, error } = await supabase
+  async getUserCollections(
+    userId: string,
+    options?: {
+      limit?: number;
+      withCounts?: boolean;
+      isRankedOnly?: boolean;
+    }
+  ): Promise<CollectionWithCount[]> {
+    const { limit, withCounts = true, isRankedOnly = false } = options || {};
+
+    let query = supabase
       .from('collections')
-      .select(
-        `
-        *,
-        collection_items(count)
-      `
-      )
+      .select('*, collection_items(count)')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
 
+    if (isRankedOnly) {
+      query = query.eq('is_ranked', true);
+    }
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
 
-    // Transform the data to include count
-    return (data || []).map((collection) => ({
-      ...collection,
-      _count: {
-        collection_items: collection.collection_items?.[0]?.count || 0,
-      },
-    }));
+    if (!withCounts) {
+      // If no counts requested, just validate as regular collections
+      return (data || []).map((collection) =>
+        CollectionSchema.parse(collection)
+      );
+    }
+
+    // Type assertion for the count query result
+    type CollectionWithCountQuery = Collection & {
+      collection_items: { count: number }[];
+    };
+
+    return ((data || []) as CollectionWithCountQuery[]).map((collection) => {
+      const collectionData = {
+        id: collection.id,
+        name: collection.name,
+        description: collection.description,
+        user_id: collection.user_id,
+        is_public: collection.is_public,
+        is_ranked: collection.is_ranked,
+        slug: collection.slug,
+        created_at: collection.created_at,
+        updated_at: collection.updated_at,
+        _count: {
+          collection_items: collection.collection_items?.[0]?.count || 0,
+        },
+      };
+      return CollectionWithCountSchema.parse(collectionData);
+    });
   },
 
   // Get a specific collection with its items
   async getCollection(
     collectionId: string
   ): Promise<CollectionWithItems | null> {
-    console.log('Fetching collection with ID:', collectionId);
-
     const { data, error } = await supabase
       .from('collections')
       .select(
@@ -88,50 +104,99 @@ export const collectionService = {
       .single();
 
     if (error) {
-      console.error('getCollection error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Error hint:', error.hint);
       if (error.code === 'PGRST116') return null; // Not found
       throw error;
     }
 
-    console.log('Collection data received:', data);
-    return data;
+    // Sort items by position
+    if (data?.collection_items) {
+      data.collection_items = collectionItemHelpers.sortByPosition(
+        data.collection_items
+      );
+    }
+
+    return CollectionWithItemsSchema.parse(data);
+  },
+
+  // Get collection preview (limited items)
+  async getCollectionPreview(
+    collectionId: string
+  ): Promise<CollectionPreview | null> {
+    const { data, error } = await supabase
+      .from('collections')
+      .select(
+        `
+        *,
+        collection_items(
+          *,
+          movie:movies(*)
+        )
+      `
+      )
+      .eq('id', collectionId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+
+    // Limit items for preview and add count
+    const previewData = {
+      ...data,
+      collection_items: data.collection_items?.slice(0, 6) || [],
+      _count: {
+        collection_items: data.collection_items?.length || 0,
+      },
+    };
+
+    return CollectionPreviewSchema.parse(previewData);
   },
 
   // Create a new collection
   async createCollection(
     userId: string,
-    collectionData: CreateCollectionData
+    collectionData: Omit<CollectionInsert, 'user_id'>
   ): Promise<Collection> {
+    // Generate slug if not provided
+    const slug =
+      collectionData.slug ||
+      collectionHelpers.generateSlug(collectionData.name);
+
+    const insertData = CollectionInsertSchema.parse({
+      ...collectionData,
+      user_id: userId,
+      slug,
+    });
+
     const { data, error } = await supabase
       .from('collections')
-      .insert({
-        user_id: userId,
-        name: collectionData.name,
-        description: collectionData.description || null,
-        is_ranked: collectionData.is_ranked || false,
-      })
+      .insert(insertData)
       .select()
       .single();
 
-    if (error) {
-      throw error;
-    }
-    return data;
+    if (error) throw error;
+    return CollectionSchema.parse(data);
   },
 
   // Update a collection
   async updateCollection(
     collectionId: string,
-    updates: Partial<CreateCollectionData>
+    updates: CollectionUpdate
   ): Promise<Collection> {
+    const validatedUpdates = CollectionUpdateSchema.parse(updates);
+
+    // Generate new slug if name is updated
+    if (validatedUpdates.name && !validatedUpdates.slug) {
+      validatedUpdates.slug = collectionHelpers.generateSlug(
+        validatedUpdates.name
+      );
+    }
+
     const { data, error } = await supabase
       .from('collections')
       .update({
-        ...updates,
+        ...validatedUpdates,
         updated_at: new Date().toISOString(),
       })
       .eq('id', collectionId)
@@ -139,7 +204,7 @@ export const collectionService = {
       .single();
 
     if (error) throw error;
-    return data;
+    return CollectionSchema.parse(data);
   },
 
   // Delete a collection
@@ -155,29 +220,31 @@ export const collectionService = {
   // Add a movie to a collection
   async addMovieToCollection(
     collectionId: string,
-    movieId: number
-  ): Promise<CollectionItem> {
-    console.log('Adding movie to collection:', { collectionId, movieId });
+    movieId: number,
+    notes?: string
+  ): Promise<CollectionItemWithMovie> {
+    // First check if movie already exists in collection
+    const exists = await this.isMovieInCollection(collectionId, movieId);
+    if (exists) {
+      throw new Error('Movie already exists in this collection');
+    }
 
-    // Get the next position for this collection
-    const { data: maxPositionData } = await supabase
-      .from('collection_items')
-      .select('position')
-      .eq('collection_id', collectionId)
-      .order('position', { ascending: false })
-      .limit(1)
-      .single();
+    // Get the next position
+    const collection = await this.getCollection(collectionId);
+    if (!collection) throw new Error('Collection not found');
 
-    const nextPosition = (maxPositionData?.position || 0) + 1;
-    console.log('Next position will be:', nextPosition);
+    const nextPosition = collectionItemHelpers.getNextPosition(collection);
+
+    const insertData = CollectionItemInsertSchema.parse({
+      collection_id: collectionId,
+      movie_id: movieId,
+      position: nextPosition,
+      notes,
+    });
 
     const { data, error } = await supabase
       .from('collection_items')
-      .insert({
-        collection_id: collectionId,
-        movie_id: movieId,
-        position: nextPosition,
-      })
+      .insert(insertData)
       .select(
         `
         *,
@@ -186,22 +253,55 @@ export const collectionService = {
       )
       .single();
 
-    if (error) {
-      console.error('addMovieToCollection error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Error hint:', error.hint);
-      throw error;
-    }
+    if (error) throw error;
 
     // Update collection's updated_at timestamp
-    await supabase
-      .from('collections')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', collectionId);
+    await this.touchCollection(collectionId);
 
-    return data;
+    return CollectionItemWithMovieSchema.parse(data);
+  },
+
+  // Add multiple movies to a collection
+  async addMoviesToCollection(
+    collectionId: string,
+    movieIds: number[]
+  ): Promise<CollectionItemWithMovie[]> {
+    if (movieIds.length === 0) return [];
+
+    // Get current collection to determine positions
+    const collection = await this.getCollection(collectionId);
+    if (!collection) throw new Error('Collection not found');
+
+    // Filter out movies that already exist
+    const existingMovieIds = new Set(
+      collection.collection_items.map((item) => item.movie_id)
+    );
+    const newMovieIds = movieIds.filter((id) => !existingMovieIds.has(id));
+
+    if (newMovieIds.length === 0) return [];
+
+    // Create insert data
+    let nextPosition = collectionItemHelpers.getNextPosition(collection);
+    const insertData = newMovieIds.map((movieId) => ({
+      collection_id: collectionId,
+      movie_id: movieId,
+      position: nextPosition++,
+      added_at: new Date().toISOString(),
+    }));
+
+    const { data, error } = await supabase
+      .from('collection_items')
+      .upsert(insertData, {
+        onConflict: 'collection_id,movie_id',
+        ignoreDuplicates: true,
+      })
+      .select(`*, movie:movies(*)`);
+
+    if (error) throw error;
+
+    await this.touchCollection(collectionId);
+
+    return z.array(CollectionItemWithMovieSchema).parse(data || []);
   },
 
   // Remove a movie from a collection
@@ -217,11 +317,7 @@ export const collectionService = {
 
     if (error) throw error;
 
-    // Update collection's updated_at timestamp
-    await supabase
-      .from('collections')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', collectionId);
+    await this.touchCollection(collectionId);
   },
 
   // Check if a movie is in a collection
@@ -229,71 +325,72 @@ export const collectionService = {
     collectionId: string,
     movieId: number
   ): Promise<boolean> {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('collection_items')
       .select('id')
       .eq('collection_id', collectionId)
       .eq('movie_id', movieId)
       .single();
 
+    if (error && error.code !== 'PGRST116') throw error;
     return !!data;
   },
 
   // Reorder items in a collection (for ranked collections)
   async reorderCollectionItems(
     collectionId: string,
-    itemIds: number[]
+    items: Array<{ id: string; position: number }>
   ): Promise<void> {
-    const updates = itemIds.map((itemId, index) => ({
-      id: itemId,
-      position: index + 1,
-    }));
+    const validatedItems = CollectionItemReorderSchema.parse(items);
 
-    const { error } = await supabase.from('collection_items').upsert(updates);
+    // Update each item's position
+    const promises = validatedItems.map((item) =>
+      supabase
+        .from('collection_items')
+        .update({ position: item.position })
+        .eq('id', item.id)
+    );
 
-    if (error) throw error;
+    const results = await Promise.all(promises);
+    const hasError = results.some((result) => result.error);
+    if (hasError) throw new Error('Failed to reorder items');
 
-    // Update collection's updated_at timestamp
-    await supabase
-      .from('collections')
-      .update({ updated_at: new Date().toISOString() })
-      .eq('id', collectionId);
+    await this.touchCollection(collectionId);
   },
 
   // Get collections that contain a specific movie
   async getCollectionsWithMovie(
     userId: string,
     movieId: number
-  ): Promise<{ collection: Collection; inCollection: boolean }[]> {
+  ): Promise<
+    Array<{ collection: CollectionWithCount; inCollection: boolean }>
+  > {
     // Get all user collections
     const collections = await this.getUserCollections(userId);
 
-    // Get all collection items for this movie in one query
+    // Get collection IDs that contain the movie
     const { data: movieCollectionItems, error } = await supabase
       .from('collection_items')
       .select('collection_id')
       .eq('movie_id', movieId);
 
-    if (error) {
-      console.error('getCollectionsWithMovie error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    // Create a set of collection IDs that contain the movie
     const collectionsWithMovieSet = new Set(
       movieCollectionItems?.map((item) => item.collection_id) || []
     );
 
-    // Map all collections with their movie status
     return collections.map((collection) => ({
       collection,
       inCollection: collectionsWithMovieSet.has(collection.id),
     }));
   },
 
+  // Get collection previews for a user
   async getUserCollectionsWithPreviews(
-    userId: string
-  ): Promise<CollectionWithItems[]> {
+    userId: string,
+    limit?: number
+  ): Promise<CollectionPreview[]> {
     const { data, error } = await supabase
       .from('collections')
       .select(
@@ -306,14 +403,75 @@ export const collectionService = {
       `
       )
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(limit || 10);
 
     if (error) throw error;
 
-    // Limit to first 6 items for preview
-    return (data || []).map((collection) => ({
-      ...collection,
-      collection_items: collection.collection_items?.slice(0, 6) || [],
-    }));
+    // Transform to preview format
+    return (data || []).map((collection) => {
+      const preview = {
+        ...collection,
+        collection_items: collection.collection_items?.slice(0, 6) || [],
+        _count: {
+          collection_items: collection.collection_items?.length || 0,
+        },
+      };
+      return CollectionPreviewSchema.parse(preview);
+    });
+  },
+
+  // Update notes for a collection item
+  async updateItemNotes(
+    collectionId: string,
+    movieId: number,
+    notes: string | null
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('collection_items')
+      .update({ notes })
+      .eq('collection_id', collectionId)
+      .eq('movie_id', movieId);
+
+    if (error) throw error;
+    await this.touchCollection(collectionId);
+  },
+
+  // Helper to update collection's updated_at timestamp
+  async touchCollection(collectionId: string): Promise<void> {
+    await supabase
+      .from('collections')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', collectionId);
+  },
+
+  // Get collection statistics
+  async getCollectionStats(userId: string): Promise<{
+    totalCollections: number;
+    rankedCollections: number;
+    publicCollections: number;
+    totalMovies: number;
+  }> {
+    const collections = await this.getUserCollections(userId);
+
+    const stats = collections.reduce(
+      (acc, collection) => ({
+        totalCollections: acc.totalCollections + 1,
+        rankedCollections:
+          acc.rankedCollections + (collection.is_ranked ? 1 : 0),
+        publicCollections:
+          acc.publicCollections + (collection.is_public ? 1 : 0),
+        totalMovies:
+          acc.totalMovies + (collection._count?.collection_items || 0),
+      }),
+      {
+        totalCollections: 0,
+        rankedCollections: 0,
+        publicCollections: 0,
+        totalMovies: 0,
+      }
+    );
+
+    return stats;
   },
 };

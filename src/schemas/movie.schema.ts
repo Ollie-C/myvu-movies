@@ -32,16 +32,9 @@ export const MovieSchema = z.object({
   popularity: z.number().min(0).nullable(),
   vote_average: z.number().min(0).max(10).nullable(),
   genres: z.array(GenreSchema).nullable(),
-  created_at: z.string().datetime().nullable(),
-  updated_at: z.string().datetime().nullable(),
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
 }) satisfies z.ZodType<MovieRow>;
-
-export const MovieSchemaWithDates = MovieSchema.transform((data) => ({
-  ...data,
-  releaseDate: data.release_date ? new Date(data.release_date) : null,
-  createdAt: data.created_at ? new Date(data.created_at) : null,
-  updatedAt: data.updated_at ? new Date(data.updated_at) : null,
-}));
 
 export const MovieInsertSchema = MovieSchema.omit({
   id: true,
@@ -101,7 +94,6 @@ export const TMDBMovieSchema = z.object({
 });
 
 export type Movie = z.infer<typeof MovieSchema>;
-export type MovieWithDates = z.infer<typeof MovieSchemaWithDates>;
 export type MovieInsert = z.infer<typeof MovieInsertSchema>;
 export type MovieUpdate = z.infer<typeof MovieUpdateSchema>;
 export type Genre = z.infer<typeof GenreSchema>;

@@ -1,27 +1,41 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+
+// Components
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
+import MovieCard from '@/components/common/MovieCard';
+
+// Contexts
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
+
+// Schemas
+import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
+import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
+
+// Services
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { watchlistService } from '@/services/supabase/watchlist.service';
-import MovieCard from '@/components/common/MovieCard';
-import type { WatchedMovie } from '@/schemas/watched-movie.schema';
-import type { Watchlist } from '@/schemas/watchlist.schema';
+
+// Hooks
 import { useWatchlistInfinite } from '@/utils/hooks/supabase/queries/useWatchlist';
 import { useWatchedMoviesInfinite } from '@/utils/hooks/supabase/queries/useWatchedMovies';
 
-// Union type for both movie types
-type UserMovie = WatchedMovie | Watchlist;
+type UserMovie = WatchedMovieWithMovie | WatchlistWithMovie;
 
 const Movies = () => {
   const { user } = useAuth();
-  const { showToast } = useToast();
-  const [showWatchlist, setShowWatchlist] = useState(false);
   const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  // States
+  const [showWatchlist, setShowWatchlist] = useState(false);
+
+  // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // Queries
   const watchedQuery = useWatchedMoviesInfinite({
     sortBy: 'watched_date',
     sortOrder: 'desc',
@@ -34,6 +48,7 @@ const Movies = () => {
     limit: 24,
   });
 
+  // Data
   const {
     data: moviesData,
     isLoading,
@@ -43,7 +58,8 @@ const Movies = () => {
     isFetchingNextPage,
   } = showWatchlist ? watchlistQuery : watchedQuery;
 
-  // Flatten all pages into a single array
+  // Flatten all pages into a single array with proper typing
+
   const userMovies = moviesData?.pages.flatMap((page) => page.data) || [];
 
   // Intersection Observer for infinite scroll
@@ -64,7 +80,7 @@ const Movies = () => {
     [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]
   );
 
-  // Handle removing movie from watched list
+  // Remove movie from watched list
   const handleRemoveFromWatched = async (movieId: number) => {
     if (!user?.id) return;
 
@@ -80,7 +96,7 @@ const Movies = () => {
     }
   };
 
-  // Handle removing movie from watchlist
+  // Remove movie from watchlist
   const handleRemoveFromWatchlist = async (movieId: number) => {
     if (!user?.id) return;
 
@@ -96,7 +112,7 @@ const Movies = () => {
     }
   };
 
-  // Handle marking watchlist movie as watched
+  // Mark watchlist movie as watched
   const handleMarkAsWatched = async (movieId: number) => {
     if (!user?.id) return;
 
@@ -118,7 +134,7 @@ const Movies = () => {
   };
 
   // Type guard to check if item is from watchlist
-  const isWatchlistItem = (item: UserMovie): item is Watchlist => {
+  const isWatchlistItem = (item: any): item is WatchlistWithMovie => {
     return 'priority' in item;
   };
 
@@ -206,7 +222,7 @@ const Movies = () => {
       {!isLoading && !error && userMovies.length > 0 && (
         <>
           <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2'>
-            {userMovies.map((userMovie, index) => {
+            {userMovies.map((userMovie: UserMovie, index: number) => {
               const isLastElement = index === userMovies.length - 1;
 
               return (

@@ -8,7 +8,7 @@ import {
 import { movieService } from '@/services/supabase/movies.service';
 import { useAuth } from '@/context/AuthContext';
 import { CollectionModal } from './CollectionModal';
-import type { TMDBMovie } from '@/lib/api/tmdb';
+import type { TMDBMovie } from '@/schemas/movie.schema';
 
 interface CollectionDropdownProps {
   isOpen: boolean;

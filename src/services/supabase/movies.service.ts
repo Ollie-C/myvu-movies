@@ -1,7 +1,7 @@
 // DONE
 
 import { supabase } from '@/lib/supabase';
-import type { TMDBMovie } from '@/lib/api/tmdb';
+import type { TMDBMovie } from '@/schemas/movie.schema';
 import {
   MovieSchema,
   MovieInsertSchema,
@@ -13,6 +13,7 @@ export const movieService = {
   async cacheMovie(tmdbMovie: TMDBMovie): Promise<Movie> {
     const existingMovie = await this.getMovieByTmdbId(tmdbMovie.id);
 
+    // If movie already exists, check if it should be updated
     if (existingMovie) {
       if (this.shouldUpdateMovie(existingMovie)) {
         return this.updateMovie(existingMovie.id, tmdbMovie);
@@ -20,6 +21,7 @@ export const movieService = {
       return existingMovie;
     }
 
+    // If movie doesn't exist, insert it
     const movieData = MovieInsertSchema.parse({
       tmdb_id: tmdbMovie.id,
       title: tmdbMovie.title,

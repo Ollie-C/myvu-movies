@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Eye, Clock, Loader2 } from 'lucide-react';
-import type { TMDBMovie } from '@/lib/api/tmdb';
+import type { TMDBMovie } from '@/schemas/movie.schema';
 import { tmdb } from '@/lib/api/tmdb';
 import { Button } from '@/components/common/Button';
 import { movieService } from '@/services/supabase/movies.service';
