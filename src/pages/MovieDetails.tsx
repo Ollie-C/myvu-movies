@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
+import { RatingDisplay } from '@/components/common/RatingDisplay';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
 import MovieHero from '@/components/movie/MovieHero';
 import MovieRating from '@/components/movie/MovieRating';
@@ -45,9 +46,7 @@ const MovieDetails = () => {
   // Derived state
   const isWatched = !!userStatus?.watchedMovie;
   const isInWatchlist = !!userStatus?.watchlistItem;
-  const userRating = userStatus?.watchedMovie?.rating
-    ? userStatus.watchedMovie.rating / 2 // Convert from 10-point to 5-star
-    : 0;
+  const userRating = userStatus?.watchedMovie?.rating || null;
 
   // Handlers
   const handleToggleWatched = () => {
@@ -62,7 +61,8 @@ const MovieDetails = () => {
 
   const handleUpdateRating = (rating: number) => {
     if (!movie) return;
-    updateRating.mutate({ movie, rating, isWatched });
+    // Convert from 5-star to 10-point scale
+    updateRating.mutate({ movie, rating: rating * 2, isWatched });
   };
 
   if (isLoading) {
@@ -92,7 +92,31 @@ const MovieDetails = () => {
       </Button>
 
       {/* Hero Section */}
-      <MovieHero movie={movie} director={director} />
+      <MovieHero
+        movie={{
+          title: movie.title,
+          backdrop_path: movie.backdrop_path,
+          release_date: movie.release_date || '',
+          runtime: movie.runtime,
+          genres: movie.genres || [],
+          vote_average: movie.vote_average || 0,
+          overview: movie.overview || '',
+        }}
+        director={director}
+      />
+
+      {/* Ratings Display */}
+      {(movie.vote_average || userRating) && (
+        <Card className='p-6'>
+          <h2 className='text-xl font-bold mb-4'>Ratings</h2>
+          <RatingDisplay
+            tmdbRating={movie.vote_average}
+            userRating={userRating}
+            showLabels={true}
+            size='lg'
+          />
+        </Card>
+      )}
 
       {/* User Actions */}
       {user && (
@@ -140,7 +164,7 @@ const MovieDetails = () => {
           {/* Rating */}
           {isWatched && (
             <MovieRating
-              rating={userRating}
+              rating={userRating ? userRating / 2 : 0} // Convert from 10-point to 5-star for the component
               onRate={handleUpdateRating}
               isPending={updateRating.isPending}
             />
@@ -155,7 +179,14 @@ const MovieDetails = () => {
       </Card>
 
       {/* Cast */}
-      {movie.credits?.cast && <MovieCast cast={movie.credits.cast} />}
+      {movie.credits?.cast && (
+        <MovieCast
+          cast={movie.credits.cast.map((member, index) => ({
+            ...member,
+            order: index,
+          }))}
+        />
+      )}
 
       {/* Collection Dropdown */}
       {showCollectionDropdown && movie && (

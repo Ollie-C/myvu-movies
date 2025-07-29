@@ -1,13 +1,14 @@
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
-import { Plus, Folder } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { collectionService } from '@/services/supabase/collection.service';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 import CollectionCard from '@/components/common/CollectionCard';
-import { useCollections } from '@/utils/hooks/supabase/queries/useCollections';
 
 const Collections = () => {
   const { user } = useAuth();
@@ -20,10 +21,9 @@ const Collections = () => {
     data: collections = [],
     isLoading,
     error,
-  } = useCollections({
-    withPreviews: true,
+  } = useCollectionsWithPreviews({
     limit: 20,
-  }) as { data: any[]; isLoading: boolean; error: Error | null };
+  });
 
   // Create collection mutation
   const createCollectionMutation = useMutation({

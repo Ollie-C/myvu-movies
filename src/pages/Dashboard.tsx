@@ -8,8 +8,8 @@ import {
 } from '@/utils/hooks/supabase/queries/useWatchedMovies';
 import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
 // import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
-import { useCollections } from '@/utils/hooks/supabase/queries/useCollections';
-import type { CollectionWithItems } from '@/services/supabase/collection.service';
+import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
+import { useRatingStats } from '@/utils/hooks/supabase/queries/useRankings';
 
 // import { useActiveRankings } from '@/utils/hooks/supabase/queries/useRankings';
 import CollectionCard from '@/components/common/CollectionCard';
@@ -31,10 +31,11 @@ const Dashboard = () => {
   };
   const { data: favoriteMovies } = useFavoriteMovies(10);
   const { data: recentMovies } = useRecentMovies(5);
-  const { data: collections = [], isError: collectionsError } = useCollections({
-    limit: 3,
-    withPreviews: true,
-  });
+  const { data: collections = [], isError: collectionsError } =
+    useCollectionsWithPreviews({
+      limit: 3,
+    });
+  const { data: ratingStats } = useRatingStats();
 
   // const { data: activeRankings } = useActiveRankings(3);
   const activeRankings = [
@@ -328,6 +329,39 @@ const Dashboard = () => {
                   High priority watchlist: {watchlistStats.byPriority.high}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Rating Progress Bar */}
+          {ratingStats && ratingStats.totalWatched > 0 && (
+            <div className='mt-6 p-4 bg-white border border-gray-200 rounded-lg'>
+              <div className='space-y-3'>
+                <div className='flex justify-between items-center'>
+                  <h3 className='text-sm font-semibold text-gray-900'>
+                    Rating Progress
+                  </h3>
+                  <span className='text-xs text-gray-500'>
+                    {ratingStats.totalRated} of {ratingStats.totalWatched} rated
+                  </span>
+                </div>
+                <div className='w-full bg-gray-200 rounded-full h-2'>
+                  <div
+                    className='bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300'
+                    style={{
+                      width: `${
+                        (ratingStats.totalRated / ratingStats.totalWatched) *
+                        100
+                      }%`,
+                    }}
+                  />
+                </div>
+                <p className='text-xs text-gray-500 text-center'>
+                  {Math.round(
+                    (ratingStats.totalRated / ratingStats.totalWatched) * 100
+                  )}
+                  % complete
+                </p>
+              </div>
             </div>
           )}
         </div>

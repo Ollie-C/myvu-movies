@@ -134,7 +134,7 @@ export const watchedMoviesService = {
     const { data, error } = await supabase
       .from('watched_movies')
       .update({
-        rating: rating * 2, // Convert 5-star to 10-point scale
+        rating: rating, // Use 10-point scale directly
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
@@ -144,6 +144,18 @@ export const watchedMoviesService = {
 
     if (error) throw error;
     return WatchedMovieSchema.parse(data);
+  },
+
+  async getUnratedMovies(userId: string): Promise<WatchedMovieWithMovie[]> {
+    const { data, error } = await supabase
+      .from('watched_movies')
+      .select('*, movie:movies(*)')
+      .eq('user_id', userId)
+      .is('rating', null)
+      .order('watched_date', { ascending: false });
+
+    if (error) throw error;
+    return z.array(WatchedMovieWithMovieSchema).parse(data || []);
   },
 
   async toggleFavorite(userId: string, movieId: number) {

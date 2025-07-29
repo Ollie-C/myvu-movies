@@ -1,43 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { X, Plus, Eye } from 'lucide-react';
+import { X, Plus, Eye, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
 import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
-
-// Unique Rating Display Component
-const RatingDisplay = ({ rating }: { rating: number }) => {
-  const percentage = (rating / 10) * 100;
-
-  // Color coding based on rating
-  const getColor = (rating: number) => {
-    if (rating >= 8) return '#10b981'; // Green for excellent
-    if (rating >= 6) return '#f59e0b'; // Amber for good
-    if (rating >= 4) return '#ef4444'; // Red for poor
-    return '#6b7280'; // Gray for very poor
-  };
-
-  // Top Right Rating Box
-  const TopRightRatingBox = () => {
-    const getColor = (rating: number) => {
-      if (rating >= 8) return '#10b981'; // Green for excellent
-      if (rating >= 6) return '#f59e0b'; // Amber for good
-      if (rating >= 4) return '#ef4444'; // Red for poor
-      return '#6b7280'; // Gray for very poor
-    };
-
-    return (
-      <div className='absolute -top-2 -right-2 bg-white opacity-80 backdrop-blur-lg px-2 py-2 rounded-sm shadow-lg z-20 flex items-center justify-center'>
-        <span className='text-black font-bold tracking-widest text-xs'>
-          {rating.toFixed(1)}
-        </span>
-      </div>
-    );
-  };
-
-  return <TopRightRatingBox />;
-};
 
 interface MovieCardProps {
   userMovie: WatchedMovieWithMovie | WatchlistWithMovie;
@@ -60,7 +27,8 @@ const MovieCard = ({
   isWatchedList = false,
   disableLink = false,
 }: MovieCardProps) => {
-  const { movie, rating: userRating } = userMovie as WatchedMovieWithMovie;
+  const { movie } = userMovie;
+  const userRating = 'rating' in userMovie ? userMovie.rating : null;
   const navigate = useNavigate();
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -69,9 +37,6 @@ const MovieCard = ({
   const imageUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
     : '/placeholder-movie.jpg';
-
-  // Convert user rating from 10-point scale to 5-star scale, or show no rating
-  const displayRating = userRating ? (userRating / 2).toFixed(1) : null;
 
   // Initial animation delay
   React.useEffect(() => {
@@ -127,9 +92,6 @@ const MovieCard = ({
               className='absolute inset-0 w-full h-full object-cover'
             />
 
-            {/* Rating Display */}
-            {displayRating && <RatingDisplay rating={userRating || 0} />}
-
             <motion.div
               className='absolute bottom-0 left-0 right-0 bg-white border-t border-gray-300 overflow-visible'
               animate={{
@@ -148,7 +110,9 @@ const MovieCard = ({
               <div className='px-2 py-1 flex flex-col'>
                 <div className='text-[9px] text-gray-800 font-bold flex justify-between'>
                   <p className='truncate'>{isHovered ? movie.title : ''}</p>
-                  {isWatchedList && displayRating && <p>{displayRating}</p>}
+                  {isWatchedList && userRating && (
+                    <p>{userRating.toFixed(1)}</p>
+                  )}
                 </div>
                 <AnimatePresence>
                   {(!hasInitiallyExpanded || isHovered) && (
@@ -158,27 +122,26 @@ const MovieCard = ({
                       exit={{ opacity: 0, y: 10 }}
                       transition={{ delay: 0.1, duration: 0.2 }}
                       className='flex-1 flex flex-col justify-between items-center'>
-                      <div>{displayRating}</div>
+                      <div className='text-xs'>
+                        {userRating && (
+                          <div className='flex items-center gap-1'>
+                            <Star className='w-3 h-3 text-yellow-400 fill-current' />
+                            <span className='text-yellow-600 font-medium'>
+                              {userRating.toFixed(1)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                       <div className='my-2'>
-                        <div className='grid grid-cols-2 gap-2 text-[9px]'>
+                        <div className='grid grid-cols-1 gap-2 text-[9px]'>
                           <p className='text-gray-600 font-bold text-center'>
                             DATE
                           </p>
-                          {movie.vote_average && (
-                            <p className='text-gray-600 font-bold text-center'>
-                              IMDB
-                            </p>
-                          )}
                         </div>
-                        <div className='grid grid-cols-2 gap-2 text-[9px]'>
+                        <div className='grid grid-cols-1 gap-2 text-[9px]'>
                           <p className='text-gray-600 font-bold text-center'>
                             {movie.release_date?.split('-')[0] || 'Unknown'}
                           </p>
-                          {movie.vote_average && (
-                            <p className='text-gray-600 font-bold text-center'>
-                              {movie.vote_average.toFixed(1)}
-                            </p>
-                          )}
                         </div>
                       </div>
                       <div className='flex flex-col gap-1 mt-2 w-full'>
@@ -207,25 +170,24 @@ const MovieCard = ({
                               </button>
                             </>
                           ) : (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onRemoveFromWatched?.(movie.id);
-                                }}
-                                className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center'
-                                title='Remove from Watched'>
-                                <X className='w-4 h-4' />
-                              </button>
-                              <button
-                                onClick={handleAddToListClick}
-                                className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center'
-                                title='Add to List'>
-                                <Plus className='w-4 h-4' />
-                              </button>
-                            </>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onRemoveFromWatched?.(movie.id);
+                              }}
+                              className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center'
+                              title='Remove from Watched'>
+                              <X className='w-4 h-4' />
+                            </button>
                           )}
+                          <button
+                            ref={plusButtonRef}
+                            onClick={handleAddToListClick}
+                            className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center relative'
+                            title='Add to Collection'>
+                            <Plus className='w-4 h-4' />
+                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -235,24 +197,25 @@ const MovieCard = ({
             </motion.div>
           </div>
         </div>
-      </motion.div>
 
-      {/* Collection Dropdown */}
-      {showCollectionDropdown && (
-        <CollectionDropdown
-          isOpen={showCollectionDropdown}
-          onClose={() => setShowCollectionDropdown(false)}
-          movie={movie}
-          position={{
-            top: plusButtonRef.current
-              ? plusButtonRef.current.getBoundingClientRect().bottom + 8
-              : undefined,
-            left: plusButtonRef.current
-              ? plusButtonRef.current.getBoundingClientRect().left
-              : undefined,
-          }}
-        />
-      )}
+        {/* Collection Dropdown */}
+        <AnimatePresence>
+          {showCollectionDropdown && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.1 }}
+              className='absolute top-full left-0 right-0 z-30 mt-1'>
+              <CollectionDropdown
+                isOpen={showCollectionDropdown}
+                onClose={() => setShowCollectionDropdown(false)}
+                movie={movie}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   );
 };

@@ -1,3 +1,7 @@
+// Individual battle history for ELO calculations
+// Versus mode
+// Audit trail and analytics
+
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 

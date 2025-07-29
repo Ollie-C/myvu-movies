@@ -58,7 +58,7 @@ export const useCollections = (options?: CollectionFilters) => {
 
   return useQuery({
     queryKey: collectionKeys.list({ ...options, userId: user?.id }),
-    queryFn: async () => {
+    queryFn: async (): Promise<CollectionPreview[] | CollectionWithCount[]> => {
       if (!user?.id) throw new Error('User not authenticated');
 
       let collections;
@@ -267,4 +267,58 @@ export const useCanEditCollection = (
 
   if (!collection || !user?.id) return false;
   return collection.user_id === user.id;
+};
+
+// Get collections with previews (typed specifically for previews)
+export const useCollectionsWithPreviews = (
+  options?: Omit<CollectionFilters, 'withPreviews'>
+) => {
+  const { user } = useAuth();
+  const {
+    limit,
+    withCounts = true,
+    isRankedOnly = false,
+    sortBy = 'updated_at',
+    sortOrder = 'desc',
+  } = options || {};
+
+  return useQuery<CollectionPreview[], Error>({
+    queryKey: collectionKeys.withPreviews(user?.id || ''),
+    queryFn: async (): Promise<CollectionPreview[]> => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      const collections =
+        await collectionService.getUserCollectionsWithPreviews(user.id, limit);
+
+      // Client-side sorting (if not handled by service)
+      if (sortBy !== 'updated_at' || sortOrder !== 'desc') {
+        collections.sort((a, b) => {
+          let comparison = 0;
+
+          switch (sortBy) {
+            case 'name':
+              comparison = a.name.localeCompare(b.name);
+              break;
+            case 'created_at':
+              comparison =
+                new Date(a.created_at || 0).getTime() -
+                new Date(b.created_at || 0).getTime();
+              break;
+            case 'updated_at':
+            default:
+              comparison =
+                new Date(a.updated_at || 0).getTime() -
+                new Date(b.updated_at || 0).getTime();
+              break;
+          }
+
+          return sortOrder === 'desc' ? -comparison : comparison;
+        });
+      }
+
+      return collections;
+    },
+    enabled: !!user?.id,
+    staleTime: 30 * 1000, // 30 seconds
+  });
 };

@@ -1,129 +1,121 @@
-// hooks/queries/useRankings.ts
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/context/AuthContext';
-import { rankingService } from '@/services/supabase/ranking.service';
-import type { RankingList } from '@/schemas/ranking-list.schema';
+// DONE
 
-// Query keys factory
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
+import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
+import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
+
+// Query keys for rankings
 export const rankingKeys = {
   all: ['rankings'] as const,
-  lists: () => [...rankingKeys.all, 'list'] as const,
-  list: (filters: any) => [...rankingKeys.lists(), filters] as const,
-  detail: (id: string) => [...rankingKeys.all, 'detail', id] as const,
-  active: () => [...rankingKeys.all, 'active'] as const,
-  byMethod: (method: string) => [...rankingKeys.all, 'method', method] as const,
+  unratedMovies: (userId: string) =>
+    [...rankingKeys.all, 'unrated', userId] as const,
+  ratingStats: (userId: string) =>
+    [...rankingKeys.all, 'stats', userId] as const,
 };
 
-// Get active rankings (recently updated)
-export const useActiveRankings = (limit = 3) => {
+// Hook to get unrated movies for standard ranking
+export const useUnratedMovies = () => {
+  const { user } = useAuth();
+
+  return useQuery<WatchedMovieWithMovie[], Error>({
+    queryKey: rankingKeys.unratedMovies(user?.id || ''),
+    queryFn: () => watchedMoviesService.getUnratedMovies(user!.id),
+    enabled: !!user?.id,
+    staleTime: 30 * 1000, // 30 seconds
+  });
+};
+
+// Hook to update movie rating
+export const useUpdateRating = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      movieId,
+      rating,
+      notes,
+    }: {
+      movieId: number;
+      rating: number;
+      notes?: string;
+    }) => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      // Update rating
+      await watchedMoviesService.updateRating(user.id, movieId, rating);
+
+      // Update notes if provided
+      if (notes !== undefined) {
+        await watchedMoviesService.updateNotes(user.id, movieId, notes);
+      }
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['watchedMovies'] });
+      queryClient.invalidateQueries({
+        queryKey: rankingKeys.unratedMovies(user?.id || ''),
+      });
+      queryClient.invalidateQueries({
+        queryKey: rankingKeys.ratingStats(user?.id || ''),
+      });
+    },
+  });
+};
+
+// Hook to get rating statistics
+export const useRatingStats = () => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: [...rankingKeys.active(), { limit }],
+    queryKey: rankingKeys.ratingStats(user?.id || ''),
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      // Get all rankings and sort by most recently updated
-      const rankings = await rankingService.getUserRankings(user.id);
+      // Get all watched movies
+      const { data: watchedMovies } =
+        await watchedMoviesService.getWatchedMovies(user.id, {
+          limit: 1000, // Get all for stats
+        });
 
-      // Sort by updated_at descending and take the limit
-      const activeRankings = rankings
-        .sort(
-          (a, b) =>
-            new Date(b.updated_at || b.created_at).getTime() -
-            new Date(a.updated_at || a.created_at).getTime()
-        )
-        .slice(0, limit);
-
-      // Add movie count for each ranking
-      const rankingsWithCount = await Promise.all(
-        activeRankings.map(async (ranking) => {
-          const items = await rankingService.getRankingItems(ranking.id);
-          return {
-            ...ranking,
-            movieCount: items.length,
-          };
-        })
+      const ratedMovies = watchedMovies.filter(
+        (movie) => movie.rating !== null
+      );
+      const unratedMovies = watchedMovies.filter(
+        (movie) => movie.rating === null
       );
 
-      return rankingsWithCount;
-    },
-    enabled: !!user?.id,
-    staleTime: 1000 * 60 * 2, // 2 minutes
-  });
-};
-
-// Get all rankings with options
-export const useRankings = (options?: {
-  method?: 'versus' | 'tier' | 'manual' | 'merged';
-  sortBy?: 'updated_at' | 'created_at' | 'name';
-  sortOrder?: 'asc' | 'desc';
-}) => {
-  const { user } = useAuth();
-  const { method, sortBy = 'updated_at', sortOrder = 'desc' } = options || {};
-
-  return useQuery({
-    queryKey: rankingKeys.list({ ...options, userId: user?.id }),
-    queryFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      let rankings = await rankingService.getUserRankings(user.id);
-
-      // Filter by method if specified
-      if (method) {
-        rankings = rankings.filter((r) => r.ranking_method === method);
-      }
-
-      // Apply sorting
-      rankings.sort((a, b) => {
-        let comparison = 0;
-
-        switch (sortBy) {
-          case 'name':
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case 'created_at':
-            comparison =
-              new Date(a.created_at).getTime() -
-              new Date(b.created_at).getTime();
-            break;
-          case 'updated_at':
-          default:
-            comparison =
-              new Date(a.updated_at || a.created_at).getTime() -
-              new Date(b.updated_at || b.created_at).getTime();
-            break;
-        }
-
-        return sortOrder === 'desc' ? -comparison : comparison;
-      });
-
-      return rankings;
-    },
-    enabled: !!user?.id,
-  });
-};
-
-// Get a single ranking with its items
-export const useRanking = (rankingId: string) => {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: rankingKeys.detail(rankingId),
-    queryFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      const [ranking, items] = await Promise.all([
-        rankingService.getRanking(rankingId),
-        rankingService.getRankingItems(rankingId),
-      ]);
+      const averageRating =
+        ratedMovies.length > 0
+          ? ratedMovies.reduce((sum, movie) => sum + (movie.rating || 0), 0) /
+            ratedMovies.length
+          : 0;
 
       return {
-        ...ranking,
-        items,
-        movieCount: items.length,
+        totalWatched: watchedMovies.length,
+        totalRated: ratedMovies.length,
+        totalUnrated: unratedMovies.length,
+        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+        ratingDistribution: {
+          '9-10': ratedMovies.filter((m) => (m.rating || 0) >= 9).length,
+          '8-8.9': ratedMovies.filter(
+            (m) => (m.rating || 0) >= 8 && (m.rating || 0) < 9
+          ).length,
+          '7-7.9': ratedMovies.filter(
+            (m) => (m.rating || 0) >= 7 && (m.rating || 0) < 8
+          ).length,
+          '6-6.9': ratedMovies.filter(
+            (m) => (m.rating || 0) >= 6 && (m.rating || 0) < 7
+          ).length,
+          '5-5.9': ratedMovies.filter(
+            (m) => (m.rating || 0) >= 5 && (m.rating || 0) < 6
+          ).length,
+          'Below 5': ratedMovies.filter((m) => (m.rating || 0) < 5).length,
+        },
       };
     },
-    enabled: !!user?.id && !!rankingId,
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
