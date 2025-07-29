@@ -1,17 +1,13 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/common/Card';
-import { Plus, Folder, Trophy, ChartBar } from 'lucide-react';
+import { Plus, Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import {
-  collectionService,
-  type Collection,
-  type CollectionWithItems,
-} from '@/services/supabase/collection.service';
+import { collectionService } from '@/services/supabase/collection.service';
 import { CollectionModal } from '@/components/collections/CollectionModal';
-import MovieCollectionPreview from '@/components/common/MovieCollectionPreview';
 import CollectionCard from '@/components/common/CollectionCard';
+import { useCollections } from '@/utils/hooks/supabase/queries/useCollections';
 
 const Collections = () => {
   const { user } = useAuth();
@@ -19,16 +15,15 @@ const Collections = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch user collections with previews
+  // Fetch user collections with previews using the proper hook
   const {
     data: collections = [],
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ['user-collections-with-previews', user?.id],
-    queryFn: () => collectionService.getUserCollectionsWithPreviews(user!.id),
-    enabled: !!user?.id,
-  });
+  } = useCollections({
+    withPreviews: true,
+    limit: 20,
+  }) as { data: any[]; isLoading: boolean; error: Error | null };
 
   // Create collection mutation
   const createCollectionMutation = useMutation({
@@ -36,12 +31,15 @@ const Collections = () => {
       data: Parameters<typeof collectionService.createCollection>[1]
     ) => collectionService.createCollection(user!.id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-collections'] });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
       setIsModalOpen(false);
     },
   });
 
   console.log('Collections data:', collections);
+  console.log('Collections loading:', isLoading);
+  console.log('Collections error:', error);
+  console.log('User ID:', user?.id);
 
   if (!user) {
     return (

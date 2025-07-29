@@ -56,7 +56,7 @@ export const useCollections = (options?: CollectionFilters) => {
     sortOrder = 'desc',
   } = options || {};
 
-  return useQuery<CollectionWithCount[] | CollectionPreview[], Error>({
+  return useQuery({
     queryKey: collectionKeys.list({ ...options, userId: user?.id }),
     queryFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');

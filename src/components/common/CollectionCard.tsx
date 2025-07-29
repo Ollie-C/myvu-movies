@@ -1,13 +1,10 @@
 import { Card } from './Card';
-import {
-  type Collection,
-  type CollectionWithItems,
-} from '@/services/supabase/collection.service';
+import type { CollectionPreview } from '@/schemas/collection-combined.schema';
 import { ChartBar } from 'lucide-react';
 import MovieCollectionPreview from './MovieCollectionPreview';
 
 interface CollectionCardProps {
-  collection: Collection | CollectionWithItems;
+  collection: CollectionPreview;
   onNavigate: (id: string) => void;
   previewSize?: 'small' | 'medium' | 'large';
 }
@@ -25,11 +22,8 @@ const CollectionCard = ({
     onNavigate(collection.id);
   };
 
-  // Type guard to check if we have collection items
-  const hasItems = 'collection_items' in collection;
-  const itemCount = hasItems
-    ? collection.collection_items.length
-    : collection._count?.collection_items || 0;
+  const itemCount = collection._count?.collection_items || 0;
+  const hasItems = collection.collection_items.length > 0;
 
   console.log('collection', collection);
 
@@ -38,13 +32,17 @@ const CollectionCard = ({
       className='cursor-pointer relative overflow-hidden'
       onClick={handleClick}>
       {/* Content layout depends on whether we have preview data */}
-      {hasItems && collection.collection_items.length > 0 ? (
+      {hasItems ? (
         <div className='flex items-center justify-between'>
           <div className='flex-1'>
             <MovieCollectionPreview
               collectionTitle={collection.name}
-              // movies={collection.collection_items.map((item) => item.movie)}
-              movies={[]}
+              movies={collection.collection_items.map((item) => ({
+                id: item.movie.id.toString(),
+                poster_path: item.movie.poster_path || '',
+                title: item.movie.title,
+                size: previewSize,
+              }))}
               onCollectionClick={handleClick}
               size={previewSize}
             />
