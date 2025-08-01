@@ -1,8 +1,7 @@
-// hooks/queries/useUserStats.ts
+// not used
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
-import { watchlistService } from '@/services/supabase/watchlist.service';
 import { collectionService } from '@/services/supabase/collection.service';
 import { rankingService } from '@/services/supabase/ranking.service';
 

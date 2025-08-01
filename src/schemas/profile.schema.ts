@@ -1,10 +1,10 @@
+// AUDITED 01/08/2025
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 
-// Get the type from Supabase
 type ProfileRow = Database['public']['Tables']['profiles']['Row'];
 
-// Create Zod schema matching the database
+// Profile Schema
 export const ProfileSchema = z.object({
   id: z.string(),
   username: z.string(),
@@ -13,10 +13,10 @@ export const ProfileSchema = z.object({
   updated_at: z.string().nullable(),
 }) satisfies z.ZodType<ProfileRow>;
 
-// Create insert schema
+// Profile - Insert schema
 export const ProfileInsertSchema = ProfileSchema;
 
-// Create update schema (all fields optional except id)
+// Profile - Update schema (all fields optional except id)
 export const ProfileUpdateSchema = ProfileSchema.partial().required({
   id: true,
 });

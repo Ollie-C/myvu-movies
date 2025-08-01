@@ -4,7 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 // Components
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
-import MovieCard from '@/components/common/MovieCard';
+import MovieCard from '@/components/movie/MovieCard';
 
 // Contexts
 import { useAuth } from '@/context/AuthContext';
@@ -21,8 +21,11 @@ import { watchlistService } from '@/services/supabase/watchlist.service';
 // Hooks
 import { useWatchlistInfinite } from '@/utils/hooks/supabase/queries/useWatchlist';
 import { useWatchedMoviesInfinite } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useRankedMovies } from '@/utils/hooks/supabase/queries/useRanking';
 
 type UserMovie = WatchedMovieWithMovie | WatchlistWithMovie;
+
+type SortOption = 'watched_date' | 'rating' | 'ranked';
 
 const Movies = () => {
   const { user } = useAuth();
@@ -31,13 +34,14 @@ const Movies = () => {
 
   // States
   const [showWatchlist, setShowWatchlist] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>('watched_date');
 
   // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Queries
   const watchedQuery = useWatchedMoviesInfinite({
-    sortBy: 'watched_date',
+    sortBy: sortOption,
     sortOrder: 'desc',
     limit: 24,
   });
@@ -47,6 +51,9 @@ const Movies = () => {
     sortOrder: 'asc',
     limit: 24,
   });
+
+  // Ranked movies query for position calculation (only needed for position display)
+  const { data: rankedMovies = [] } = useRankedMovies(user?.id);
 
   // Data
   const {
@@ -59,8 +66,22 @@ const Movies = () => {
   } = showWatchlist ? watchlistQuery : watchedQuery;
 
   // Flatten all pages into a single array with proper typing
+  const userMovies: UserMovie[] = (moviesData?.pages.flatMap(
+    (page) => page.data
+  ) || []) as UserMovie[];
 
-  const userMovies = moviesData?.pages.flatMap((page) => page.data) || [];
+  // Calculate positions for watched movies when using ranked sort
+  const getMoviePosition = (userMovie: UserMovie): number => {
+    if (sortOption !== 'ranked' || showWatchlist || !('rating' in userMovie))
+      return 0;
+
+    // When using ranked sort, the movies are already in the correct order
+    // We can use the array index + 1 as the position
+    const index = userMovies.findIndex(
+      (movie) => movie.movie.id === userMovie.movie.id
+    );
+    return index >= 0 ? index + 1 : 0;
+  };
 
   // Intersection Observer for infinite scroll
   const lastElementRef = useCallback(
@@ -112,19 +133,17 @@ const Movies = () => {
     }
   };
 
-  // Mark watchlist movie as watched
+  // Mark movie as watched
   const handleMarkAsWatched = async (movieId: number) => {
     if (!user?.id) return;
 
     try {
-      // Add to watched movies
       await watchedMoviesService.markAsWatched(user.id, movieId);
-      // Remove from watchlist
-      await watchlistService.removeFromWatchlist(user.id, movieId);
-
-      // Invalidate both queries
       queryClient.invalidateQueries({
-        queryKey: ['user-movies-infinite', user.id],
+        queryKey: ['user-movies-infinite', user.id, 'watchlist'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['user-movies-infinite', user.id, 'watched'],
       });
       showToast('success', 'Movie marked as watched');
     } catch (error) {
@@ -133,7 +152,6 @@ const Movies = () => {
     }
   };
 
-  // Type guard to check if item is from watchlist
   const isWatchlistItem = (item: any): item is WatchlistWithMovie => {
     return 'priority' in item;
   };
@@ -173,13 +191,30 @@ const Movies = () => {
           )}
         </div>
 
-        {/* View Toggle */}
-        <Button
-          variant='secondary'
-          size='sm'
-          onClick={() => setShowWatchlist(!showWatchlist)}>
-          {showWatchlist ? 'View Watched' : 'View Watchlist'}
-        </Button>
+        <div className='flex items-center gap-4'>
+          {/* Sort Options (only for watched movies) */}
+          {!showWatchlist && (
+            <div className='flex items-center gap-2'>
+              <span className='text-sm text-gray-600'>Sort by:</span>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as SortOption)}
+                className='text-sm border border-gray-300 rounded px-2 py-1 bg-white'>
+                <option value='watched_date'>Date Watched</option>
+                <option value='rating'>Rating</option>
+                <option value='ranked'>Ranked</option>
+              </select>
+            </div>
+          )}
+
+          {/* View Toggle */}
+          <Button
+            variant='secondary'
+            size='sm'
+            onClick={() => setShowWatchlist(!showWatchlist)}>
+            {showWatchlist ? 'View Watched' : 'View Watchlist'}
+          </Button>
+        </div>
       </div>
 
       {/* Loading State */}
@@ -224,11 +259,22 @@ const Movies = () => {
           <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2'>
             {userMovies.map((userMovie: UserMovie, index: number) => {
               const isLastElement = index === userMovies.length - 1;
+              const position = getMoviePosition(userMovie);
 
               return (
                 <div
                   key={userMovie.movie.id}
                   ref={isLastElement ? lastElementRef : null}>
+                  {/* Rating and ELO info above card */}
+                  {!showWatchlist &&
+                    'rating' in userMovie &&
+                    userMovie.rating && (
+                      <div className='text-[6px] text-gray-500 flex justify-between mb-1 px-1'>
+                        <span>Rating: {userMovie.rating.toFixed(1)}</span>
+                        <span>ELO: {Math.round(userMovie.rating * 200)}</span>
+                      </div>
+                    )}
+
                   <MovieCard
                     userMovie={userMovie}
                     onRemoveFromWatched={
@@ -247,6 +293,8 @@ const Movies = () => {
                         : undefined
                     }
                     isWatchlistView={showWatchlist}
+                    index={position - 1} // Pass position for ranking display
+                    isWatchedList={sortOption === 'ranked' && !showWatchlist}
                   />
                 </div>
               );

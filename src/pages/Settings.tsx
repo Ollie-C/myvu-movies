@@ -6,8 +6,8 @@ import { Input } from '@/components/common/Input';
 import { ArrowLeft, User, Save, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { userService } from '@/services/supabase/user.service';
 import { useToast } from '@/context/ToastContext';
+import { userService } from '@/services/supabase/user.service';
 
 const Settings = () => {
   const { user, signOut } = useAuth();

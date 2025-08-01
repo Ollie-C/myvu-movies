@@ -10,14 +10,14 @@ interface Movie {
   size: 'small' | 'medium' | 'large';
 }
 
-interface MovieCollectionPreviewProps {
+interface CollectionPreviewProps {
   collectionTitle: string;
   movies: Movie[]; // Array of up to 6 movies
   onCollectionClick?: () => void;
   size?: 'small' | 'medium' | 'large';
 }
 
-const MovieCollectionPreview: React.FC<MovieCollectionPreviewProps> = ({
+const CollectionPreview: React.FC<CollectionPreviewProps> = ({
   collectionTitle,
   movies,
   onCollectionClick,
@@ -141,4 +141,4 @@ const MovieCollectionPreview: React.FC<MovieCollectionPreviewProps> = ({
   );
 };
 
-export default MovieCollectionPreview;
+export default CollectionPreview;

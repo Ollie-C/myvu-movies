@@ -6,7 +6,7 @@ import { Button } from '@/components/common/Button';
 import { movieService } from '@/services/supabase/movies.service';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { watchlistService } from '@/services/supabase/watchlist.service';
-import { useAuth } from '@/utils/hooks/supabase/useAuth';
+import { useAuth } from '@/context/AuthContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 

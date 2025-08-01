@@ -17,7 +17,7 @@ export const watchedMoviesService = {
   async getWatchedMovies(
     userId: string,
     options?: {
-      sortBy?: 'watched_date' | 'rating' | 'title';
+      sortBy?: 'watched_date' | 'rating' | 'title' | 'ranked';
       sortOrder?: 'asc' | 'desc';
       page?: number;
       limit?: number;
@@ -57,7 +57,15 @@ export const watchedMoviesService = {
     }
 
     // Apply sorting
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+    if (sortBy === 'ranked') {
+      // For ranked sorting: rating first (desc), then ELO score (desc)
+      query = query
+        .not('rating', 'is', null) // Only include rated movies for ranking
+        .order('rating', { ascending: false })
+        .order('elo_score', { ascending: false });
+    } else {
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+    }
 
     // Apply pagination
     const start = (page - 1) * limit;
@@ -103,6 +111,7 @@ export const watchedMoviesService = {
           user_id: userId,
           movie_id: movieId,
           watched_date: watchedDate || new Date().toISOString().split('T')[0],
+          elo_score: 1600, // Default ELO score for new watched movies
           updated_at: new Date().toISOString(),
         },
         {
@@ -113,6 +122,15 @@ export const watchedMoviesService = {
       .single();
 
     if (error) throw error;
+
+    // Console log when movie is marked as watched with default ELO
+    console.log('📽️ Movie Marked as Watched:', {
+      movieId,
+      userId,
+      defaultElo: 1600,
+      watchedDate: watchedDate || new Date().toISOString().split('T')[0],
+    });
+
     return WatchedMovieSchema.parse(data);
   },
 
@@ -131,10 +149,15 @@ export const watchedMoviesService = {
     movieId: number,
     rating: number
   ): Promise<WatchedMovie> {
+    // Calculate ELO score based on simplified rating (rating * 200)
+    // This makes it much more intuitive: 8.2/10 = 1640 ELO, 7.3/10 = 1460 ELO
+    const eloScore = Math.round(rating * 200);
+
     const { data, error } = await supabase
       .from('watched_movies')
       .update({
         rating: rating, // Use 10-point scale directly
+        elo_score: eloScore, // Update ELO score based on rating
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
@@ -143,6 +166,16 @@ export const watchedMoviesService = {
       .single();
 
     if (error) throw error;
+
+    // Console log when rating is updated with new ELO
+    console.log('⭐ Rating Updated:', {
+      movieId,
+      userId,
+      rating,
+      newEloScore: eloScore,
+      timestamp: new Date().toISOString(),
+    });
+
     return WatchedMovieSchema.parse(data);
   },
 

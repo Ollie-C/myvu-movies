@@ -9,6 +9,17 @@ export interface EloCalculation {
   loserChange: number;
 }
 
+// Simplified ELO calculation: rating * 200 = ELO score
+// This makes it much more intuitive:
+// 8.2/10 = 1640 ELO, 7.3/10 = 1460 ELO, 3.6/10 = 720 ELO
+export function ratingToElo(rating: number): number {
+  return Math.round(rating * 200);
+}
+
+export function eloToRating(eloScore: number): number {
+  return Math.max(1, Math.min(10, eloScore / 200));
+}
+
 export function calculateElo(
   winnerRating: number,
   loserRating: number,
@@ -49,7 +60,7 @@ export function calculateEloFromReorder(
 
   // Initialize with current scores
   items.forEach((item) => {
-    newEloScores.set(item.id, item.elo_score || 1500);
+    newEloScores.set(item.id, item.elo_score || 1600); // Default to 1600 (8.0 rating)
   });
 
   // For each item that moved
@@ -89,18 +100,12 @@ export function calculateEloFromReorder(
   return newEloScores;
 }
 
-// Calculate ELO from direct rating
+// Calculate ELO from direct rating using simplified formula
 export function calculateEloFromRating(
   movieElo: number,
   userRating: number, // 1-10 scale
   averageUserRating: number = 5.5
 ): number {
-  // Convert rating to expected score (0-1)
-  const expectedScore = userRating / 10;
-  const currentExpected = 0.5; // Neutral expectation
-
-  // Use ELO formula with rating as "battle result"
-  const newElo = movieElo + K_FACTOR * (expectedScore - currentExpected);
-
-  return Math.round(newElo * 10) / 10;
+  // Use the simplified rating to ELO conversion
+  return ratingToElo(userRating);
 }

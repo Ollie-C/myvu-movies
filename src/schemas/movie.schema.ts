@@ -1,15 +1,15 @@
-// DONE
-
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 
 type MovieRow = Database['public']['Tables']['movies']['Row'];
 
+// Genre Schema
 const GenreSchema = z.object({
   id: z.number(),
   name: z.string(),
 });
 
+// Movie Schema
 export const MovieSchema = z.object({
   id: z.number(),
   tmdb_id: z.number(),
@@ -31,7 +31,34 @@ export const MovieSchema = z.object({
     .nullable(),
   popularity: z.number().min(0).nullable(),
   vote_average: z.number().min(0).max(10).nullable(),
+  vote_count: z.number().min(0).nullable(),
   genres: z.array(GenreSchema).nullable(),
+  runtime: z.number().min(0).nullable(),
+  tagline: z.string().nullable(),
+  credits: z
+    .object({
+      cast: z
+        .array(
+          z.object({
+            id: z.number(),
+            name: z.string(),
+            character: z.string(),
+            profile_path: z.string().nullable(),
+          })
+        )
+        .optional(),
+      crew: z
+        .array(
+          z.object({
+            id: z.number(),
+            name: z.string(),
+            job: z.string(),
+            profile_path: z.string().nullable(),
+          })
+        )
+        .optional(),
+    })
+    .nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
 }) satisfies z.ZodType<MovieRow>;
@@ -150,7 +177,11 @@ export const movieHelpers = {
       backdrop_path: tmdbMovie.backdrop_path,
       popularity: tmdbMovie.popularity,
       vote_average: tmdbMovie.vote_average,
+      vote_count: tmdbMovie.vote_count,
       genres: tmdbMovie.genres || [],
+      runtime: tmdbMovie.runtime || null,
+      tagline: tmdbMovie.tagline || null,
+      credits: tmdbMovie.credits || null,
     };
   },
 };

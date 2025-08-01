@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { X, Search, Heart } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { X, Search } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { userService } from '@/services/supabase/user.service';
-import { movieService } from '@/services/supabase/movies.service';
-import { useAuth } from '@/utils/hooks/supabase/useAuth';
-import { Input } from './Input';
-import TopTenMovieCard from '../moviecard/TopTenMovieCard';
+import { useAuth } from '@/context/AuthContext';
+import { Input } from '@/components/common/Input';
+import MoviePoster from '@/components/movie/MoviePoster';
 
 interface TopTenMoviesModalProps {
   isOpen: boolean;
@@ -14,7 +13,6 @@ interface TopTenMoviesModalProps {
 
 const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch all user movies for search
@@ -27,31 +25,9 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
   // Fetch current favorite movies
   const { data: currentFavorites = [] } = useQuery({
     queryKey: ['favorite-movies', user?.id],
-    queryFn: () => userService.getFavoriteMovies(user?.id || '', 50), // Get more for editing
+    queryFn: () => userService.getFavoriteMovies(user?.id || '', 50),
     enabled: !!user?.id && isOpen,
   });
-
-  // // Toggle favorite mutation
-  // const toggleFavoriteMutation = useMutation({
-  //   mutationFn: async ({
-  //     movieId,
-  //     isFavorite,
-  //   }: {
-  //     movieId: number;
-  //     isFavorite: boolean;
-  //   }) => {
-  //     if (!user?.id) throw new Error('User not authenticated');
-  //     return movieService.toggleFavorite(user.id, movieId, isFavorite);
-  //   },
-  //   onSuccess: () => {
-  //     queryClient.invalidateQueries({
-  //       queryKey: ['favorite-movies', user?.id],
-  //     });
-  //     queryClient.invalidateQueries({
-  //       queryKey: ['all-user-movies', user?.id],
-  //     });
-  //   },
-  // });
 
   // Filter movies based on search query
   const filteredMovies = allUserMovies.filter((userMovie: any) =>
@@ -110,12 +86,13 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
             {currentFavorites.length > 0 ? (
               <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-1'>
                 {currentFavorites.map((userMovie: any) => (
-                  <TopTenMovieCard
+                  <MoviePoster
                     key={userMovie.movie.id}
                     userMovie={userMovie}
                     onClick={() =>
                       handleToggleFavorite(userMovie.movie.id, false)
                     }
+                    className='w-full h-auto hover:opacity-75 transition-opacity'
                   />
                 ))}
               </div>
@@ -142,7 +119,7 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
                     .map((userMovie: any) => {
                       const isAtLimit = currentFavorites.length >= 10;
                       return (
-                        <TopTenMovieCard
+                        <MoviePoster
                           key={userMovie.movie.id}
                           userMovie={userMovie}
                           disabled={isAtLimit}
@@ -151,6 +128,11 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
                               handleToggleFavorite(userMovie.movie.id, true);
                             }
                           }}
+                          className={`w-full h-auto transition-opacity ${
+                            isAtLimit
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'hover:opacity-75 cursor-pointer'
+                          }`}
                         />
                       );
                     })}

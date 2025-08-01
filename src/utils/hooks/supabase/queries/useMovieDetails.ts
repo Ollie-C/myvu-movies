@@ -1,5 +1,4 @@
-// DONE
-
+// AUDITED 01/08/2025
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { tmdb } from '@/lib/api/tmdb';
 
@@ -12,12 +11,9 @@ import { watchlistService } from '@/services/supabase/watchlist.service';
 import { useAuth } from '@/context/AuthContext';
 
 // Schemas
-import type { Movie } from '@/schemas/movie.schema';
+import type { Movie, TMDBMovie } from '@/schemas/movie.schema';
 import type { WatchedMovie } from '@/schemas/watched-movie.schema';
 import type { Watchlist } from '@/schemas/watchlist.schema';
-
-// Types
-import type { TMDBMovie } from '@/schemas/movie.schema';
 
 // Interfaces
 interface MovieDetailsData extends TMDBMovie {
@@ -51,17 +47,47 @@ export const movieKeys = {
 export const useMovieDetails = (tmdbId: string | undefined) => {
   return useQuery<MovieDetailsData | null, Error>({
     queryKey: movieKeys.tmdb(tmdbId || ''),
-    queryFn: async () => {
+    queryFn: async (): Promise<MovieDetailsData | null> => {
       if (!tmdbId) return null;
 
       try {
-        const tmdbMovie = await tmdb.getMovie(Number(tmdbId));
+        // First, check if we have the movie cached in our database
+        const cachedMovie = await movieService.getMovieByTmdbId(Number(tmdbId));
 
-        const cachedMovie = await movieService.cacheMovie(tmdbMovie);
+        if (cachedMovie) {
+          // If we have a cached movie and it doesn't need updating, return it
+          if (!movieService.shouldUpdateMovie(cachedMovie)) {
+            const movieDetailsData: MovieDetailsData = {
+              id: cachedMovie.tmdb_id,
+              title: cachedMovie.title,
+              original_title: cachedMovie.original_title || '',
+              original_language: cachedMovie.original_language || '',
+              overview: cachedMovie.overview || '',
+              release_date: cachedMovie.release_date || '',
+              poster_path: cachedMovie.poster_path,
+              backdrop_path: cachedMovie.backdrop_path,
+              popularity: cachedMovie.popularity || 0,
+              vote_average: cachedMovie.vote_average || 0,
+              vote_count: 0, // Not stored in our cache
+              genre_ids: cachedMovie.genres?.map((g) => g.id) || [],
+              genres: cachedMovie.genres || [],
+              runtime: undefined, // Not stored in our cache
+              tagline: undefined, // Not stored in our cache
+              credits: undefined, // Not stored in our cache
+              movieId: cachedMovie.id,
+              tmdbId: cachedMovie.tmdb_id,
+            };
+            return movieDetailsData;
+          }
+        }
+
+        // If not cached or needs updating, fetch from TMDB and cache
+        const tmdbMovie = await tmdb.getMovie(Number(tmdbId));
+        const updatedCachedMovie = await movieService.cacheMovie(tmdbMovie);
 
         return {
           ...tmdbMovie,
-          movieId: cachedMovie.id,
+          movieId: updatedCachedMovie.id,
           tmdbId: tmdbMovie.id,
         };
       } catch (error) {
@@ -88,23 +114,34 @@ export const useUserMovieStatus = (tmdbId: number | undefined) => {
     queryFn: async () => {
       if (!user?.id || !tmdbId) return null;
 
-      const cachedMovie = await movieService.getMovieByTmdbId(tmdbId);
-      if (!cachedMovie) return null;
+      try {
+        const cachedMovie = await movieService.getMovieByTmdbId(tmdbId);
+        if (!cachedMovie) return null;
 
-      const [watchedMovie, watchlistItem] = await Promise.all([
-        watchedMoviesService.getWatchedMovie(user.id, cachedMovie.id),
-        watchlistService.getWatchlistItem(user.id, cachedMovie.id),
-      ]);
+        console.log('Fetching user status for movie:', {
+          userId: user.id,
+          movieId: cachedMovie.id,
+          tmdbId: tmdbId,
+        });
 
-      return {
-        movieId: cachedMovie.id,
-        watchedMovie,
-        watchlistItem,
-        isWatched: !!watchedMovie,
-        isInWatchlist: !!watchlistItem,
-        rating: watchedMovie?.rating || null,
-        isFavorite: watchedMovie?.favorite || false,
-      };
+        const [watchedMovie, watchlistItem] = await Promise.all([
+          watchedMoviesService.getWatchedMovie(user.id, cachedMovie.id),
+          watchlistService.getWatchlistItem(user.id, cachedMovie.id),
+        ]);
+
+        return {
+          movieId: cachedMovie.id,
+          watchedMovie,
+          watchlistItem,
+          isWatched: !!watchedMovie,
+          isInWatchlist: !!watchlistItem,
+          rating: watchedMovie?.rating || null,
+          isFavorite: watchedMovie?.favorite || false,
+        };
+      } catch (error) {
+        console.error('Error in useUserMovieStatus:', error);
+        throw error;
+      }
     },
     enabled: !!user?.id && !!tmdbId,
     staleTime: 30 * 1000,

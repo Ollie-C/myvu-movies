@@ -4,6 +4,8 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
+let apiCallCount = 0;
+
 export interface TMDBSearchResponse {
   page: number;
   results: TMDBMovie[];
@@ -35,6 +37,9 @@ export const tmdb = {
   },
 
   getMovie: async (id: number): Promise<TMDBMovie> => {
+    apiCallCount++;
+    console.log(`TMDB API call #${apiCallCount} for movie ${id}`);
+
     const response = await fetch(
       `${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits`
     );
@@ -44,5 +49,10 @@ export const tmdb = {
     }
 
     return response.json();
+  },
+
+  getApiCallCount: () => apiCallCount,
+  resetApiCallCount: () => {
+    apiCallCount = 0;
   },
 };

@@ -1,5 +1,3 @@
-// DONE
-
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 

@@ -9,12 +9,12 @@ import {
 import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
 // import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
 import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
-import { useRatingStats } from '@/utils/hooks/supabase/queries/useRankings';
+import { useRatingStats } from '@/utils/hooks/supabase/queries/useRanking';
 
 // import { useActiveRankings } from '@/utils/hooks/supabase/queries/useRankings';
-import CollectionCard from '@/components/common/CollectionCard';
-import MovieCard from '@/components/common/MovieCard';
-import TopTenMoviesModal from '@/components/common/TopTenMoviesModal';
+import CollectionCard from '@/components/collections/CollectionCard';
+import MovieCard from '@/components/movie/MovieCard';
+import TopTenMoviesModal from '@/components/features/TopTenMoviesModal';
 
 const Dashboard = () => {
   // const { user } = useAuth();

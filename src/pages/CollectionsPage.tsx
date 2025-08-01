@@ -8,7 +8,7 @@ import { Folder } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { collectionService } from '@/services/supabase/collection.service';
 import { CollectionModal } from '@/components/collections/CollectionModal';
-import CollectionCard from '@/components/common/CollectionCard';
+import CollectionCard from '@/components/collections/CollectionCard';
 
 const Collections = () => {
   const { user } = useAuth();

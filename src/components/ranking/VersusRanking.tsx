@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Trophy, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useRankingBattle } from '@/utils/hooks/supabase/queries/useRankingBattle';
-import { VersusMovieCard } from '@/components/moviecard/VersusMovieCard';
+import MoviePoster from '@/components/movie/MoviePoster';
 import { BattleStats } from '@/components/ranking/battle/BattleStats';
 
 interface VersusRankingProps {
@@ -47,8 +47,6 @@ export function VersusRanking({
     try {
       await selectWinner(winnerId, loserId);
       setBattleCount((prev) => prev + 1);
-
-      // Show encouraging messages at milestones
     } catch (error) {
       console.error('Failed to record battle result', error);
     }
@@ -59,7 +57,6 @@ export function VersusRanking({
   );
 
   if (isLoading || !moviePair) {
-    console.log('Loading...', isLoading, moviePair);
     return (
       <div className='flex flex-col items-center justify-center min-h-screen p-4'>
         <motion.div
@@ -130,18 +127,28 @@ export function VersusRanking({
             className='grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 relative'>
             {/* Movie 1 */}
             <div className='relative'>
-              <VersusMovieCard
-                movie={(moviePair.movie1 as any).movie}
-                ranking={moviePair.movie1}
-                onClick={() =>
-                  handleSelection(
-                    moviePair.movie1.movie_id!,
-                    moviePair.movie2.movie_id!
-                  )
-                }
-                disabled={isProcessing}
-                position='left'
-              />
+              <div className='versus-movie-card group'>
+                <MoviePoster
+                  movie={(moviePair.movie1 as any).movie}
+                  onClick={() =>
+                    handleSelection(
+                      moviePair.movie1.movie_id!,
+                      moviePair.movie2.movie_id!
+                    )
+                  }
+                  disabled={isProcessing}
+                  variant='rounded'
+                  className={`w-full max-w-md mx-auto transform transition-all duration-200 ${
+                    isProcessing
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:scale-105 hover:shadow-2xl cursor-pointer'
+                  }`}
+                />
+                {/* Optional: Add ranking info overlay */}
+                <div className='absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs'>
+                  Rank: {moviePair.movie1.current_rating || 'Unranked'}
+                </div>
+              </div>
               <div className='absolute -bottom-12 left-1/2 -translate-x-1/2 md:hidden'>
                 <kbd className='px-2 py-1 text-xs bg-secondary rounded'>
                   Tap to select
@@ -167,18 +174,28 @@ export function VersusRanking({
 
             {/* Movie 2 */}
             <div className='relative'>
-              <VersusMovieCard
-                movie={(moviePair.movie2 as any).movie}
-                ranking={moviePair.movie2}
-                onClick={() =>
-                  handleSelection(
-                    moviePair.movie2.movie_id!,
-                    moviePair.movie1.movie_id!
-                  )
-                }
-                disabled={isProcessing}
-                position='right'
-              />
+              <div className='versus-movie-card group'>
+                <MoviePoster
+                  movie={(moviePair.movie2 as any).movie}
+                  onClick={() =>
+                    handleSelection(
+                      moviePair.movie2.movie_id!,
+                      moviePair.movie1.movie_id!
+                    )
+                  }
+                  disabled={isProcessing}
+                  variant='rounded'
+                  className={`w-full max-w-md mx-auto transform transition-all duration-200 ${
+                    isProcessing
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:scale-105 hover:shadow-2xl cursor-pointer'
+                  }`}
+                />
+                {/* Optional: Add ranking info overlay */}
+                <div className='absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs'>
+                  Rank: {moviePair.movie2.current_rating || 'Unranked'}
+                </div>
+              </div>
               <div className='absolute -bottom-12 left-1/2 -translate-x-1/2 md:hidden'>
                 <kbd className='px-2 py-1 text-xs bg-secondary rounded'>
                   Tap to select
@@ -200,7 +217,7 @@ export function VersusRanking({
           <button
             onClick={() => getNewPair()}
             disabled={isProcessing}
-            className='bg-primary text-white px-4 py-2 rounded-md'>
+            className='bg-primary text-white px-4 py-2 rounded-md disabled:opacity-50'>
             Skip this pair
           </button>
         </div>

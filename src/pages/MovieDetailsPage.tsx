@@ -1,6 +1,8 @@
-// MovieDetails.tsx
+// AUDITED 01/08/2025
 import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
+// Icons
 import {
   ArrowLeft,
   Plus,
@@ -8,15 +10,22 @@ import {
   EyeOff,
   Bookmark,
   BookmarkX,
+  Star,
 } from 'lucide-react';
+
+// Contexts
 import { useAuth } from '@/context/AuthContext';
+
+// Components
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
-import { RatingDisplay } from '@/components/common/RatingDisplay';
+import { RatingDisplay } from '@/components/movie/RatingDisplay';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
+import StandardRatingModal from '@/components/movie/RatingModal';
 import MovieHero from '@/components/movie/MovieHero';
-import MovieRating from '@/components/movie/MovieRating';
 import MovieCast from '@/components/movie/MovieCast';
+
+// Hooks
 import {
   useMovieDetails,
   useUserMovieStatus,
@@ -32,6 +41,7 @@ const MovieDetails = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
   const addToCollectionButtonRef = useRef<HTMLDivElement>(null);
 
   // Fetch movie details and user status
@@ -48,7 +58,6 @@ const MovieDetails = () => {
   const isInWatchlist = !!userStatus?.watchlistItem;
   const userRating = userStatus?.watchedMovie?.rating || null;
 
-  // Handlers
   const handleToggleWatched = () => {
     if (!movie) return;
     toggleWatched.mutate({ movie, isWatched });
@@ -59,19 +68,16 @@ const MovieDetails = () => {
     toggleWatchlist.mutate({ movie, isInWatchlist });
   };
 
-  const handleUpdateRating = (rating: number) => {
+  const handleRateMovie = async (rating: number) => {
     if (!movie) return;
-    // Convert from 5-star to 10-point scale
-    updateRating.mutate({ movie, rating: rating * 2, isWatched });
+    updateRating.mutate({ movie, rating, isWatched });
   };
 
   if (isLoading) {
-    // return <MovieDetailsSkeleton />;
     return <div>Loading...</div>;
   }
 
   if (!movie) {
-    // return <MovieNotFound onBack={() => navigate('/movies')} />;
     return <div>Movie not found</div>;
   }
 
@@ -163,13 +169,72 @@ const MovieDetails = () => {
 
           {/* Rating */}
           {isWatched && (
-            <MovieRating
-              rating={userRating ? userRating / 2 : 0} // Convert from 10-point to 5-star for the component
-              onRate={handleUpdateRating}
-              isPending={updateRating.isPending}
-            />
+            <div className='space-y-4'>
+              <div className='flex items-center justify-between'>
+                <h3 className='text-lg font-semibold'>Your Rating</h3>
+                {userRating && (
+                  <div className='flex items-center gap-2'>
+                    <div className='flex gap-1'>
+                      {Array.from({ length: 10 }, (_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${
+                            i < userRating
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className='font-medium'>{userRating}/10</span>
+                  </div>
+                )}
+              </div>
+
+              <Button
+                onClick={() => setShowRatingModal(true)}
+                className='flex items-center gap-2'
+                disabled={updateRating.isPending}>
+                <Star className='w-4 h-4' />
+                {userRating ? 'Update Rating' : 'Rate Movie'}
+              </Button>
+            </div>
           )}
         </div>
+      )}
+
+      {/* Standard Rating Modal */}
+      {movie && userStatus?.watchedMovie && (
+        <StandardRatingModal
+          isOpen={showRatingModal}
+          onClose={() => setShowRatingModal(false)}
+          movies={[
+            {
+              ...userStatus.watchedMovie,
+              movie: {
+                id: movie.movieId,
+                title: movie.title,
+                original_title: movie.original_title,
+                original_language: movie.original_language,
+                overview: movie.overview,
+                release_date: movie.release_date,
+                poster_path: movie.poster_path,
+                backdrop_path: movie.backdrop_path,
+                popularity: movie.popularity,
+                vote_average: movie.vote_average,
+                vote_count: movie.vote_count,
+                runtime: movie.runtime || null,
+                tagline: movie.tagline || null,
+                credits: movie.credits || null,
+                tmdb_id: movie.tmdbId,
+                genres: movie.genres || [],
+                created_at: null,
+                updated_at: null,
+              },
+            },
+          ]}
+          onRateMovie={handleRateMovie}
+        />
       )}
 
       {/* Overview */}

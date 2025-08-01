@@ -96,19 +96,28 @@ export const watchlistService = {
     userId: string,
     movieId: number
   ): Promise<Watchlist | null> {
-    const { data, error } = await supabase
-      .from('watchlist')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('movie_id', movieId)
-      .single();
+    try {
+      // Try a more explicit query structure
+      const { data, error } = await supabase
+        .from('watchlist')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('movie_id', movieId)
+        .maybeSingle();
 
-    if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      if (error) {
+        console.error('Watchlist query error:', error);
+        if (error.code === 'PGRST116') return null; // Not found
+        throw error;
+      }
+
+      if (!data) return null;
+
+      return WatchlistSchema.parse(data);
+    } catch (error) {
+      console.error('Error in getWatchlistItem:', error);
       throw error;
     }
-
-    return WatchlistSchema.parse(data);
   },
 
   async addToWatchlist(

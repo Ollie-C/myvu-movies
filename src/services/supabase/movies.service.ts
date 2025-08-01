@@ -1,19 +1,18 @@
-// DONE
-
+// AUDITED 01/08/2025
 import { supabase } from '@/lib/supabase';
-import type { TMDBMovie } from '@/schemas/movie.schema';
 import {
   MovieSchema,
   MovieInsertSchema,
   movieHelpers,
   type Movie,
+  type TMDBMovie,
 } from '@/schemas/movie.schema';
 
 export const movieService = {
+  // cacheMovie: Check if movie exists in Supabase, if not, insert it
   async cacheMovie(tmdbMovie: TMDBMovie): Promise<Movie> {
     const existingMovie = await this.getMovieByTmdbId(tmdbMovie.id);
 
-    // If movie already exists, check if it should be updated
     if (existingMovie) {
       if (this.shouldUpdateMovie(existingMovie)) {
         return this.updateMovie(existingMovie.id, tmdbMovie);
@@ -21,7 +20,6 @@ export const movieService = {
       return existingMovie;
     }
 
-    // If movie doesn't exist, insert it
     const movieData = MovieInsertSchema.parse({
       tmdb_id: tmdbMovie.id,
       title: tmdbMovie.title,
@@ -46,6 +44,7 @@ export const movieService = {
     return MovieSchema.parse(data);
   },
 
+  // getMovie: Get movie from Supabase
   async getMovie(movieId: number): Promise<Movie | null> {
     const { data, error } = await supabase
       .from('movies')
@@ -61,6 +60,7 @@ export const movieService = {
     return MovieSchema.parse(data);
   },
 
+  // getMovieByTmdbId: Get movie from Supabase by TMDB ID
   async getMovieByTmdbId(tmdbId: number): Promise<Movie | null> {
     const { data, error } = await supabase
       .from('movies')
@@ -76,6 +76,7 @@ export const movieService = {
     return MovieSchema.parse(data);
   },
 
+  // updateMovie: Update movie in Supabase
   async updateMovie(movieId: number, tmdbMovie: TMDBMovie): Promise<Movie> {
     const updateData = {
       title: tmdbMovie.title,
@@ -102,6 +103,7 @@ export const movieService = {
     return MovieSchema.parse(data);
   },
 
+  // searchMovies: Search for movies in Supabase
   async searchMovies(query: string, limit = 10): Promise<Movie[]> {
     const { data, error } = await supabase
       .from('movies')
@@ -114,6 +116,7 @@ export const movieService = {
     return data.map((movie) => MovieSchema.parse(movie));
   },
 
+  // getMoviesByIds: Get movies from Supabase by IDs
   async getMoviesByIds(movieIds: number[]): Promise<Movie[]> {
     if (movieIds.length === 0) return [];
 
@@ -126,6 +129,7 @@ export const movieService = {
     return data.map((movie) => MovieSchema.parse(movie));
   },
 
+  // getMoviesByTmdbIds: Get movies from Supabase by TMDB IDs
   async getMoviesByTmdbIds(tmdbIds: number[]): Promise<Movie[]> {
     if (tmdbIds.length === 0) return [];
 
@@ -138,20 +142,18 @@ export const movieService = {
     return data.map((movie) => MovieSchema.parse(movie));
   },
 
+  // cacheBatchMovies: Cache a batch of movies
   async cacheBatchMovies(tmdbMovies: TMDBMovie[]): Promise<Movie[]> {
     if (tmdbMovies.length === 0) return [];
 
-    // Get existing movies
     const tmdbIds = tmdbMovies.map((m) => m.id);
     const existingMovies = await this.getMoviesByTmdbIds(tmdbIds);
     const existingTmdbIds = new Set(existingMovies.map((m) => m.tmdb_id));
 
-    // Filter new movies
     const newMovies = tmdbMovies.filter((m) => !existingTmdbIds.has(m.id));
 
     if (newMovies.length === 0) return existingMovies;
 
-    // Insert new movies
     const movieData = newMovies.map((movie) =>
       MovieInsertSchema.parse({
         tmdb_id: movie.id,
@@ -179,6 +181,7 @@ export const movieService = {
     return [...existingMovies, ...insertedMovies];
   },
 
+  // getPopularMovies: Get popular movies from Supabase
   async getPopularMovies(limit = 20): Promise<Movie[]> {
     const { data, error } = await supabase
       .from('movies')
@@ -190,6 +193,7 @@ export const movieService = {
     return data.map((movie) => MovieSchema.parse(movie));
   },
 
+  // getRecentMovies: Get recent movies from Supabase
   async getRecentMovies(days = 30, limit = 20): Promise<Movie[]> {
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - days);
@@ -205,6 +209,7 @@ export const movieService = {
     return data.map((movie) => MovieSchema.parse(movie));
   },
 
+  // getMoviesByGenre: Get movies from Supabase by genre
   async getMoviesByGenre(genreName: string, limit = 20): Promise<Movie[]> {
     const { data, error } = await supabase
       .from('movies')
@@ -225,7 +230,7 @@ export const movieService = {
     return movies;
   },
 
-  // Helper to determine if movie data should be updated
+  // shouldUpdateMovie: Helper to determine if movie data should be updated
   shouldUpdateMovie(movie: Movie): boolean {
     if (!movie.updated_at) return true;
 
@@ -237,7 +242,7 @@ export const movieService = {
     return daysSinceUpdate > 7;
   },
 
-  // Get movie with additional computed properties
+  // getEnrichedMovie: Get movie with additional computed properties (for UI)
   async getEnrichedMovie(movieId: number): Promise<
     | (Movie & {
         posterUrl: string | null;
@@ -259,7 +264,7 @@ export const movieService = {
     };
   },
 
-  // Get basic stats about cached movies
+  // getCacheStats: Get basic stats about cached movies
   async getCacheStats(): Promise<{
     totalMovies: number;
     recentlyAdded: number;

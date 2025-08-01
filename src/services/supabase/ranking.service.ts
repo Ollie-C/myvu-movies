@@ -4,7 +4,6 @@ import type { Tables, TablesInsert } from '@/types/database.types';
 
 type RankingItem = Tables<'ranking_items'>;
 type RankingBattle = TablesInsert<'ranking_battles'>;
-type WatchedMovie = Tables<'watched_movies'>;
 
 export interface RankingBattleResult {
   winnerId: number;

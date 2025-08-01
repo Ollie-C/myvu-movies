@@ -96,6 +96,7 @@ export type Database = {
         Row: {
           backdrop_path: string | null
           created_at: string | null
+          credits: Json | null
           genres: Json | null
           id: number
           original_language: string | null
@@ -104,14 +105,18 @@ export type Database = {
           popularity: number | null
           poster_path: string | null
           release_date: string | null
+          runtime: number | null
+          tagline: string | null
           title: string
           tmdb_id: number
           updated_at: string | null
           vote_average: number | null
+          vote_count: number | null
         }
         Insert: {
           backdrop_path?: string | null
           created_at?: string | null
+          credits?: Json | null
           genres?: Json | null
           id?: number
           original_language?: string | null
@@ -120,14 +125,18 @@ export type Database = {
           popularity?: number | null
           poster_path?: string | null
           release_date?: string | null
+          runtime?: number | null
+          tagline?: string | null
           title: string
           tmdb_id: number
           updated_at?: string | null
           vote_average?: number | null
+          vote_count?: number | null
         }
         Update: {
           backdrop_path?: string | null
           created_at?: string | null
+          credits?: Json | null
           genres?: Json | null
           id?: number
           original_language?: string | null
@@ -136,10 +145,13 @@ export type Database = {
           popularity?: number | null
           poster_path?: string | null
           release_date?: string | null
+          runtime?: number | null
+          tagline?: string | null
           title?: string
           tmdb_id?: number
           updated_at?: string | null
           vote_average?: number | null
+          vote_count?: number | null
         }
         Relationships: []
       }
@@ -312,78 +324,10 @@ export type Database = {
         }
         Relationships: []
       }
-      user_movies_legacy: {
-        Row: {
-          created_at: string | null
-          favorite: boolean | null
-          id: number
-          movie_id: number | null
-          notes: string | null
-          rating: number | null
-          status: string | null
-          updated_at: string | null
-          user_id: string | null
-          watch_list: boolean | null
-          watched: boolean | null
-          watched_date: string | null
-          watchlist_added_date: string | null
-          watchlist_notes: string | null
-          watchlist_priority: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          favorite?: boolean | null
-          id?: number
-          movie_id?: number | null
-          notes?: string | null
-          rating?: number | null
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-          watch_list?: boolean | null
-          watched?: boolean | null
-          watched_date?: string | null
-          watchlist_added_date?: string | null
-          watchlist_notes?: string | null
-          watchlist_priority?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          favorite?: boolean | null
-          id?: number
-          movie_id?: number | null
-          notes?: string | null
-          rating?: number | null
-          status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-          watch_list?: boolean | null
-          watched?: boolean | null
-          watched_date?: string | null
-          watchlist_added_date?: string | null
-          watchlist_notes?: string | null
-          watchlist_priority?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_movies_movie_id_fkey"
-            columns: ["movie_id"]
-            isOneToOne: false
-            referencedRelation: "movies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_movies_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       watched_movies: {
         Row: {
           created_at: string | null
+          elo_score: number | null
           favorite: boolean | null
           id: string
           movie_id: number | null
@@ -396,6 +340,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          elo_score?: number | null
           favorite?: boolean | null
           id?: string
           movie_id?: number | null
@@ -408,6 +353,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          elo_score?: number | null
           favorite?: boolean | null
           id?: string
           movie_id?: number | null

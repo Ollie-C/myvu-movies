@@ -14,15 +14,14 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 // Pages
 import { Login } from '@/pages/auth/Login';
 import { Signup } from '@/pages/auth/Signup';
-import Movies from '@/pages/Movies';
-import MovieDetails from '@/pages/MovieDetails';
-import Rankings from '@/pages/Rankings';
-import Collections from '@/pages/Collections';
-import CollectionDetails from '@/pages/CollectionDetails';
+import Movies from '@/pages/MoviesPage';
+import MovieDetails from '@/pages/MovieDetailsPage';
+import Rankings from '@/pages/RankingsPage';
+import Collections from '@/pages/CollectionsPage';
+import CollectionDetails from '@/pages/CollectionDetailsPage';
 import Dashboard from './pages/Dashboard';
 import Settings from '@/pages/Settings';
 import { AuthCallback } from './pages/auth/AuthCallback';
-import { VersusRanking } from './components/ranking/VersusRanking';
 import VersusRankingPage from './pages/VersusRankingPage';
 
 const queryClient = new QueryClient({

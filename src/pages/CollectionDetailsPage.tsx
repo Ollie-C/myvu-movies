@@ -9,7 +9,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
-import MovieCard from '@/components/common/MovieCard';
+import MovieCard from '@/components/movie/MovieCard';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 
 const CollectionDetails = () => {

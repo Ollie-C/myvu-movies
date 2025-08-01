@@ -1,20 +1,12 @@
-// src/components/layout/Header.tsx
 import { useState, useEffect, useRef } from 'react';
-import {
-  Search,
-  X,
-  Loader2,
-  ArrowBigDown,
-  ArrowDown,
-  ChevronDown,
-} from 'lucide-react';
+import { Search, X, Loader2, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/common/Input';
 import { SearchResults } from '@/components/features/search/SearchResults';
 import { useQuery } from '@tanstack/react-query';
 import { tmdb } from '@/lib/api/tmdb';
 import { useDebounce } from '@/utils/hooks/useDebounce';
-import { useAuth } from '@/utils/hooks/supabase/useAuth';
+import { useAuth } from '@/context/AuthContext';
 import { userService } from '@/services/supabase/user.service';
 
 const Header = () => {

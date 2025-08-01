@@ -1,7 +1,7 @@
-import { Card } from './Card';
+import { Card } from '../common/Card';
 import type { CollectionPreview } from '@/schemas/collection-combined.schema';
 import { ChartBar } from 'lucide-react';
-import MovieCollectionPreview from './MovieCollectionPreview';
+import MovieCollectionPreview from './CollectionPreview';
 
 interface CollectionCardProps {
   collection: CollectionPreview;

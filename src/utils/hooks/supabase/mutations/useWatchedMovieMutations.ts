@@ -1,4 +1,3 @@
-// useWatchedMovieMutations.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { watchlistService } from '@/services/supabase/watchlist.service';
@@ -114,27 +113,6 @@ export const useUpdateRating = () => {
       });
       queryClient.invalidateQueries({
         queryKey: watchedMoviesKeys.all,
-      });
-    },
-  });
-};
-
-export const useToggleFavorite = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ movie }: { movie: MovieData }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      await watchedMoviesService.toggleFavorite(user.id, movie.movieId);
-    },
-    onSuccess: (_, { movie }) => {
-      queryClient.invalidateQueries({
-        queryKey: movieKeys.userStatus(user?.id || '', movie.tmdbId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: watchedMoviesKeys.favorites(),
       });
     },
   });

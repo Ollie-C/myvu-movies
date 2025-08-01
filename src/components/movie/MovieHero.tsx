@@ -1,6 +1,5 @@
 import React from 'react';
 import { tmdb } from '@/lib/api/tmdb';
-import { Card } from '@/components/common/Card';
 
 interface MovieHeroProps {
   movie: {
