@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RankingService } from '@/services/supabase/ranking.service';
 import { useState, useEffect } from 'react';

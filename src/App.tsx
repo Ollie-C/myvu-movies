@@ -1,3 +1,4 @@
+// AUDITED 01/08/2025
 import {
   BrowserRouter as Router,
   Routes,
@@ -5,8 +6,12 @@ import {
   Navigate,
 } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Contexts
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/context/ToastContext';
+
+// Components
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import Layout from '@/components/layout/Layout';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
@@ -21,8 +26,8 @@ import Collections from '@/pages/CollectionsPage';
 import CollectionDetails from '@/pages/CollectionDetailsPage';
 import Dashboard from './pages/Dashboard';
 import Settings from '@/pages/Settings';
-import { AuthCallback } from './pages/auth/AuthCallback';
-import VersusRankingPage from './pages/VersusRankingPage';
+import { AuthCallback } from '@/pages/auth/AuthCallback';
+import VersusRankingPage from '@/pages/VersusRankingPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {

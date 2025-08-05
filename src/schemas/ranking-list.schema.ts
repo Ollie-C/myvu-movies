@@ -1,6 +1,7 @@
 // Define the ranking method being used
 // Link to users
 // Collaborative ranking support
+// AUDITED 05/08/2025
 
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';

@@ -1,5 +1,7 @@
+// NOT AUDITED
+
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +17,15 @@ const Collections = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Log collections page access
+  useEffect(() => {
+    console.log('📚 [CollectionsPage] Page loaded:', {
+      userId: user?.id,
+      email: user?.email,
+      pathname: window.location.pathname,
+    });
+  }, [user]);
 
   // Fetch user collections with previews using the proper hook
   const {
@@ -36,10 +47,10 @@ const Collections = () => {
     },
   });
 
-  console.log('Collections data:', collections);
-  console.log('Collections loading:', isLoading);
-  console.log('Collections error:', error);
-  console.log('User ID:', user?.id);
+  // console.log('Collections data:', collections);
+  // console.log('Collections loading:', isLoading);
+  // console.log('Collections error:', error);
+  // console.log('User ID:', user?.id);
 
   if (!user) {
     return (

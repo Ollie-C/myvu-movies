@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { supabase } from '@/lib/supabase';
 
 export interface UserProfile {

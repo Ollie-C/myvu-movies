@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
+// NOT AUDITED
+
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 // Components
@@ -31,6 +33,15 @@ const Movies = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+
+  // Log movies page access
+  useEffect(() => {
+    console.log('📽️ [MoviesPage] Page loaded:', {
+      userId: user?.id,
+      email: user?.email,
+      pathname: window.location.pathname,
+    });
+  }, [user]);
 
   // States
   const [showWatchlist, setShowWatchlist] = useState(false);
@@ -66,9 +77,8 @@ const Movies = () => {
   } = showWatchlist ? watchlistQuery : watchedQuery;
 
   // Flatten all pages into a single array with proper typing
-  const userMovies: UserMovie[] = (moviesData?.pages.flatMap(
-    (page) => page.data
-  ) || []) as UserMovie[];
+  const userMovies = (moviesData?.pages.flatMap((page) => page.data) ||
+    []) as any[];
 
   // Calculate positions for watched movies when using ranked sort
   const getMoviePosition = (userMovie: UserMovie): number => {

@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { supabase } from '@/lib/supabase';
 import { WatchedMovieWithMovieSchema } from '@/schemas/watched-movie.schema';
 import {
@@ -26,7 +28,7 @@ export class EnhancedRatingService {
       .from('watched_movies')
       .select('*, movie:movies(*)')
       .eq('user_id', userId)
-      .neq('movie_id', movieId)
+      .not('movie_id', 'eq', movieId)
       .not('rating', 'is', null)
       .gte('rating', rating - tolerance)
       .lte('rating', rating + tolerance)

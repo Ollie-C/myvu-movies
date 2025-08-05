@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import type { TMDBMovie } from '@/schemas/movie.schema';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;

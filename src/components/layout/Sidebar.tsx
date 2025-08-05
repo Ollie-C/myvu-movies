@@ -1,11 +1,12 @@
+// Audited: 2025-08-05
 import { Film, Trophy, Layers, ListOrdered } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { cn } from '@/utils/cn';
 
 const navigation = [
-  { name: 'Collections', href: '/collections', icon: Layers },
   { name: 'Movies', href: '/movies', icon: Film },
+  { name: 'Collections', href: '/collections', icon: Layers },
   { name: 'Rankings', href: '/rankings', icon: ListOrdered },
   // { name: 'Leaderboard', href: '/leaderboard', icon: Trophy },
 ];

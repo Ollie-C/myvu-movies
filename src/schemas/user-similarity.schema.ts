@@ -1,4 +1,4 @@
-// user-similarity.schema.ts
+// NOT AUDITED
 import { z } from 'zod';
 import { RankingMethodEnum } from './ranking-list.schema';
 

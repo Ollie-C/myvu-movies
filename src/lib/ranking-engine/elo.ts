@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import type { RankingItem } from '@/schemas/ranking-item.schema';
 
 export const K_FACTOR = 32; // Standard K-factor, adjust based on your needs

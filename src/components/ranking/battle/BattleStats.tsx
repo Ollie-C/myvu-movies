@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { motion } from 'framer-motion';
 import { X, Trophy, Timer, TrendingUp } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';

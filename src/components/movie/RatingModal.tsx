@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -52,6 +54,13 @@ export default function StandardRatingModal({
     onRatingComplete: batchRating.handleNext,
   });
 
+  if (ratingModal.leagueTableSnippet) {
+    console.log(
+      'ratingModal.leagueTableSnippet',
+      ratingModal.leagueTableSnippet
+    );
+  }
+
   if (!isOpen || !batchRating.currentMovie) return null;
 
   return (
@@ -98,15 +107,7 @@ export default function StandardRatingModal({
                 <div className='space-y-6'>
                   {/* Movie Info */}
                   <div className='flex gap-6'>
-                    <MoviePoster
-                      src={
-                        batchRating.currentMovie.movie.poster_path
-                          ? `https://image.tmdb.org/t/p/w500${batchRating.currentMovie.movie.poster_path}`
-                          : ''
-                      }
-                      alt={batchRating.currentMovie.movie.title}
-                      size='lg'
-                    />
+                    <MoviePoster movie={batchRating.currentMovie.movie} />
                     <div className='flex-1'>
                       <h3 className='text-xl font-bold mb-2'>
                         {batchRating.currentMovie.movie.title}
@@ -281,15 +282,7 @@ export default function StandardRatingModal({
                                 </div>
                               </div>
 
-                              <MoviePoster
-                                src={
-                                  movie.movie.poster_path
-                                    ? `https://image.tmdb.org/t/p/w100${movie.movie.poster_path}`
-                                    : ''
-                                }
-                                alt={movie.movie.title}
-                                size='sm'
-                              />
+                              <MoviePoster movie={movie.movie} />
 
                               <div className='flex-1 min-w-0'>
                                 <h5 className='font-semibold truncate'>

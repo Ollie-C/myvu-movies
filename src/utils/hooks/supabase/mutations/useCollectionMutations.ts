@@ -1,4 +1,4 @@
-// not used
+// NOT AUDITED
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { collectionService } from '@/services/supabase/collection.service';
 import { useAuth } from '@/context/AuthContext';

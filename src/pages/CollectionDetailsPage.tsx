@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -39,13 +41,13 @@ const CollectionDetails = () => {
     refetchOnWindowFocus: false,
   });
 
-  console.log('CollectionDetails query state:', {
-    collectionId,
-    isValidId,
-    isLoading,
-    hasData: !!collection,
-    movieCount: collection?.collection_items?.length || 0,
-  });
+  // console.log('CollectionDetails query state:', {
+  //   collectionId,
+  //   isValidId,
+  //   isLoading,
+  //   hasData: !!collection,
+  //   movieCount: collection?.collection_items?.length || 0,
+  // });
 
   // Update collection mutation
   const updateCollectionMutation = useMutation({

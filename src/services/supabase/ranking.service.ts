@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { supabase } from '@/lib/supabase';
 import { calculateElo, getDynamicKFactor } from '@/lib/ranking-engine/elo';
 import type { Tables, TablesInsert } from '@/types/database.types';

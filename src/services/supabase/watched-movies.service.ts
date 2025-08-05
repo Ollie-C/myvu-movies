@@ -1,4 +1,4 @@
-// DONE
+// NOT AUDITED
 import { supabase } from '@/lib/supabase';
 
 // Schemas

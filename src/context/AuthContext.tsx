@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +39,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       setInitialLoad(false);
+
+      // Log initial auth state
+      console.log('🔐 [AuthContext] Initial auth state:', {
+        isAuthenticated: !!session?.user,
+        userId: session?.user?.id,
+        email: session?.user?.email,
+        pathname: location.pathname,
+      });
     });
 
     // Listen for auth changes
@@ -45,8 +55,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+
+      // Log auth state changes
+      console.log('🔐 [AuthContext] Auth state changed:', {
+        event,
+        isAuthenticated: !!session?.user,
+        userId: session?.user?.id,
+        email: session?.user?.email,
+        pathname: location.pathname,
+      });
+
       if (!initialLoad) {
         if (event === 'SIGNED_IN') {
+          console.log(
+            '🔐 [AuthContext] User signed in, redirecting to dashboard'
+          );
           if (
             location.pathname === '/login' ||
             location.pathname === '/signup'
@@ -54,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             navigate('/');
           }
         } else if (event === 'SIGNED_OUT') {
+          console.log('🔐 [AuthContext] User signed out, redirecting to login');
           navigate('/login');
         }
       }

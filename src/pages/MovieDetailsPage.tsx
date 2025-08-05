@@ -1,5 +1,5 @@
 // AUDITED 01/08/2025
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 // Icons
@@ -43,6 +43,16 @@ const MovieDetails = () => {
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const addToCollectionButtonRef = useRef<HTMLDivElement>(null);
+
+  // Log movie details page access
+  useEffect(() => {
+    console.log('🎬 [MovieDetails] Page loaded:', {
+      movieId: id,
+      userId: user?.id,
+      email: user?.email,
+      pathname: window.location.pathname,
+    });
+  }, [id, user]);
 
   // Fetch movie details and user status
   const { data: movie, isLoading } = useMovieDetails(id);

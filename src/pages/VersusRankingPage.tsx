@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { useNavigate } from 'react-router-dom';
 import { VersusRanking } from '@/components/ranking/VersusRanking';
 import { useQuery } from '@tanstack/react-query';

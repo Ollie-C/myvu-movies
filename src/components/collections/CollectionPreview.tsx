@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -41,9 +43,9 @@ const CollectionPreview: React.FC<CollectionPreviewProps> = ({
   };
 
   // Debug log to check movie count
-  console.log(
-    `Collection "${collectionTitle}" has ${displayMovies.length} movies for preview`
-  );
+  // console.log(
+  //   `Collection "${collectionTitle}" has ${displayMovies.length} movies for preview`
+  // );
 
   return (
     <div className='cursor-pointer' onClick={onCollectionClick}>

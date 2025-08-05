@@ -1,59 +1,61 @@
-import { Plus, TrendingUp, BarChart3, Star, Folder } from 'lucide-react';
+// Audited: 2025-08-05
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
-// import { useAuth } from '@/context/AuthContext';
+import { Plus, TrendingUp, BarChart3, Star, Folder } from 'lucide-react';
+
+// Contexts
+import { useAuth } from '@/context/AuthContext';
+
+// Hooks
 import {
   useFavoriteMovies,
   useRecentMovies,
 } from '@/utils/hooks/supabase/queries/useWatchedMovies';
 import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
-// import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
 import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
 import { useRatingStats } from '@/utils/hooks/supabase/queries/useRanking';
+import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
+import { useActiveRankings } from '@/utils/hooks/supabase/queries/useRanking';
 
-// import { useActiveRankings } from '@/utils/hooks/supabase/queries/useRankings';
+// Components
 import CollectionCard from '@/components/collections/CollectionCard';
 import MovieCard from '@/components/movie/MovieCard';
 import TopTenMoviesModal from '@/components/features/TopTenMoviesModal';
 
 const Dashboard = () => {
-  // const { user } = useAuth();
+  const { user } = useAuth();
   const [isFavoriteModalOpen, setIsFavoriteModalOpen] = useState(false);
 
-  // Use the new custom hooks
-  // const { data: userStats } = useUserStats();
-  const userStats = {
-    totalWatched: 100,
-    totalRankings: 10,
-    totalCollections: 10,
-    averageRating: 4.5,
-    favoriteGenre: 'Action',
-  };
+  // Log dashboard access
+  useEffect(() => {
+    console.log('🏠 [Dashboard] Page loaded:', {
+      userId: user?.id,
+      email: user?.email,
+      pathname: window.location.pathname,
+    });
+  }, [user]);
+
+  const { data: userStats, isLoading: userStatsLoading } = useUserStats();
   const { data: favoriteMovies } = useFavoriteMovies(10);
   const { data: recentMovies } = useRecentMovies(5);
-  const { data: collections = [], isError: collectionsError } =
+  const { data: collections = [], isLoading: collectionsLoading } =
     useCollectionsWithPreviews({
       limit: 3,
     });
-  const { data: ratingStats } = useRatingStats();
+  const { data: ratingStats } = useRatingStats(user?.id || '');
 
-  // const { data: activeRankings } = useActiveRankings(3);
-  const activeRankings = [
-    {
-      id: '1',
-      name: 'Top 100 Movies',
-      movieCount: 100,
-      updated_at: '2024-01-01',
-    },
-    { id: '2', name: 'Best Sci-Fi', movieCount: 50, updated_at: '2024-01-02' },
-    {
-      id: '3',
-      name: 'Classic Horror',
-      movieCount: 30,
-      updated_at: '2024-01-03',
-    },
-  ];
+  const { data: activeRankings, isLoading: rankingsLoading } =
+    useActiveRankings(user?.id, 3);
   const { data: watchlistStats } = useWatchlistStats();
+
+  console.log('🏠 [Dashboard] Data loaded:', {
+    userStats,
+    ratingStats,
+    favoriteMoviesCount: favoriteMovies?.length,
+    recentMoviesCount: recentMovies?.length,
+    collectionsCount: collections?.length,
+    activeRankingsCount: activeRankings?.length,
+  });
 
   const formatWatchedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -68,21 +70,9 @@ const Dashboard = () => {
     return date.toLocaleDateString();
   };
 
-  // Calculate movies watched this month
-  const getMoviesThisMonth = () => {
-    if (!recentMovies) return 0;
-    const now = new Date();
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
-
-    return recentMovies.filter((item) => {
-      const watchDate = new Date(item.watched_date);
-      return (
-        watchDate.getMonth() === thisMonth &&
-        watchDate.getFullYear() === thisYear
-      );
-    }).length;
-  };
+  if (userStatsLoading || collectionsLoading || rankingsLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className='mx-auto px-0 py-8'>
@@ -120,25 +110,25 @@ const Dashboard = () => {
         <div className='flex flex-wrap gap-6 text-sm'>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {getMoviesThisMonth()}
+              {userStatsLoading ? '...' : userStats?.moviesThisMonth || 0}
             </span>
             <span className='text-gray-500'>movies this month</span>
           </div>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {userStats?.totalWatched || 0}
+              {userStatsLoading ? '...' : userStats?.totalWatched || 0}
             </span>
             <span className='text-gray-500'>total movies</span>
           </div>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {userStats?.totalRankings || 0}
+              {userStatsLoading ? '...' : userStats?.totalRankings || 0}
             </span>
             <span className='text-gray-500'>active rankings</span>
           </div>
           <div className='flex items-center gap-2'>
             <span className='font-medium text-gray-900'>
-              {userStats?.totalCollections || 0}
+              {userStatsLoading ? '...' : userStats?.totalCollections || 0}
             </span>
             <span className='text-gray-500'>collections</span>
           </div>
@@ -287,7 +277,11 @@ const Dashboard = () => {
           </div>
 
           <div className='space-y-3'>
-            {activeRankings && activeRankings.length > 0 ? (
+            {rankingsLoading ? (
+              <div className='bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500'>
+                <p>Loading rankings...</p>
+              </div>
+            ) : activeRankings && activeRankings.length > 0 ? (
               activeRankings.map((ranking) => (
                 <Link key={ranking.id} to={`/rankings/${ranking.id}`}>
                   <div className='bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer'>
@@ -317,7 +311,11 @@ const Dashboard = () => {
                 <h3 className='text-sm font-medium text-gray-900'>Stats</h3>
               </div>
               <p className='text-sm text-gray-600'>
-                Average rating: {userStats.averageRating?.toFixed(1) || '0'}/5
+                Average rating:{' '}
+                {userStatsLoading
+                  ? '...'
+                  : userStats.averageRating?.toFixed(1) || '0'}
+                /5
               </p>
               {userStats.favoriteGenre && (
                 <p className='text-sm text-gray-600 mt-1'>

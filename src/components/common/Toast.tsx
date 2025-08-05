@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';

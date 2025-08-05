@@ -1,22 +1,30 @@
+// Audited: 2025-08-05
 import { useState, useCallback, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
+
+// Services
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { RankingService } from '@/services/supabase/ranking.service';
 import { EnhancedRatingService } from '@/services/supabase/enhanced-rating.service';
+
+// Ranking engine
 import {
   calculateEloFromRating,
   calculateEloFromReorder,
 } from '@/lib/ranking-engine/elo';
+
+// Schemas
 import { RankingMethodEnum } from '@/schemas/ranking-list.schema';
 import type { RankingItem } from '@/schemas/ranking-item.schema';
+
+// Zod
 import { z } from 'zod';
 
-// Consolidated query keys
 export const unifiedRankingKeys = {
   all: ['unified-rankings'] as const,
 
-  // Legacy ranking keys for compatibility
+  // Legacy ranking keys for compatibility TODO
   rankings: ['rankings'] as const,
   unrated: (userId: string) =>
     [...unifiedRankingKeys.rankings, 'unrated', userId] as const,
@@ -73,7 +81,6 @@ export function useUnifiedRanking({
     lastAction: null,
   });
 
-  // Fetch current ranking items (for list-based rankings)
   const { data: rankingItems, isLoading: itemsLoading } = useQuery({
     queryKey: unifiedRankingKeys.rankingItems(rankingListId || ''),
     queryFn: async () => {
@@ -92,7 +99,6 @@ export function useUnifiedRanking({
 
       if (error) throw error;
 
-      // Add position to each item
       return data.map((item, index) => ({
         ...item,
         position: index + 1,
@@ -101,16 +107,14 @@ export function useUnifiedRanking({
     enabled: !!rankingListId,
   });
 
-  // Fetch unrated movies (legacy compatibility)
   const { data: unratedMovies, isLoading: unratedLoading } = useQuery({
     queryKey: unifiedRankingKeys.unrated(userId),
     queryFn: async () => {
       return await watchedMoviesService.getUnratedMovies(userId);
     },
-    enabled: !!userId && !rankingListId, // Only for legacy mode
+    enabled: !!userId && !rankingListId,
   });
 
-  // Fetch ranked movies (legacy compatibility)
   const { data: rankedMovies, isLoading: rankedLoading } = useQuery({
     queryKey: unifiedRankingKeys.ranked(userId),
     queryFn: async () => {
@@ -144,10 +148,9 @@ export function useUnifiedRanking({
         position: index + 1,
       }));
     },
-    enabled: !!userId && !rankingListId, // Only for legacy mode
+    enabled: !!userId && !rankingListId,
   });
 
-  // Rating statistics
   const { data: ratingStats } = useQuery({
     queryKey: unifiedRankingKeys.stats(userId),
     queryFn: async () => {
@@ -197,7 +200,6 @@ export function useUnifiedRanking({
     enabled: !!userId,
   });
 
-  // Current movie position calculation
   const getCurrentMoviePosition = useCallback(
     (
       rating: number,
@@ -209,7 +211,6 @@ export function useUnifiedRanking({
     ) => {
       if (!rankedMovies || !rating || rating === 0) return null;
 
-      // Use proper ELO calculation from dedicated file
       const currentElo = calculateEloFromRating(1500, rating);
 
       let position = 1;
@@ -232,9 +233,8 @@ export function useUnifiedRanking({
     [rankedMovies]
   );
 
-  // League table snippet
   const getLeagueTableSnippet = useCallback(
-    (
+    async (
       movieId: number,
       rating: number,
       currentMovie?: {
@@ -248,71 +248,89 @@ export function useUnifiedRanking({
 
       const position = currentPosition.position;
 
-      if (rankedMovies.length === 0) {
-        return [
-          {
-            movie_id: movieId,
-            rating: rating,
-            elo_score: currentPosition.elo_score,
-            movie: currentMovie || {
-              title: 'Current Movie',
-              poster_path: null,
-              release_date: null,
-            },
-            position: 1,
-            isCurrent: true,
-            displayPosition: 1,
-          },
-        ];
-      }
-
-      const currentMovieEntry = {
-        movie_id: movieId,
-        rating: rating,
-        elo_score: currentPosition.elo_score,
-        movie: currentMovie || {
-          title: 'Current Movie',
-          poster_path: null,
-          release_date: null,
-        },
-        position: position,
-        isCurrent: true,
-        displayPosition: position,
-      };
-
-      const surroundingMovies = [];
+      // Get movie IDs for the surrounding positions
+      const surroundingMovieIds = [];
       const startIndex = Math.max(0, position - 3);
       const endIndex = Math.min(rankedMovies.length, position + 2);
 
       for (let i = startIndex; i < endIndex; i++) {
         const movie = rankedMovies[i];
         const moviePosition = i + 1;
-
-        if (moviePosition === position) continue;
-
-        surroundingMovies.push({
-          ...movie,
-          isCurrent: false,
-          displayPosition: moviePosition,
-        });
+        if (moviePosition !== position) {
+          surroundingMovieIds.push(movie.movie_id);
+        }
       }
 
+      // Add current movie ID
+      const allMovieIds = [movieId, ...surroundingMovieIds];
+
+      // Fetch complete movie data from movies table
+      const { data: movies, error } = await supabase
+        .from('movies')
+        .select('*')
+        .in('id', allMovieIds);
+
+      if (error) throw error;
+
+      // Build the league table snippet
       const result = [];
       let currentInserted = false;
 
-      for (let i = 0; i < surroundingMovies.length; i++) {
-        const movie = surroundingMovies[i];
+      for (let i = 0; i < surroundingMovieIds.length; i++) {
+        const movieId = surroundingMovieIds[i];
+        const movie = movies?.find((m) => m.id === movieId);
+        const moviePosition = startIndex + i + 1;
 
-        if (!currentInserted && movie.displayPosition >= position) {
-          result.push(currentMovieEntry);
+        if (!currentInserted && moviePosition >= position) {
+          // Insert current movie
+          const currentMovieData = movies?.find((m) => m.id === movieId) || {
+            id: movieId,
+            tmdb_id: movieId,
+            title: currentMovie?.title || 'Current Movie',
+            poster_path: currentMovie?.poster_path,
+            release_date: currentMovie?.release_date,
+          };
+
+          result.push({
+            movie_id: movieId,
+            rating: rating,
+            elo_score: currentPosition.elo_score,
+            movie: currentMovieData,
+            position: position,
+            isCurrent: true,
+            displayPosition: position,
+          });
           currentInserted = true;
         }
 
-        result.push(movie);
+        if (movie) {
+          result.push({
+            ...rankedMovies.find((r) => r.movie_id === movieId),
+            movie: movie,
+            isCurrent: false,
+            displayPosition: moviePosition,
+          });
+        }
       }
 
       if (!currentInserted) {
-        result.push(currentMovieEntry);
+        const currentMovieData = movies?.find((m) => m.id === movieId) || {
+          id: movieId,
+          tmdb_id: movieId,
+          title: currentMovie?.title || 'Current Movie',
+          poster_path: currentMovie?.poster_path,
+          release_date: currentMovie?.release_date,
+        };
+
+        result.push({
+          movie_id: movieId,
+          rating: rating,
+          elo_score: currentPosition.elo_score,
+          movie: currentMovieData,
+          position: position,
+          isCurrent: true,
+          displayPosition: position,
+        });
       }
 
       return result.slice(0, 3);
@@ -320,19 +338,16 @@ export function useUnifiedRanking({
     [getCurrentMoviePosition, rankedMovies]
   );
 
-  // Standard rating mutation (for legacy compatibility and direct scoring)
   const standardRatingMutation = useMutation({
     mutationFn: async ({
       movieId,
       rating,
-      notes,
     }: {
       movieId: number;
       rating: number;
       notes?: string;
     }) => {
       if (rankingListId) {
-        // For ranking lists - use dedicated ELO calculation
         const currentItem = rankingItems?.find(
           (item) => item.movie_id === movieId
         );
@@ -352,7 +367,6 @@ export function useUnifiedRanking({
         if (error) throw error;
         return { movieId, newElo, oldElo: currentElo };
       } else {
-        // For legacy watched movies
         return await watchedMoviesService.updateRating(userId, movieId, rating);
       }
     },
@@ -381,7 +395,6 @@ export function useUnifiedRanking({
     },
   });
 
-  // Enhanced rating mutation
   const enhancedRatingMutation = useMutation({
     mutationFn: async ({
       movieId,
@@ -418,7 +431,6 @@ export function useUnifiedRanking({
     },
   });
 
-  // Versus battle mutation
   const versusBattleMutation = useMutation({
     mutationFn: async ({
       winnerId,
@@ -458,7 +470,6 @@ export function useUnifiedRanking({
     },
   });
 
-  // Drag and drop mutation
   const dragDropMutation = useMutation({
     mutationFn: async (reorderedItems: RankingItem[]) => {
       if (!rankingItems || !rankingListId) return;
@@ -474,7 +485,6 @@ export function useUnifiedRanking({
         newPositions.set(item.id, index);
       });
 
-      // Use dedicated ELO calculation for reordering
       const newEloScores = calculateEloFromReorder(
         reorderedItems,
         oldPositions,
@@ -515,7 +525,6 @@ export function useUnifiedRanking({
     },
   });
 
-  // Smart merge calculation
   const calculateMergedScore = useCallback(
     (item: RankingItem & { movie?: any }) => {
       const weights = {
@@ -546,7 +555,6 @@ export function useUnifiedRanking({
     [rankingItems]
   );
 
-  // Apply smart merge
   const applySmartMerge = useCallback(async () => {
     if (!rankingItems || !rankingListId) return;
 
@@ -569,7 +577,6 @@ export function useUnifiedRanking({
     });
   }, [rankingItems, rankingListId, calculateMergedScore, queryClient]);
 
-  // Utility functions
   const getNextUnratedMovie = useCallback(() => {
     if (rankingItems) {
       return rankingItems.find(
@@ -602,7 +609,6 @@ export function useUnifiedRanking({
     [userId]
   );
 
-  // Current rankings
   const currentRankings = useMemo(() => {
     if (rankingItems) {
       return [...rankingItems].sort(
@@ -612,8 +618,6 @@ export function useUnifiedRanking({
     return rankedMovies || [];
   }, [rankingItems, rankedMovies]);
 
-  // Method-specific helpers
-  // Method-specific helpers
   const methodHelpers = useMemo(() => {
     switch (method) {
       case 'versus':
@@ -696,7 +700,6 @@ export function useUnifiedRanking({
   };
 }
 
-// Legacy hook exports for backward compatibility
 export const useUnratedMovies = (userId: string | undefined) => {
   const { unratedMovies, isLoading } = useUnifiedRanking({
     userId: userId || '',
@@ -711,9 +714,50 @@ export const useRankedMovies = (userId: string | undefined) => {
   return { data: rankingItems, isLoading };
 };
 
+export const useActiveRankings = (
+  userId: string | undefined,
+  limit: number = 3
+) => {
+  return useQuery({
+    queryKey: [...unifiedRankingKeys.all, 'active-rankings', userId, limit],
+    queryFn: async () => {
+      if (!userId) return [];
+
+      const { data, error } = await supabase
+        .from('ranking_lists')
+        .select(
+          `
+          id,
+          name,
+          description,
+          ranking_method,
+          updated_at,
+          ranking_items!inner(movie_id)
+        `
+        )
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+
+      // Transform data to match Dashboard expectations
+      return (data || []).map((rankingList) => ({
+        id: rankingList.id,
+        name: rankingList.name,
+        description: rankingList.description,
+        ranking_method: rankingList.ranking_method,
+        movieCount: rankingList.ranking_items?.length || 0,
+        updated_at: rankingList.updated_at,
+      }));
+    },
+    enabled: !!userId,
+    staleTime: 60 * 1000, // 1 minute
+  });
+};
+
 export const useCurrentMoviePosition = (
   userId: string | undefined,
-  movieId: number | undefined,
   rating: number | undefined,
   currentMovie?: {
     title: string;
@@ -740,12 +784,20 @@ export const useLeagueTableSnippet = (
   }
 ) => {
   const { getLeagueTableSnippet } = useUnifiedRanking({ userId: userId || '' });
-  return {
-    data:
-      movieId && rating
-        ? getLeagueTableSnippet(movieId, rating, currentMovie)
-        : [],
-  };
+
+  return useQuery({
+    queryKey: unifiedRankingKeys.leagueSnippet(
+      userId || '',
+      movieId || 0,
+      rating || 0
+    ),
+    queryFn: async () => {
+      if (!userId || !movieId || !rating) return [];
+      return await getLeagueTableSnippet(movieId, rating, currentMovie);
+    },
+    enabled: !!userId && !!movieId && !!rating && rating > 0,
+    staleTime: 30 * 1000, // 30 seconds
+  });
 };
 
 export const useUpdateRating = () => {
@@ -755,7 +807,6 @@ export const useUpdateRating = () => {
       userId,
       movieId,
       rating,
-      notes,
     }: {
       userId: string;
       movieId: number;

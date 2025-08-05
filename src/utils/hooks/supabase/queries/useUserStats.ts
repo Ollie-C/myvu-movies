@@ -1,11 +1,10 @@
-// not used
+// Audited: 2025-08-05
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { collectionService } from '@/services/supabase/collection.service';
-import { rankingService } from '@/services/supabase/ranking.service';
+import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 
-// Query keys factory
 export const userStatsKeys = {
   all: ['userStats'] as const,
   stats: (userId: string) => [...userStatsKeys.all, userId] as const,
@@ -29,45 +28,48 @@ export const useUserStats = () => {
     queryFn: async (): Promise<UserStats> => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      // Fetch all necessary data in parallel
-      const [watchedMovies, collections, rankings] = await Promise.all([
+      const [watchedMovies, collections] = await Promise.all([
         watchedMoviesService.getWatchedMovies(user.id, { limit: 1000 }),
         collectionService.getUserCollections(user.id),
-        rankingService.getUserRankings(user.id),
       ]);
 
-      // Calculate stats
       const now = new Date();
       const thisMonth = now.getMonth();
       const thisYear = now.getFullYear();
 
-      const moviesThisMonth = watchedMovies.data.filter((item) => {
-        const watchDate = new Date(item.watched_date);
-        return (
-          watchDate.getMonth() === thisMonth &&
-          watchDate.getFullYear() === thisYear
-        );
-      }).length;
+      const moviesThisMonth = watchedMovies.data.filter(
+        (item: WatchedMovieWithMovie) => {
+          const watchDate = new Date(item.watched_date);
+          return (
+            watchDate.getMonth() === thisMonth &&
+            watchDate.getFullYear() === thisYear
+          );
+        }
+      ).length;
 
-      const moviesThisYear = watchedMovies.data.filter((item) => {
-        const watchDate = new Date(item.watched_date);
-        return watchDate.getFullYear() === thisYear;
-      }).length;
+      const moviesThisYear = watchedMovies.data.filter(
+        (item: WatchedMovieWithMovie) => {
+          const watchDate = new Date(item.watched_date);
+          return watchDate.getFullYear() === thisYear;
+        }
+      ).length;
 
-      // Calculate average rating
       const ratedMovies = watchedMovies.data.filter(
-        (item) => item.rating !== null
+        (item: WatchedMovieWithMovie) => item.rating !== null
       );
       const averageRating =
         ratedMovies.length > 0
-          ? ratedMovies.reduce((sum, item) => sum + (item.rating || 0), 0) /
+          ? ratedMovies.reduce(
+              (sum: number, item: WatchedMovieWithMovie) =>
+                sum + (item.rating || 0),
+              0
+            ) /
             ratedMovies.length /
-            2 // Convert to 5-star
+            2
           : 0;
 
-      // Calculate favorite genre (simplified - you might want a more sophisticated approach)
       const genreCounts: Record<string, number> = {};
-      watchedMovies.data.forEach((item) => {
+      watchedMovies.data.forEach((item: WatchedMovieWithMovie) => {
         if (item.movie?.genres) {
           item.movie.genres.forEach((genre: any) => {
             genreCounts[genre.name] = (genreCounts[genre.name] || 0) + 1;
@@ -82,7 +84,7 @@ export const useUserStats = () => {
       return {
         totalWatched: watchedMovies.count || 0,
         totalCollections: collections.length,
-        totalRankings: rankings.filter((r) => r.ranking_method).length,
+        totalRankings: 0,
         averageRating,
         favoriteGenre,
         moviesThisMonth,
@@ -90,6 +92,6 @@ export const useUserStats = () => {
       };
     },
     enabled: !!user?.id,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 };

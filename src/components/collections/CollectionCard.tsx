@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { Card } from '../common/Card';
 import type { CollectionPreview } from '@/schemas/collection-combined.schema';
 import { ChartBar } from 'lucide-react';
@@ -15,17 +17,13 @@ const CollectionCard = ({
   previewSize = 'medium',
 }: CollectionCardProps) => {
   const handleClick = () => {
-    console.log('Collection card clicked:', {
-      id: collection.id,
-      name: collection.name,
-    });
     onNavigate(collection.id);
   };
 
   const itemCount = collection._count?.collection_items || 0;
   const hasItems = collection.collection_items.length > 0;
 
-  console.log('collection', collection);
+  // console.log('collection', collection);
 
   return (
     <Card

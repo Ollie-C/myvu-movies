@@ -1,3 +1,5 @@
+// NOT AUDITED
+
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Check, Folder, FolderPlus } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -131,11 +133,11 @@ export function CollectionDropdown({
     collectionId: string,
     inCollection: boolean
   ) => {
-    console.log('Toggling collection:', {
-      collectionId,
-      inCollection,
-      movieId: movie.id,
-    });
+    // console.log('Toggling collection:', {
+    //   collectionId,
+    //   inCollection,
+    //   movieId: movie.id,
+    // });
     setLoadingCollectionId(collectionId);
     await toggleMovieInCollectionMutation.mutateAsync({
       collectionId,

@@ -1,9 +1,9 @@
-import React from 'react';
+// NOT AUDITED
+
 import type { Movie } from '@/schemas/movie.schema';
 import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 
 interface MoviePosterProps {
-  // Accept either a movie directly or a userMovie object
   movie?: Movie;
   userMovie?: WatchedMovieWithMovie;
   disabled?: boolean;
