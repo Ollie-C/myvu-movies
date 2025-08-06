@@ -1,6 +1,6 @@
-// NOT AUDITED
-
+// AUDITED 06/08/2025
 import { supabase } from '@/lib/supabase';
+import { z } from 'zod';
 import {
   WatchlistSchema,
   WatchlistWithMovieSchema,
@@ -8,7 +8,6 @@ import {
   type WatchlistWithMovie,
   type WatchlistPriority,
 } from '@/schemas/watchlist.schema';
-import { z } from 'zod';
 
 export const watchlistService = {
   async getWatchlist(
@@ -44,20 +43,12 @@ export const watchlistService = {
       query = query.eq('priority', priority);
     }
 
-    // Apply sorting
-    if (sortBy === 'priority') {
-      // For priority, we need custom ordering
-      // Using CASE in raw SQL would be better, but for now:
-      query = query.order('priority', { ascending: true });
-    } else if (sortBy === 'title') {
-      // Can't directly sort by movie title with Supabase
-      // Will need to sort in memory after fetching
-      query = query.order('added_date', { ascending: false });
+    if (sortBy === 'title') {
+      query = query.order('movies.title', { ascending: sortOrder === 'asc' });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
 
-    // Apply pagination
     const start = (page - 1) * limit;
     const end = start + limit - 1;
     query = query.range(start, end);
@@ -65,10 +56,8 @@ export const watchlistService = {
     const { data, error, count } = await query;
     if (error) throw error;
 
-    // Validate data
     let validatedData = z.array(WatchlistWithMovieSchema).parse(data || []);
 
-    // Sort by movie title if needed (post-query sorting)
     if (sortBy === 'title' && validatedData.length > 0) {
       validatedData.sort((a, b) => {
         const titleA = a.movie?.title || '';
@@ -79,7 +68,6 @@ export const watchlistService = {
       });
     }
 
-    // Sort by priority with proper order
     if (sortBy === 'priority') {
       const priorityOrder = { high: 1, medium: 2, low: 3 };
       validatedData.sort((a, b) => {
@@ -96,28 +84,19 @@ export const watchlistService = {
     userId: string,
     movieId: number
   ): Promise<Watchlist | null> {
-    try {
-      // Try a more explicit query structure
-      const { data, error } = await supabase
-        .from('watchlist')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('movie_id', movieId)
-        .maybeSingle();
+    const { data, error } = await supabase
+      .from('watchlist')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .maybeSingle();
 
-      if (error) {
-        console.error('Watchlist query error:', error);
-        if (error.code === 'PGRST116') return null; // Not found
-        throw error;
-      }
-
-      if (!data) return null;
-
-      return WatchlistSchema.parse(data);
-    } catch (error) {
-      console.error('Error in getWatchlistItem:', error);
+    if (error) {
+      if (error.code === 'PGRST116') return null;
       throw error;
     }
+
+    return data ? WatchlistSchema.parse(data) : null;
   },
 
   async addToWatchlist(
@@ -156,7 +135,7 @@ export const watchlistService = {
       .eq('movie_id', movieId);
 
     if (error) {
-      if (error.code === 'PGRST116') return; // Already removed
+      if (error.code === 'PGRST116') return;
       throw error;
     }
   },
@@ -221,7 +200,6 @@ export const watchlistService = {
     return WatchlistSchema.parse(data);
   },
 
-  // Additional useful methods
   async getWatchlistStats(userId: string): Promise<{
     total: number;
     byPriority: Record<WatchlistPriority, number>;
@@ -254,11 +232,6 @@ export const watchlistService = {
     });
 
     return stats;
-  },
-
-  async isMovieInWatchlist(userId: string, movieId: number): Promise<boolean> {
-    const item = await this.getWatchlistItem(userId, movieId);
-    return !!item;
   },
 
   async getDueReminders(userId: string): Promise<WatchlistWithMovie[]> {

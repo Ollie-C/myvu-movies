@@ -26,7 +26,6 @@ export function Signup() {
     try {
       await signUp(email, password, username);
       setSuccess(true);
-      // Optionally auto-redirect after signup
       setTimeout(() => navigate('/'), 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');

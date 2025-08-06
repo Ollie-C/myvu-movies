@@ -1,7 +1,7 @@
 // NOT AUDITED
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { RankingService } from '@/services/supabase/ranking.service';
+import { rankingService } from '@/services/supabase/ranking.service';
 import { useState, useEffect } from 'react';
 
 export function useRankingBattle(rankingListId: string, userId: string) {
@@ -18,7 +18,7 @@ export function useRankingBattle(rankingListId: string, userId: string) {
     queryFn: async () => {
       if (!userId || !rankingListId) return null;
 
-      const pair = await RankingService.getRandomMoviePair(
+      const pair = await rankingService.getRandomMoviePair(
         userId,
         rankingListId
       );
@@ -74,7 +74,7 @@ export function useRankingBattle(rankingListId: string, userId: string) {
         rankingListId,
       });
 
-      return await RankingService.processRankingBattle(
+      return await rankingService.processRankingBattle(
         { winnerId, loserId, rankingListId },
         1500, // Default ELO for now
         1500 // Default ELO for now

@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase';
 
 // Services
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
-import { RankingService } from '@/services/supabase/ranking.service';
-import { EnhancedRatingService } from '@/services/supabase/enhanced-rating.service';
+import { rankingService } from '@/services/supabase/ranking.service';
+import { enhancedRatingService } from '@/services/supabase/enhanced-rating.service';
 
 // Ranking engine
 import {
@@ -405,7 +405,7 @@ export function useUnifiedRanking({
       rating: number;
       notes?: string;
     }) => {
-      return await EnhancedRatingService.completeEnhancedRating(
+      return await enhancedRatingService.completeEnhancedRating(
         userId,
         movieId,
         rating,
@@ -450,7 +450,7 @@ export function useUnifiedRanking({
       const winnerElo = winnerItem?.elo_score || 1500;
       const loserElo = loserItem?.elo_score || 1500;
 
-      return RankingService.processRankingBattle(
+      return rankingService.processRankingBattle(
         { winnerId, loserId, rankingListId },
         winnerElo,
         loserElo
@@ -599,7 +599,7 @@ export function useUnifiedRanking({
   const getSimilarMovies = useCallback(
     async (movieId: number, rating: number) => {
       if (!userId || !movieId || !rating) return [];
-      return await EnhancedRatingService.findSimilarMovies(
+      return await enhancedRatingService.findSimilarMovies(
         userId,
         movieId,
         rating,
@@ -872,7 +872,7 @@ export const useEnhancedRating = () => {
       rating: number;
       notes?: string;
     }) => {
-      return await EnhancedRatingService.completeEnhancedRating(
+      return await enhancedRatingService.completeEnhancedRating(
         userId,
         movieId,
         rating,

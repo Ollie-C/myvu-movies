@@ -1,6 +1,7 @@
-// NOT AUDITED
-
+// AUDITED 06/08/2025
 import { supabase } from '@/lib/supabase';
+import { z } from 'zod';
+
 import {
   CollectionSchema,
   CollectionWithCountSchema,
@@ -25,10 +26,8 @@ import {
   type CollectionWithItems,
   type CollectionPreview,
 } from '@/schemas/collection-combined.schema';
-import { z } from 'zod';
 
 export const collectionService = {
-  // Get all collections for a user
   async getUserCollections(
     userId: string,
     options?: {
@@ -57,13 +56,11 @@ export const collectionService = {
     if (error) throw error;
 
     if (!withCounts) {
-      // If no counts requested, just validate as regular collections
       return (data || []).map((collection) =>
         CollectionSchema.parse(collection)
       );
     }
 
-    // Type assertion for the count query result
     type CollectionWithCountQuery = Collection & {
       collection_items: { count: number }[];
     };
@@ -87,7 +84,6 @@ export const collectionService = {
     });
   },
 
-  // Get a specific collection with its items
   async getCollection(
     collectionId: string
   ): Promise<CollectionWithItems | null> {
@@ -106,11 +102,10 @@ export const collectionService = {
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      if (error.code === 'PGRST116') return null;
       throw error;
     }
 
-    // Sort items by position
     if (data?.collection_items) {
       data.collection_items = collectionItemHelpers.sortByPosition(
         data.collection_items
@@ -120,7 +115,6 @@ export const collectionService = {
     return CollectionWithItemsSchema.parse(data);
   },
 
-  // Get collection preview (limited items)
   async getCollectionPreview(
     collectionId: string
   ): Promise<CollectionPreview | null> {
@@ -143,7 +137,6 @@ export const collectionService = {
       throw error;
     }
 
-    // Limit items for preview and add count
     const previewData = {
       ...data,
       collection_items: data.collection_items?.slice(0, 6) || [],
@@ -155,12 +148,10 @@ export const collectionService = {
     return CollectionPreviewSchema.parse(previewData);
   },
 
-  // Create a new collection
   async createCollection(
     userId: string,
     collectionData: Omit<CollectionInsert, 'user_id'>
   ): Promise<Collection> {
-    // Generate slug if not provided
     const slug =
       collectionData.slug ||
       collectionHelpers.generateSlug(collectionData.name);
@@ -181,14 +172,12 @@ export const collectionService = {
     return CollectionSchema.parse(data);
   },
 
-  // Update a collection
   async updateCollection(
     collectionId: string,
     updates: CollectionUpdate
   ): Promise<Collection> {
     const validatedUpdates = CollectionUpdateSchema.parse(updates);
 
-    // Generate new slug if name is updated
     if (validatedUpdates.name && !validatedUpdates.slug) {
       validatedUpdates.slug = collectionHelpers.generateSlug(
         validatedUpdates.name
@@ -209,7 +198,6 @@ export const collectionService = {
     return CollectionSchema.parse(data);
   },
 
-  // Delete a collection
   async deleteCollection(collectionId: string): Promise<void> {
     const { error } = await supabase
       .from('collections')
@@ -219,19 +207,16 @@ export const collectionService = {
     if (error) throw error;
   },
 
-  // Add a movie to a collection
   async addMovieToCollection(
     collectionId: string,
     movieId: number,
     notes?: string
   ): Promise<CollectionItemWithMovie> {
-    // First check if movie already exists in collection
     const exists = await this.isMovieInCollection(collectionId, movieId);
     if (exists) {
       throw new Error('Movie already exists in this collection');
     }
 
-    // Get the next position
     const collection = await this.getCollection(collectionId);
     if (!collection) throw new Error('Collection not found');
 
@@ -257,24 +242,20 @@ export const collectionService = {
 
     if (error) throw error;
 
-    // Update collection's updated_at timestamp
     await this.touchCollection(collectionId);
 
     return CollectionItemWithMovieSchema.parse(data);
   },
 
-  // Add multiple movies to a collection
   async addMoviesToCollection(
     collectionId: string,
     movieIds: number[]
   ): Promise<CollectionItemWithMovie[]> {
     if (movieIds.length === 0) return [];
 
-    // Get current collection to determine positions
     const collection = await this.getCollection(collectionId);
     if (!collection) throw new Error('Collection not found');
 
-    // Filter out movies that already exist
     const existingMovieIds = new Set(
       collection.collection_items.map((item) => item.movie_id)
     );
@@ -282,7 +263,6 @@ export const collectionService = {
 
     if (newMovieIds.length === 0) return [];
 
-    // Create insert data
     let nextPosition = collectionItemHelpers.getNextPosition(collection);
     const insertData = newMovieIds.map((movieId) => ({
       collection_id: collectionId,
@@ -306,7 +286,6 @@ export const collectionService = {
     return z.array(CollectionItemWithMovieSchema).parse(data || []);
   },
 
-  // Remove a movie from a collection
   async removeMovieFromCollection(
     collectionId: string,
     movieId: number
@@ -322,7 +301,6 @@ export const collectionService = {
     await this.touchCollection(collectionId);
   },
 
-  // Check if a movie is in a collection
   async isMovieInCollection(
     collectionId: string,
     movieId: number
@@ -338,14 +316,12 @@ export const collectionService = {
     return !!data;
   },
 
-  // Reorder items in a collection (for ranked collections)
   async reorderCollectionItems(
     collectionId: string,
     items: Array<{ id: string; position: number }>
   ): Promise<void> {
     const validatedItems = CollectionItemReorderSchema.parse(items);
 
-    // Update each item's position
     const promises = validatedItems.map((item) =>
       supabase
         .from('collection_items')
@@ -360,17 +336,14 @@ export const collectionService = {
     await this.touchCollection(collectionId);
   },
 
-  // Get collections that contain a specific movie
   async getCollectionsWithMovie(
     userId: string,
     movieId: number
   ): Promise<
     Array<{ collection: CollectionWithCount; inCollection: boolean }>
   > {
-    // Get all user collections
     const collections = await this.getUserCollections(userId);
 
-    // Get collection IDs that contain the movie
     const { data: movieCollectionItems, error } = await supabase
       .from('collection_items')
       .select('collection_id')
@@ -388,7 +361,6 @@ export const collectionService = {
     }));
   },
 
-  // Get collection previews for a user
   async getUserCollectionsWithPreviews(
     userId: string,
     limit?: number
@@ -410,7 +382,6 @@ export const collectionService = {
 
     if (error) throw error;
 
-    // Transform to preview format
     return (data || []).map((collection) => {
       const preview = {
         ...collection,
@@ -423,7 +394,6 @@ export const collectionService = {
     });
   },
 
-  // Update notes for a collection item
   async updateItemNotes(
     collectionId: string,
     movieId: number,
@@ -439,7 +409,6 @@ export const collectionService = {
     await this.touchCollection(collectionId);
   },
 
-  // Helper to update collection's updated_at timestamp
   async touchCollection(collectionId: string): Promise<void> {
     await supabase
       .from('collections')
@@ -447,7 +416,6 @@ export const collectionService = {
       .eq('id', collectionId);
   },
 
-  // Get collection statistics
   async getCollectionStats(userId: string): Promise<{
     totalCollections: number;
     rankedCollections: number;

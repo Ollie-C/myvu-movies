@@ -437,13 +437,64 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_elo_battle: {
+        Args: {
+          p_winner_rating: number
+          p_loser_rating: number
+          p_k_factor?: number
+        }
+        Returns: Json
+      }
+      elo_to_rating: {
+        Args: { p_elo_score: number }
+        Returns: number
+      }
+      get_dynamic_k_factor: {
+        Args: { p_rating_diff: number }
+        Returns: number
+      }
       get_user_movie_rating: {
         Args: { user_uuid: string; movie_id_param: number }
         Returns: number
       }
+      get_user_stats: {
+        Args: { user_uuid: string }
+        Returns: {
+          movies_watched: number
+          collections_count: number
+          rankings_count: number
+          total_movies: number
+          average_rating: number
+          favorite_genre: string
+        }[]
+      }
       has_user_watched_movie: {
         Args: { user_uuid: string; movie_id_param: number }
         Returns: boolean
+      }
+      process_enhanced_rating: {
+        Args: {
+          p_user_id: string
+          p_movie_id: number
+          p_initial_rating: number
+          p_notes?: string
+          p_tolerance?: number
+        }
+        Returns: Json
+      }
+      process_ranking_battle: {
+        Args: {
+          p_ranking_list_id: string
+          p_winner_movie_id: number
+          p_loser_movie_id: number
+          p_winner_current_rating?: number
+          p_loser_current_rating?: number
+        }
+        Returns: Json
+      }
+      rating_to_elo: {
+        Args: { p_rating: number }
+        Returns: number
       }
     }
     Enums: {

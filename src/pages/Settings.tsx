@@ -1,5 +1,4 @@
-// NOT AUDITED
-
+// AUDITED 06/08/2025
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/common/Card';
@@ -8,12 +7,10 @@ import { Input } from '@/components/common/Input';
 import { ArrowLeft, User, Save, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/context/ToastContext';
 import { userService } from '@/services/supabase/user.service';
 
 const Settings = () => {
   const { user, signOut } = useAuth();
-  const { showToast } = useToast();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -41,12 +38,10 @@ const Settings = () => {
       return userService.updateProfile(user.id, { username });
     },
     onSuccess: () => {
-      showToast('Profile updated successfully', 'success');
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['user-profile', user?.id] });
     },
     onError: (error) => {
-      showToast('Failed to update profile', 'error');
       console.error('Update profile error:', error);
     },
   });
@@ -62,7 +57,7 @@ const Settings = () => {
       await signOut();
       navigate('/login');
     } catch (error) {
-      showToast('Failed to sign out', 'error');
+      console.error('Failed to sign out:', error);
     }
   };
 

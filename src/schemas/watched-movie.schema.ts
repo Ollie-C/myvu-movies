@@ -1,5 +1,4 @@
 // AUDITED 05/08/2025
-
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 import { MovieSchema } from './movie.schema';

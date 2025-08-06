@@ -1,4 +1,4 @@
-// NOT AUDITED
+// NOT AUDITED - not yet used
 import { z } from 'zod';
 import { RankingMethodEnum } from './ranking-list.schema';
 

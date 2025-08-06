@@ -1,18 +1,17 @@
-// NOT AUDITED
+// AUDITED 06/08/2025
 import { supabase } from '@/lib/supabase';
-
-// Schemas
+import { z } from 'zod';
 import {
   WatchedMovieSchema,
   WatchedMovieWithMovieSchema,
   type WatchedMovie,
   type WatchedMovieWithMovie,
 } from '@/schemas/watched-movie.schema';
+import { dateHelpers } from '@/utils/dateHelpers';
 
-// Utils
-import { z } from 'zod';
+const DEFAULT_ELO_SCORE = 1500;
+const ELO_RATING_MULTIPLIER = 200;
 
-// Services
 export const watchedMoviesService = {
   async getWatchedMovies(
     userId: string,
@@ -56,18 +55,15 @@ export const watchedMoviesService = {
       query = query.not('rating', 'is', null);
     }
 
-    // Apply sorting
     if (sortBy === 'ranked') {
-      // For ranked sorting: rating first (desc), then ELO score (desc)
       query = query
-        .not('rating', 'is', null) // Only include rated movies for ranking
+        .not('rating', 'is', null)
         .order('rating', { ascending: false })
         .order('elo_score', { ascending: false });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
 
-    // Apply pagination
     const start = (page - 1) * limit;
     const end = start + limit - 1;
     query = query.range(start, end);
@@ -93,7 +89,7 @@ export const watchedMoviesService = {
       .eq('movie_id', movieId)
       .single();
     if (error) {
-      if (error.code === 'PGRST116') return null; // Not found
+      if (error.code === 'PGRST116') return null;
       throw error;
     }
     return WatchedMovieSchema.parse(data);
@@ -110,9 +106,9 @@ export const watchedMoviesService = {
         {
           user_id: userId,
           movie_id: movieId,
-          watched_date: watchedDate || new Date().toISOString().split('T')[0],
-          elo_score: 1600, // Default ELO score for new watched movies
-          updated_at: new Date().toISOString(),
+          watched_date: watchedDate || dateHelpers.getCurrentDate(),
+          elo_score: DEFAULT_ELO_SCORE,
+          updated_at: dateHelpers.getCurrentTimestamp(),
         },
         {
           onConflict: 'user_id,movie_id',
@@ -122,14 +118,6 @@ export const watchedMoviesService = {
       .single();
 
     if (error) throw error;
-
-    // Console log when movie is marked as watched with default ELO
-    console.log('📽️ Movie Marked as Watched:', {
-      movieId,
-      userId,
-      defaultElo: 1600,
-      watchedDate: watchedDate || new Date().toISOString().split('T')[0],
-    });
 
     return WatchedMovieSchema.parse(data);
   },
@@ -149,16 +137,14 @@ export const watchedMoviesService = {
     movieId: number,
     rating: number
   ): Promise<WatchedMovie> {
-    // Calculate ELO score based on simplified rating (rating * 200)
-    // This makes it much more intuitive: 8.2/10 = 1640 ELO, 7.3/10 = 1460 ELO
-    const eloScore = Math.round(rating * 200);
+    const eloScore = Math.round(rating * ELO_RATING_MULTIPLIER);
 
     const { data, error } = await supabase
       .from('watched_movies')
       .update({
-        rating: rating, // Use 10-point scale directly
-        elo_score: eloScore, // Update ELO score based on rating
-        updated_at: new Date().toISOString(),
+        rating: rating,
+        elo_score: eloScore,
+        updated_at: dateHelpers.getCurrentTimestamp(),
       })
       .eq('user_id', userId)
       .eq('movie_id', movieId)
@@ -166,15 +152,6 @@ export const watchedMoviesService = {
       .single();
 
     if (error) throw error;
-
-    // Console log when rating is updated with new ELO
-    console.log('⭐ Rating Updated:', {
-      movieId,
-      userId,
-      rating,
-      newEloScore: eloScore,
-      timestamp: new Date().toISOString(),
-    });
 
     return WatchedMovieSchema.parse(data);
   },
@@ -191,24 +168,22 @@ export const watchedMoviesService = {
     return z.array(WatchedMovieWithMovieSchema).parse(data || []);
   },
 
-  async toggleFavorite(userId: string, movieId: number) {
-    const existing = await this.getWatchedMovie(userId, movieId);
-    if (!existing) {
-      throw new Error('Movie must be watched before marking as favorite');
+  async toggleFavorite(userId: string, movieId: number): Promise<WatchedMovie> {
+    const { data, error } = await supabase.rpc(
+      'toggle_favorite_watched_movie',
+      {
+        p_user_id: userId,
+        p_movie_id: movieId,
+      }
+    );
+
+    if (error) {
+      if (error.message?.includes('not found')) {
+        throw new Error('Movie must be watched before marking as favorite');
+      }
+      throw error;
     }
 
-    const { data, error } = await supabase
-      .from('watched_movies')
-      .update({
-        favorite: !existing.favorite,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId)
-      .eq('movie_id', movieId)
-      .select()
-      .single();
-
-    if (error) throw error;
     return WatchedMovieSchema.parse(data);
   },
 
@@ -221,7 +196,7 @@ export const watchedMoviesService = {
       .from('watched_movies')
       .update({
         notes,
-        updated_at: new Date().toISOString(),
+        updated_at: dateHelpers.getCurrentTimestamp(),
       })
       .eq('user_id', userId)
       .eq('movie_id', movieId)

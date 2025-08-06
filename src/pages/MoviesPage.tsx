@@ -63,9 +63,6 @@ const Movies = () => {
     limit: 24,
   });
 
-  // Ranked movies query for position calculation (only needed for position display)
-  const { data: rankedMovies = [] } = useRankedMovies(user?.id);
-
   // Data
   const {
     data: moviesData,

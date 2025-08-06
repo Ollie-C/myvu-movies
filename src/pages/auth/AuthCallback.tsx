@@ -1,4 +1,4 @@
-// NOT AUDITED
+// AUDITED 06/08/2025
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
