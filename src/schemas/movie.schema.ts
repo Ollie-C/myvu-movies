@@ -62,16 +62,59 @@ export const MovieSchema = z.object({
     .nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  search_vector: z.string().nullable(),
 }) satisfies z.ZodType<MovieRow>;
 
-export const MovieInsertSchema = MovieSchema.omit({
-  id: true,
-  created_at: true,
-  updated_at: true,
-}).extend({
+export const MovieInsertSchema = z.object({
   tmdb_id: z.number(),
   title: z.string().min(1),
-  genres: z.array(GenreSchema).default([]),
+  original_title: z.string().nullable(),
+  original_language: z.string().length(2).nullable(),
+  overview: z.string().nullable(),
+  release_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)')
+    .nullable(),
+  poster_path: z
+    .string()
+    .regex(/^\/[\w\-\.\/]+\.(jpg|jpeg|png)$/, 'Invalid poster path')
+    .nullable(),
+  backdrop_path: z
+    .string()
+    .regex(/^\/[\w\-\.\/]+\.(jpg|jpeg|png)$/, 'Invalid backdrop path')
+    .nullable(),
+  popularity: z.number().min(0).nullable(),
+  vote_average: z.number().min(0).max(10).nullable(),
+  vote_count: z.number().min(0).nullable(),
+  genres: z.array(GenreSchema).nullable(),
+  runtime: z.number().min(0).nullable(),
+  tagline: z.string().nullable(),
+  credits: z
+    .object({
+      cast: z
+        .array(
+          z.object({
+            id: z.number(),
+            name: z.string(),
+            character: z.string(),
+            profile_path: z.string().nullable(),
+          })
+        )
+        .optional(),
+      crew: z
+        .array(
+          z.object({
+            id: z.number(),
+            name: z.string(),
+            job: z.string(),
+            profile_path: z.string().nullable(),
+          })
+        )
+        .optional(),
+    })
+    .nullable(),
+  // search_vector is auto-generated, so it's optional for inserts
+  search_vector: z.string().nullable().optional(),
 });
 
 export const MovieUpdateSchema = MovieSchema.partial().omit({
@@ -179,10 +222,11 @@ export const movieHelpers = {
       popularity: tmdbMovie.popularity,
       vote_average: tmdbMovie.vote_average,
       vote_count: tmdbMovie.vote_count,
-      genres: tmdbMovie.genres || [],
+      genres: tmdbMovie.genres || null,
       runtime: tmdbMovie.runtime || null,
       tagline: tmdbMovie.tagline || null,
       credits: tmdbMovie.credits || null,
+      // search_vector is auto-generated, so we don't include it
     };
   },
 };

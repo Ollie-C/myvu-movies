@@ -1,4 +1,4 @@
-// NOT AUDITED
+// audited: 12/08/2025
 
 import { Card } from '../common/Card';
 import type { CollectionPreview } from '@/schemas/collection-combined.schema';
@@ -23,13 +23,10 @@ const CollectionCard = ({
   const itemCount = collection._count?.collection_items || 0;
   const hasItems = collection.collection_items.length > 0;
 
-  // console.log('collection', collection);
-
   return (
     <Card
       className='cursor-pointer relative overflow-hidden'
       onClick={handleClick}>
-      {/* Content layout depends on whether we have preview data */}
       {hasItems ? (
         <div className='flex items-center justify-between'>
           <div className='flex-1'>
@@ -72,7 +69,6 @@ const CollectionCard = ({
         </div>
       )}
 
-      {/* Ranked indicator */}
       {collection.is_ranked && (
         <div className='absolute top-4 right-4 z-10'>
           <div className='bg-amber-500 text-white p-1.5 rounded-full shadow-lg'>

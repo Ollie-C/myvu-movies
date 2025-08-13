@@ -1,6 +1,6 @@
-// NOT AUDITED
+// Audited: 11/08/2025
 
-import React, { Component } from 'react';
+import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { Card } from './Card';
 import { Button } from './Button';

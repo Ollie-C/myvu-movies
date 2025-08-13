@@ -17,25 +17,25 @@ export type Database = {
       collection_items: {
         Row: {
           added_at: string | null
-          collection_id: string | null
+          collection_id: string
           id: string
-          movie_id: number | null
+          movie_id: number
           notes: string | null
           position: number | null
         }
         Insert: {
           added_at?: string | null
-          collection_id?: string | null
+          collection_id: string
           id?: string
-          movie_id?: number | null
+          movie_id: number
           notes?: string | null
           position?: number | null
         }
         Update: {
           added_at?: string | null
-          collection_id?: string | null
+          collection_id?: string
           id?: string
-          movie_id?: number | null
+          movie_id?: number
           notes?: string | null
           position?: number | null
         }
@@ -106,6 +106,7 @@ export type Database = {
           poster_path: string | null
           release_date: string | null
           runtime: number | null
+          search_vector: unknown | null
           tagline: string | null
           title: string
           tmdb_id: number
@@ -126,6 +127,7 @@ export type Database = {
           poster_path?: string | null
           release_date?: string | null
           runtime?: number | null
+          search_vector?: unknown | null
           tagline?: string | null
           title: string
           tmdb_id: number
@@ -146,6 +148,7 @@ export type Database = {
           poster_path?: string | null
           release_date?: string | null
           runtime?: number | null
+          search_vector?: unknown | null
           tagline?: string | null
           title?: string
           tmdb_id?: number
@@ -179,65 +182,7 @@ export type Database = {
         }
         Relationships: []
       }
-      ranking_battles: {
-        Row: {
-          created_at: string | null
-          id: string
-          loser_elo_after: number | null
-          loser_elo_before: number | null
-          loser_movie_id: number | null
-          ranking_list_id: string | null
-          winner_elo_after: number | null
-          winner_elo_before: number | null
-          winner_movie_id: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          loser_elo_after?: number | null
-          loser_elo_before?: number | null
-          loser_movie_id?: number | null
-          ranking_list_id?: string | null
-          winner_elo_after?: number | null
-          winner_elo_before?: number | null
-          winner_movie_id?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          loser_elo_after?: number | null
-          loser_elo_before?: number | null
-          loser_movie_id?: number | null
-          ranking_list_id?: string | null
-          winner_elo_after?: number | null
-          winner_elo_before?: number | null
-          winner_movie_id?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "ranking_battles_loser_movie_id_fkey"
-            columns: ["loser_movie_id"]
-            isOneToOne: false
-            referencedRelation: "movies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ranking_battles_ranking_list_id_fkey"
-            columns: ["ranking_list_id"]
-            isOneToOne: false
-            referencedRelation: "ranking_lists"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ranking_battles_winner_movie_id_fkey"
-            columns: ["winner_movie_id"]
-            isOneToOne: false
-            referencedRelation: "movies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      ranking_items: {
+      ranking_list_items: {
         Row: {
           created_at: string | null
           elo_score: number | null
@@ -297,6 +242,7 @@ export type Database = {
           name: string
           ranking_method: Database["public"]["Enums"]["ranking_method_enum"]
           slug: string | null
+          status: string
           updated_at: string | null
           user_id: string | null
         }
@@ -308,6 +254,7 @@ export type Database = {
           name: string
           ranking_method?: Database["public"]["Enums"]["ranking_method_enum"]
           slug?: string | null
+          status?: string
           updated_at?: string | null
           user_id?: string | null
         }
@@ -319,10 +266,69 @@ export type Database = {
           name?: string
           ranking_method?: Database["public"]["Enums"]["ranking_method_enum"]
           slug?: string | null
+          status?: string
           updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []
+      }
+      versus_battles: {
+        Row: {
+          created_at: string | null
+          id: string
+          loser_elo_after: number | null
+          loser_elo_before: number | null
+          loser_movie_id: number | null
+          ranking_list_id: string | null
+          winner_elo_after: number | null
+          winner_elo_before: number | null
+          winner_movie_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          loser_elo_after?: number | null
+          loser_elo_before?: number | null
+          loser_movie_id?: number | null
+          ranking_list_id?: string | null
+          winner_elo_after?: number | null
+          winner_elo_before?: number | null
+          winner_movie_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          loser_elo_after?: number | null
+          loser_elo_before?: number | null
+          loser_movie_id?: number | null
+          ranking_list_id?: string | null
+          winner_elo_after?: number | null
+          winner_elo_before?: number | null
+          winner_movie_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ranking_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_battles_ranking_list_id_fkey"
+            columns: ["ranking_list_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_battles_winner_movie_id_fkey"
+            columns: ["winner_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       watched_movies: {
         Row: {
@@ -333,7 +339,6 @@ export type Database = {
           movie_id: number | null
           notes: string | null
           rating: number | null
-          rewatch_count: number | null
           updated_at: string | null
           user_id: string | null
           watched_date: string
@@ -346,7 +351,6 @@ export type Database = {
           movie_id?: number | null
           notes?: string | null
           rating?: number | null
-          rewatch_count?: number | null
           updated_at?: string | null
           user_id?: string | null
           watched_date: string
@@ -359,7 +363,6 @@ export type Database = {
           movie_id?: number | null
           notes?: string | null
           rating?: number | null
-          rewatch_count?: number | null
           updated_at?: string | null
           user_id?: string | null
           watched_date?: string
@@ -445,8 +448,12 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_merged_ranking_scores: {
+        Args: { p_ranking_list_id: string; p_weights?: Json }
+        Returns: Json
+      }
       elo_to_rating: {
-        Args: { p_elo_score: number }
+        Args: { elo_score: number }
         Returns: number
       }
       get_dynamic_k_factor: {
@@ -458,14 +465,15 @@ export type Database = {
         Returns: number
       }
       get_user_stats: {
-        Args: { user_uuid: string }
+        Args: { user_id: string }
         Returns: {
-          movies_watched: number
-          collections_count: number
-          rankings_count: number
-          total_movies: number
+          total_watched: number
+          total_rated: number
+          total_favorites: number
+          total_collections: number
+          total_ranking_lists: number
           average_rating: number
-          favorite_genre: string
+          average_elo_score: number
         }[]
       }
       has_user_watched_movie: {
@@ -473,14 +481,21 @@ export type Database = {
         Returns: boolean
       }
       process_enhanced_rating: {
-        Args: {
-          p_user_id: string
-          p_movie_id: number
-          p_initial_rating: number
-          p_notes?: string
-          p_tolerance?: number
-        }
-        Returns: Json
+        Args:
+          | {
+              movie_id: number
+              rating: number
+              notes?: string
+              favorite?: boolean
+            }
+          | {
+              p_user_id: string
+              p_movie_id: number
+              p_initial_rating: number
+              p_notes?: string
+              p_tolerance?: number
+            }
+        Returns: undefined
       }
       process_ranking_battle: {
         Args: {
@@ -492,9 +507,37 @@ export type Database = {
         }
         Returns: Json
       }
+      process_versus_battle: {
+        Args: { winner_id: number; loser_id: number; ranking_list_id?: string }
+        Returns: undefined
+      }
       rating_to_elo: {
-        Args: { p_rating: number }
+        Args: { rating: number }
         Returns: number
+      }
+      reorder_ranking_items: {
+        Args: { p_ranking_list_id: string; p_reordered_items: Json }
+        Returns: Json
+      }
+      reorder_ranking_list_items: {
+        Args: { ranking_list_id: string; reordered_items: Json }
+        Returns: undefined
+      }
+      search_local_movies: {
+        Args: { search_query: string; user_id_param?: string }
+        Returns: {
+          id: number
+          title: string
+          original_title: string
+          overview: string
+          poster_path: string
+          release_date: string
+          vote_average: number
+          genres: string[]
+          is_watched: boolean
+          is_in_watchlist: boolean
+          relevance_score: number
+        }[]
       }
     }
     Enums: {

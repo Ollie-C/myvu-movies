@@ -1,5 +1,4 @@
-// NOT AUDITED
-
+// Audited: 11/08/2025
 import type { Movie } from '@/schemas/movie.schema';
 import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 
@@ -22,11 +21,9 @@ const MoviePoster = ({
   showTitle = false,
   variant = 'default',
 }: MoviePosterProps) => {
-  // Handle both movie and userMovie props
   const movieData = movie || userMovie?.movie;
 
   if (!movieData) {
-    console.warn('MoviePoster: Either movie or userMovie prop is required');
     return null;
   }
 

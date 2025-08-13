@@ -23,7 +23,7 @@ export function BattleStats({
     queryKey: ['ranking-stats', rankingListId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('ranking_items')
+        .from('ranking_list_items')
         .select(
           `
           *,
@@ -115,7 +115,7 @@ export function BattleStats({
                     <div className='flex-1 min-w-0'>
                       <p className='font-medium truncate'>{item.movie.title}</p>
                       <p className='text-sm text-muted-foreground'>
-                        ELO: {Math.round(item.elo_score || 1500)}
+                        ELO: {Math.round(item.elo_score || 1200)}
                       </p>
                     </div>
                   </div>

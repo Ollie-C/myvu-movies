@@ -1,4 +1,4 @@
-// AUDITED 06/08/2025
+// AUDITED 11/08/2025
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 
@@ -34,19 +34,28 @@ export const collectionService = {
       limit?: number;
       withCounts?: boolean;
       isRankedOnly?: boolean;
+      sortBy?: 'updated_at' | 'created_at' | 'name';
+      sortOrder?: 'asc' | 'desc';
     }
   ): Promise<CollectionWithCount[]> {
-    const { limit, withCounts = true, isRankedOnly = false } = options || {};
+    const {
+      limit,
+      withCounts = true,
+      isRankedOnly = false,
+      sortBy = 'updated_at',
+      sortOrder = 'desc',
+    } = options || {};
 
     let query = supabase
       .from('collections')
       .select('*, collection_items(count)')
-      .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .eq('user_id', userId);
 
     if (isRankedOnly) {
       query = query.eq('is_ranked', true);
     }
+
+    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
     if (limit) {
       query = query.limit(limit);
@@ -212,8 +221,19 @@ export const collectionService = {
     movieId: number,
     notes?: string
   ): Promise<CollectionItemWithMovie> {
-    const exists = await this.isMovieInCollection(collectionId, movieId);
-    if (exists) {
+    // Check if movie already exists
+    const { data: existingItem, error: checkError } = await supabase
+      .from('collection_items')
+      .select('id')
+      .eq('collection_id', collectionId)
+      .eq('movie_id', movieId)
+      .maybeSingle();
+
+    if (checkError) {
+      throw checkError;
+    }
+
+    if (existingItem) {
       throw new Error('Movie already exists in this collection');
     }
 
@@ -226,7 +246,7 @@ export const collectionService = {
       collection_id: collectionId,
       movie_id: movieId,
       position: nextPosition,
-      notes,
+      notes: notes || null,
     });
 
     const { data, error } = await supabase
@@ -301,19 +321,39 @@ export const collectionService = {
     await this.touchCollection(collectionId);
   },
 
-  async isMovieInCollection(
+  async toggleMovieInCollection(
     collectionId: string,
     movieId: number
-  ): Promise<boolean> {
-    const { data, error } = await supabase
+  ): Promise<void> {
+    // Use the working query approach instead of the problematic isMovieInCollection
+    const { data: existingItem, error } = await supabase
       .from('collection_items')
       .select('id')
       .eq('collection_id', collectionId)
       .eq('movie_id', movieId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single to avoid PGRST116
 
-    if (error && error.code !== 'PGRST116') throw error;
-    return !!data;
+    if (error) {
+      console.error('Error checking collection membership:', {
+        collectionId,
+        movieId,
+        error: {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        },
+      });
+      throw error;
+    }
+
+    const exists = !!existingItem;
+
+    if (exists) {
+      await this.removeMovieFromCollection(collectionId, movieId);
+    } else {
+      await this.addMovieToCollection(collectionId, movieId);
+    }
   },
 
   async reorderCollectionItems(
@@ -349,7 +389,18 @@ export const collectionService = {
       .select('collection_id')
       .eq('movie_id', movieId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error querying collection_items:', {
+        movieId,
+        error: {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        },
+      });
+      throw error;
+    }
 
     const collectionsWithMovieSet = new Set(
       movieCollectionItems?.map((item) => item.collection_id) || []
@@ -363,8 +414,14 @@ export const collectionService = {
 
   async getUserCollectionsWithPreviews(
     userId: string,
-    limit?: number
+    limit?: number,
+    options?: {
+      sortBy?: 'updated_at' | 'created_at' | 'name';
+      sortOrder?: 'asc' | 'desc';
+    }
   ): Promise<CollectionPreview[]> {
+    const { sortBy = 'updated_at', sortOrder = 'desc' } = options || {};
+
     const { data, error } = await supabase
       .from('collections')
       .select(
@@ -377,7 +434,7 @@ export const collectionService = {
       `
       )
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false })
+      .order(sortBy, { ascending: sortOrder === 'asc' })
       .limit(limit || 10);
 
     if (error) throw error;

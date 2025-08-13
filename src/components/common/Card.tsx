@@ -1,5 +1,4 @@
-// NOT AUDITED
-
+// Audited: 11/08/2025
 import { cn } from '@/utils/cn';
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {

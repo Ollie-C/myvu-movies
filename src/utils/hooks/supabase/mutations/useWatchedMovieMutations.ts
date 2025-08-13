@@ -1,4 +1,4 @@
-// NOT AUDITED
+// audited: 12/08/2025
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
@@ -7,6 +7,11 @@ import { useAuth } from '@/context/AuthContext';
 import { movieKeys } from '../queries/useMovieDetails';
 import { watchedMoviesKeys } from '../queries/useWatchedMovies';
 import { watchlistKeys } from '../queries/useWatchlist';
+import { movieService } from '@/services/supabase/movies.service';
+import type { TMDBMovie } from '@/schemas/movie.schema';
+import { userMoviesKeys } from '../queries/useUserMovies';
+import { useMovieStore } from '@/stores/useMovieStore';
+import { userStatsKeys } from '../queries/useUserStats';
 
 interface MovieData {
   movieId: number;
@@ -14,42 +19,86 @@ interface MovieData {
   [key: string]: any;
 }
 
+const prepareMovieData = async (
+  movie: TMDBMovie | MovieData
+): Promise<MovieData> => {
+  if ('movieId' in movie) {
+    return movie;
+  }
+
+  const cachedMovie = await movieService.cacheMovie(movie);
+  return {
+    movieId: cachedMovie.id,
+    tmdbId: movie.id,
+    ...movie,
+  };
+};
+
+export const useToggleFavorite = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (movieId: number) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      return watchedMoviesService.toggleFavorite(user.id, movieId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: watchedMoviesKeys.all });
+      queryClient.invalidateQueries({ queryKey: userMoviesKeys.all });
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: userMoviesKeys.allForUser(user.id),
+        });
+      }
+    },
+  });
+};
+
 export const useToggleWatched = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { setMovieState } = useMovieStore.getState();
 
   return useMutation({
     mutationFn: async ({
       movie,
       isWatched,
     }: {
-      movie: MovieData;
+      movie: MovieData | TMDBMovie;
       isWatched: boolean;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      const movieData = await prepareMovieData(movie);
+
       if (isWatched) {
-        // Remove from watched
-        await watchedMoviesService.removeWatched(user.id, movie.movieId);
+        await watchedMoviesService.removeWatched(user.id, movieData.movieId);
       } else {
-        // Add to watched (and remove from watchlist if present)
-        await watchedMoviesService.markAsWatched(user.id, movie.movieId);
+        await watchedMoviesService.markAsWatched(user.id, movieData.movieId);
         await watchlistService
-          .removeFromWatchlist(user.id, movie.movieId)
+          .removeFromWatchlist(user.id, movieData.movieId)
           .catch(() => {});
       }
+
+      return movieData;
     },
-    onSuccess: (_, { movie }) => {
-      // Invalidate relevant queries
-      queryClient.invalidateQueries({
-        queryKey: movieKeys.userStatus(user?.id || '', movie.tmdbId),
+    onSuccess: (movieData) => {
+      // Update the store with the final state
+      setMovieState(movieData.tmdbId, {
+        isWatched: true,
+        isInWatchlist: false, // Removed from watchlist when watched
       });
-      queryClient.invalidateQueries({
-        queryKey: watchedMoviesKeys.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: watchlistKeys.all,
-      });
+
+      // Only invalidate queries that need server data
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: userStatsKeys.stats(user.id),
+        });
+        queryClient.invalidateQueries({
+          queryKey: watchedMoviesKeys.recent(user.id),
+        });
+      }
     },
   });
 };
@@ -57,27 +106,39 @@ export const useToggleWatched = () => {
 export const useToggleWatchlist = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { setMovieState } = useMovieStore.getState();
 
   return useMutation({
     mutationFn: async ({
       movie,
       isInWatchlist,
     }: {
-      movie: MovieData;
+      movie: MovieData | TMDBMovie;
       isInWatchlist: boolean;
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
+      const movieData = await prepareMovieData(movie);
+
       if (isInWatchlist) {
-        await watchlistService.removeFromWatchlist(user.id, movie.movieId);
+        await watchlistService.removeFromWatchlist(user.id, movieData.movieId);
       } else {
-        await watchlistService.addToWatchlist(user.id, movie.movieId, 'medium');
+        await watchlistService.addToWatchlist(
+          user.id,
+          movieData.movieId,
+          'medium'
+        );
       }
+
+      return movieData;
     },
-    onSuccess: (_, { movie }) => {
-      queryClient.invalidateQueries({
-        queryKey: movieKeys.userStatus(user?.id || '', movie.tmdbId),
+    onSuccess: (movieData) => {
+      // Update the store
+      setMovieState(movieData.tmdbId, {
+        isInWatchlist: true,
       });
+
+      // Only invalidate watchlist-specific queries
       queryClient.invalidateQueries({
         queryKey: watchlistKeys.all,
       });
@@ -101,12 +162,10 @@ export const useUpdateRating = () => {
     }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      // If not watched yet, mark as watched first
       if (!isWatched) {
         await watchedMoviesService.markAsWatched(user.id, movie.movieId);
       }
 
-      // Update rating (convert 5-star to 10-point scale)
       await watchedMoviesService.updateRating(user.id, movie.movieId, rating);
     },
     onSuccess: (_, { movie }) => {

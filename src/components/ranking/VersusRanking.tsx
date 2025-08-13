@@ -1,21 +1,22 @@
-// NOT AUDITED
+// AUDITED 12/08/2025
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Trophy, Zap } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useRankingBattle } from '@/utils/hooks/supabase/queries/useRankingBattle';
 import MoviePoster from '@/components/movie/MoviePoster';
 import { BattleStats } from '@/components/ranking/battle/BattleStats';
+import { useVersusRankingPairs } from '@/utils/hooks/supabase/queries/useRanking';
+import { useAuth } from '@/context/AuthContext';
+import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 
 interface VersusRankingProps {
-  rankingListId: string;
+  watchedMovies: WatchedMovieWithMovie[];
   rankingListName: string;
 }
 
 export function VersusRanking({
-  rankingListId,
+  watchedMovies,
   rankingListName,
 }: VersusRankingProps) {
   const navigate = useNavigate();
@@ -24,18 +25,30 @@ export function VersusRanking({
   const [battleCount, setBattleCount] = useState(0);
   const [sessionStartTime] = useState(Date.now());
 
-  const { moviePair, isLoading, selectWinner, isProcessing, getNewPair } =
-    useRankingBattle(rankingListId, user?.id || '');
+  const { currentPair, isProcessing, processBattle, nextPair, hasNextPair } =
+    useVersusRankingPairs(watchedMovies);
+
+  const isLoading = !currentPair;
 
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (isProcessing || !moviePair) return;
+      if (isProcessing || !currentPair) return;
 
       if (e.key === '1' || e.key === 'ArrowLeft') {
-        handleSelection(moviePair.movie1.movie_id!, moviePair.movie2.movie_id!);
+        if (currentPair.movie1.movie_id && currentPair.movie2.movie_id) {
+          handleSelection(
+            currentPair.movie1.movie_id,
+            currentPair.movie2.movie_id
+          );
+        }
       } else if (e.key === '2' || e.key === 'ArrowRight') {
-        handleSelection(moviePair.movie2.movie_id!, moviePair.movie1.movie_id!);
+        if (currentPair.movie1.movie_id && currentPair.movie2.movie_id) {
+          handleSelection(
+            currentPair.movie2.movie_id,
+            currentPair.movie1.movie_id
+          );
+        }
       } else if (e.key === 'Escape') {
         navigate('/rankings');
       }
@@ -43,11 +56,13 @@ export function VersusRanking({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [moviePair, isProcessing, navigate]);
+  }, [currentPair, isProcessing, navigate]);
 
   const handleSelection = async (winnerId: number, loserId: number) => {
+    if (!user?.id) return;
+
     try {
-      await selectWinner(winnerId, loserId);
+      await processBattle(winnerId, loserId, user.id);
       setBattleCount((prev) => prev + 1);
     } catch (error) {
       console.error('Failed to record battle result', error);
@@ -58,7 +73,7 @@ export function VersusRanking({
     (Date.now() - sessionStartTime) / 1000 / 60
   );
 
-  if (isLoading || !moviePair) {
+  if (isLoading || !currentPair) {
     return (
       <div className='flex flex-col items-center justify-center min-h-screen p-4'>
         <motion.div
@@ -121,7 +136,7 @@ export function VersusRanking({
       <div className='max-w-7xl mx-auto'>
         <AnimatePresence mode='wait'>
           <motion.div
-            key={`${moviePair.movie1.id}-${moviePair.movie2.id}`}
+            key={`${currentPair.movie1.movie_id}-${currentPair.movie2.movie_id}`}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -131,13 +146,18 @@ export function VersusRanking({
             <div className='relative'>
               <div className='versus-movie-card group'>
                 <MoviePoster
-                  movie={(moviePair.movie1 as any).movie}
-                  onClick={() =>
-                    handleSelection(
-                      moviePair.movie1.movie_id!,
-                      moviePair.movie2.movie_id!
-                    )
-                  }
+                  movie={currentPair.movie1.movie}
+                  onClick={() => {
+                    if (
+                      currentPair.movie1.movie_id &&
+                      currentPair.movie2.movie_id
+                    ) {
+                      handleSelection(
+                        currentPair.movie1.movie_id,
+                        currentPair.movie2.movie_id
+                      );
+                    }
+                  }}
                   disabled={isProcessing}
                   variant='rounded'
                   className={`w-full max-w-md mx-auto transform transition-all duration-200 ${
@@ -146,9 +166,9 @@ export function VersusRanking({
                       : 'hover:scale-105 hover:shadow-2xl cursor-pointer'
                   }`}
                 />
-                {/* Optional: Add ranking info overlay */}
+                {/* Optional: Add ELO score overlay */}
                 <div className='absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs'>
-                  Rank: {moviePair.movie1.current_rating || 'Unranked'}
+                  ELO: {currentPair.movie1.elo_score || 'Unranked'}
                 </div>
               </div>
               <div className='absolute -bottom-12 left-1/2 -translate-x-1/2 md:hidden'>
@@ -178,13 +198,18 @@ export function VersusRanking({
             <div className='relative'>
               <div className='versus-movie-card group'>
                 <MoviePoster
-                  movie={(moviePair.movie2 as any).movie}
-                  onClick={() =>
-                    handleSelection(
-                      moviePair.movie2.movie_id!,
-                      moviePair.movie1.movie_id!
-                    )
-                  }
+                  movie={currentPair.movie2.movie}
+                  onClick={() => {
+                    if (
+                      currentPair.movie1.movie_id &&
+                      currentPair.movie2.movie_id
+                    ) {
+                      handleSelection(
+                        currentPair.movie2.movie_id,
+                        currentPair.movie1.movie_id
+                      );
+                    }
+                  }}
                   disabled={isProcessing}
                   variant='rounded'
                   className={`w-full max-w-md mx-auto transform transition-all duration-200 ${
@@ -193,9 +218,9 @@ export function VersusRanking({
                       : 'hover:scale-105 hover:shadow-2xl cursor-pointer'
                   }`}
                 />
-                {/* Optional: Add ranking info overlay */}
+                {/* Optional: Add ELO score overlay */}
                 <div className='absolute top-2 left-2 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-xs'>
-                  Rank: {moviePair.movie2.current_rating || 'Unranked'}
+                  ELO: {currentPair.movie2.elo_score || 'Unranked'}
                 </div>
               </div>
               <div className='absolute -bottom-12 left-1/2 -translate-x-1/2 md:hidden'>
@@ -217,8 +242,8 @@ export function VersusRanking({
         {/* Skip button */}
         <div className='flex justify-center mt-8'>
           <button
-            onClick={() => getNewPair()}
-            disabled={isProcessing}
+            onClick={nextPair}
+            disabled={isProcessing || !hasNextPair}
             className='bg-primary text-white px-4 py-2 rounded-md disabled:opacity-50'>
             Skip this pair
           </button>
@@ -228,7 +253,7 @@ export function VersusRanking({
       {/* Stats Modal */}
       {showStats && (
         <BattleStats
-          rankingListId={rankingListId}
+          rankingListId='' // TODO: Fix this when we have proper ranking list support
           onClose={() => setShowStats(false)}
           battleCount={battleCount}
           sessionDuration={sessionDuration}

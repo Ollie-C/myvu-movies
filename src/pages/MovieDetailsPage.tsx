@@ -175,41 +175,15 @@ const MovieDetails = () => {
                 Add to Collection
               </Button>
             </div>
+
+            <Button
+              onClick={() => setShowRatingModal(true)}
+              className='flex items-center gap-2'
+              disabled={updateRating.isPending}>
+              <Star className='w-4 h-4' />
+              {userRating ? 'Update Rating' : 'Rate Movie'}
+            </Button>
           </div>
-
-          {/* Rating */}
-          {isWatched && (
-            <div className='space-y-4'>
-              <div className='flex items-center justify-between'>
-                <h3 className='text-lg font-semibold'>Your Rating</h3>
-                {userRating && (
-                  <div className='flex items-center gap-2'>
-                    <div className='flex gap-1'>
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < userRating
-                              ? 'text-yellow-400 fill-current'
-                              : 'text-gray-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className='font-medium'>{userRating}/10</span>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                onClick={() => setShowRatingModal(true)}
-                className='flex items-center gap-2'
-                disabled={updateRating.isPending}>
-                <Star className='w-4 h-4' />
-                {userRating ? 'Update Rating' : 'Rate Movie'}
-              </Button>
-            </div>
-          )}
         </div>
       )}
 

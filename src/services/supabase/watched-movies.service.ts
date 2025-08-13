@@ -9,7 +9,7 @@ import {
 } from '@/schemas/watched-movie.schema';
 import { dateHelpers } from '@/utils/dateHelpers';
 
-const DEFAULT_ELO_SCORE = 1500;
+const DEFAULT_ELO_SCORE = 1200;
 const ELO_RATING_MULTIPLIER = 200;
 
 export const watchedMoviesService = {
@@ -168,23 +168,31 @@ export const watchedMoviesService = {
     return z.array(WatchedMovieWithMovieSchema).parse(data || []);
   },
 
-  async toggleFavorite(userId: string, movieId: number): Promise<WatchedMovie> {
-    const { data, error } = await supabase.rpc(
-      'toggle_favorite_watched_movie',
-      {
-        p_user_id: userId,
-        p_movie_id: movieId,
-      }
-    );
+  async toggleFavorite(userId: string, movieId: number): Promise<boolean> {
+    const { data: current, error: fetchError } = await supabase
+      .from('watched_movies')
+      .select('favorite')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .single();
 
-    if (error) {
-      if (error.message?.includes('not found')) {
-        throw new Error('Movie must be watched before marking as favorite');
-      }
-      throw error;
-    }
+    if (fetchError) throw fetchError;
+    if (!current) throw new Error('Movie not found in watched list');
 
-    return WatchedMovieSchema.parse(data);
+    const newFavoriteValue = !current.favorite;
+
+    const { error: updateError } = await supabase
+      .from('watched_movies')
+      .update({
+        favorite: newFavoriteValue,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('movie_id', movieId);
+
+    if (updateError) throw updateError;
+
+    return newFavoriteValue;
   },
 
   async updateNotes(

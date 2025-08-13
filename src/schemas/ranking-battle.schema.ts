@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 
 // Get the type from Supabase
-type RankingBattleRow = Database['public']['Tables']['ranking_battles']['Row'];
+type RankingBattleRow = Database['public']['Tables']['versus_battles']['Row'];
 
 // Create Zod schema matching the database
 export const RankingBattleSchema = z.object({

@@ -1,4 +1,4 @@
-// NOT AUDITED
+// AUDITED 11/08/2025
 
 import React from 'react';
 import { tmdb } from '@/lib/api/tmdb';
@@ -17,7 +17,6 @@ interface MovieCastProps {
 }
 
 const MovieCast: React.FC<MovieCastProps> = ({ cast }) => {
-  // Take only the first 12 cast members (most important ones)
   const displayCast = cast.slice(0, 12);
 
   if (!displayCast.length) {

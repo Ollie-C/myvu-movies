@@ -1,51 +1,15 @@
-// NOT AUDITED
+// AUDITED 12/08/2025
 
 import { useNavigate } from 'react-router-dom';
 import { VersusRanking } from '@/components/ranking/VersusRanking';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { useVersusRanking } from '@/utils/hooks/supabase/queries/useRanking';
 import { useAuth } from '@/context/AuthContext';
 
 export default function VersusRankingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Create or get default ranking list for versus mode
-  const { data: rankingList, isLoading } = useQuery({
-    queryKey: ['versus-ranking-list', user?.id],
-    queryFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      // Try to get existing versus ranking list
-      let { data: existingList } = await supabase
-        .from('ranking_lists')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('name', 'Versus Rankings')
-        .single();
-
-      if (!existingList) {
-        // Create default versus ranking list
-        const { data: newList, error } = await supabase
-          .from('ranking_lists')
-          .insert({
-            user_id: user.id,
-            name: 'Versus Rankings',
-            description: 'Default ranking list for versus mode',
-            ranking_method: 'versus',
-            is_public: false,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        existingList = newList;
-      }
-
-      return existingList;
-    },
-    enabled: !!user?.id,
-  });
+  const { data: watchedMovies, isLoading } = useVersusRanking(user?.id);
 
   if (isLoading) {
     return (
@@ -55,16 +19,29 @@ export default function VersusRankingPage() {
     );
   }
 
-  if (!rankingList) {
-    navigate('/rankings');
-    return null;
+  if (!watchedMovies || watchedMovies.length < 2) {
+    return (
+      <div className='flex items-center justify-center min-h-screen'>
+        <div className='text-center'>
+          <h2 className='text-xl font-bold mb-4'>Not Enough Movies</h2>
+          <p className='text-secondary mb-6'>
+            You need at least 2 watched movies to start versus ranking.
+          </p>
+          <button
+            onClick={() => navigate('/movies')}
+            className='bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-hover transition-colors'>
+            Browse Movies
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className='min-h-screen bg-background'>
       <VersusRanking
-        rankingListId={rankingList.id}
-        rankingListName={rankingList.name}
+        watchedMovies={watchedMovies}
+        rankingListName='Versus Rankings'
       />
     </div>
   );

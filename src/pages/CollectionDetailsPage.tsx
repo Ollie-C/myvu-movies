@@ -1,88 +1,42 @@
-// NOT AUDITED
-
+// AUDITED 06/08/2025
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+// Icons
 import { ArrowLeft, Edit2, Trash2, Users, Calendar, X } from 'lucide-react';
-import {
-  collectionService,
-  type CollectionWithItems,
-} from '@/services/supabase/collection.service';
+
+// Hooks
 import { useAuth } from '@/context/AuthContext';
+import {
+  useUpdateCollection,
+  useDeleteCollection,
+  useRemoveMovieFromCollection,
+} from '@/utils/hooks/supabase/mutations/useCollectionMutations';
+import { useCollection } from '@/utils/hooks/supabase/queries/useCollections';
+
+// Components
 import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
-import MovieCard from '@/components/movie/MovieCard';
+import MovieCard from '@/components/movie/MovieCard/MovieCard';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 
 const CollectionDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Validate the collection ID (UUID format)
   const collectionId = id || null;
-  const isValidId =
-    collectionId && typeof collectionId === 'string' && collectionId.length > 0;
 
-  console.log('URL params:', { id, collectionId, isValidId });
-
-  // Fetch collection details
   const {
     data: collection,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ['collection-details', collectionId],
-    queryFn: () => collectionService.getCollection(collectionId!),
-    enabled: !!isValidId,
-    refetchOnWindowFocus: false,
-  });
+  } = useCollection(collectionId || undefined);
 
-  // console.log('CollectionDetails query state:', {
-  //   collectionId,
-  //   isValidId,
-  //   isLoading,
-  //   hasData: !!collection,
-  //   movieCount: collection?.collection_items?.length || 0,
-  // });
-
-  // Update collection mutation
-  const updateCollectionMutation = useMutation({
-    mutationFn: (
-      updates: Parameters<typeof collectionService.updateCollection>[1]
-    ) => collectionService.updateCollection(collectionId!, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['collection-details', collectionId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['user-collections'] });
-      setIsEditModalOpen(false);
-    },
-  });
-
-  // Delete collection mutation
-  const deleteCollectionMutation = useMutation({
-    mutationFn: () => collectionService.deleteCollection(collectionId!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-collections'] });
-      navigate('/collections');
-    },
-  });
-
-  // Remove movie from collection mutation
-  const removeMovieMutation = useMutation({
-    mutationFn: (movieId: number) =>
-      collectionService.removeMovieFromCollection(collectionId!, movieId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['collection-details', collectionId],
-      });
-      queryClient.invalidateQueries({ queryKey: ['user-collections'] });
-    },
-  });
+  const updateCollectionMutation = useUpdateCollection(collectionId!);
+  const deleteCollectionMutation = useDeleteCollection(collectionId!);
+  const removeMovieMutation = useRemoveMovieFromCollection();
 
   const handleDeleteCollection = async () => {
     await deleteCollectionMutation.mutateAsync();
@@ -90,11 +44,13 @@ const CollectionDetails = () => {
   };
 
   const handleRemoveMovie = async (movieId: number) => {
-    await removeMovieMutation.mutateAsync(movieId);
+    await removeMovieMutation.mutateAsync({
+      collectionId: collectionId!,
+      movieId,
+    });
   };
 
-  // Handle invalid collection ID
-  if (!isValidId) {
+  if (!collectionId || !collection) {
     return (
       <div className='space-y-6 animate-fade-in'>
         <Button
@@ -107,9 +63,10 @@ const CollectionDetails = () => {
         </Button>
 
         <Card className='p-12 text-center'>
-          <h2 className='text-xl font-bold mb-2'>Invalid Collection</h2>
+          <h2 className='text-xl font-bold mb-2'>Collection Not Found</h2>
           <p className='text-secondary mb-6'>
-            The collection ID in the URL is not valid.
+            The collection you're looking for doesn't exist or you don't have
+            access to it.
           </p>
           <Button onClick={() => navigate('/collections')}>
             Back to Collections
@@ -166,7 +123,6 @@ const CollectionDetails = () => {
     );
   }
 
-  // Check if user owns this collection
   const isOwner = user?.id === collection.user_id;
 
   return (
@@ -210,7 +166,10 @@ const CollectionDetails = () => {
             <div className='flex items-center gap-2'>
               <Calendar className='w-4 h-4' />
               <span>
-                Created {new Date(collection.created_at).toLocaleDateString()}
+                Created{' '}
+                {collection.created_at
+                  ? new Date(collection.created_at).toLocaleDateString()
+                  : 'Unknown date'}
               </span>
             </div>
           </div>
@@ -269,7 +228,7 @@ const CollectionDetails = () => {
                 .sort((a, b) => (a.position || 0) - (b.position || 0))
                 .map((item) => (
                   <div key={item.id} className='relative group'>
-                    {/* Remove from collection button */}
+                    {/* Remove from collction button */}
                     {isOwner && (
                       <button
                         onClick={() => handleRemoveMovie(item.movie.id)}
@@ -289,15 +248,14 @@ const CollectionDetails = () => {
                     {/* Movie Card - Convert collection item to UserMovie format */}
                     <MovieCard
                       userMovie={{
+                        id: item.id,
                         user_id: collection.user_id,
                         movie_id: item.movie.id,
-                        rating: null, // Collection items don't have ratings
-                        watched: false,
-                        watched_date: null,
-                        watch_list: false,
-                        watchlist_added_date: null,
-                        favorite: false,
+                        rating: null,
                         notes: null,
+                        favorite: false,
+                        elo_score: null,
+                        watched_date: item.added_at || new Date().toISOString(),
                         created_at: item.added_at,
                         updated_at: item.added_at,
                         movie: {
@@ -320,10 +278,19 @@ const CollectionDetails = () => {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSave={async (data) => {
-          await updateCollectionMutation.mutateAsync(data);
+          // Convert null values to undefined for the mutation
+          const updateData = {
+            name: data.name,
+            description:
+              data.description === null ? undefined : data.description,
+            is_ranked: data.is_ranked,
+            is_public: data.is_public === null ? undefined : data.is_public,
+          };
+          await updateCollectionMutation.mutateAsync(updateData);
+          setIsEditModalOpen(false);
         }}
         collection={collection}
-        title='Edit Collection'
+        mode='edit'
       />
 
       {/* Delete Confirmation Modal */}

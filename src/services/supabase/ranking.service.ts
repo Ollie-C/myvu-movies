@@ -1,15 +1,20 @@
-// AUDITED 06/08/2025
+// AUDITED 07/08/2025
 import { supabase } from '@/lib/supabase';
 import type { Tables, TablesInsert } from '@/types/database.types';
 import shuffle from '@/utils/shuffle';
 
 // Constants
-const DEFAULT_ELO_RATING = 1500;
+const DEFAULT_ELO_RATING = 1200;
 const MIN_MOVIES_FOR_RANKING = 2;
 
 // Types
-type RankingItem = Tables<'ranking_items'>;
-type RankingBattle = TablesInsert<'ranking_battles'>;
+type RankingItem = Tables<'ranking_list_items'>;
+type RankingBattle = TablesInsert<'versus_battles'>;
+
+// Extended type for ranking items with movie data
+type RankingItemWithMovie = RankingItem & {
+  movie: Tables<'movies'>;
+};
 
 export interface RankingBattleResult {
   winnerId: number;
@@ -18,8 +23,8 @@ export interface RankingBattleResult {
 }
 
 export interface MoviePair {
-  movie1: RankingItem;
-  movie2: RankingItem;
+  movie1: RankingItemWithMovie;
+  movie2: RankingItemWithMovie;
 }
 
 export interface BattleProcessResult {
@@ -33,16 +38,12 @@ export interface BattleProcessResult {
 
 export const rankingService = {
   async processRankingBattle(
-    result: RankingBattleResult,
-    winnerCurrentRating = DEFAULT_ELO_RATING,
-    loserCurrentRating = DEFAULT_ELO_RATING
+    result: RankingBattleResult
   ): Promise<BattleProcessResult> {
-    const { data, error } = await supabase.rpc('process_ranking_battle', {
+    const { data, error } = await supabase.rpc('process_versus_battle', {
       p_ranking_list_id: result.rankingListId,
       p_winner_movie_id: result.winnerId,
       p_loser_movie_id: result.loserId,
-      p_winner_current_rating: winnerCurrentRating,
-      p_loser_current_rating: loserCurrentRating,
     });
 
     if (error) throw error;
@@ -67,7 +68,7 @@ export const rankingService = {
 
     // Get existing ranking items
     const { data: existingRankingItems, error: rankingError } = await supabase
-      .from('ranking_items')
+      .from('ranking_list_items')
       .select('*')
       .eq('ranking_list_id', rankingListId)
       .in(
@@ -91,7 +92,7 @@ export const rankingService = {
 
     if (moviesNeedingRankingItems.length > 0) {
       const { error: insertError } = await supabase
-        .from('ranking_items')
+        .from('ranking_list_items')
         .insert(moviesNeedingRankingItems);
 
       if (insertError) throw insertError;
@@ -99,7 +100,7 @@ export const rankingService = {
 
     // Get final ranking items with movies
     const { data: rankingItems, error: finalError } = await supabase
-      .from('ranking_items')
+      .from('ranking_list_items')
       .select('*, movie:movies(*)')
       .eq('ranking_list_id', rankingListId)
       .in(
@@ -115,8 +116,8 @@ export const rankingService = {
 
     const shuffled = shuffle(rankingItems);
     return {
-      movie1: shuffled[0] as RankingItem,
-      movie2: shuffled[1] as RankingItem,
+      movie1: shuffled[0] as RankingItemWithMovie,
+      movie2: shuffled[1] as RankingItemWithMovie,
     };
   },
 
@@ -125,7 +126,7 @@ export const rankingService = {
     movieId: number
   ): Promise<RankingItem> {
     const { data: existing, error: getError } = await supabase
-      .from('ranking_items')
+      .from('ranking_list_items')
       .select('*')
       .eq('ranking_list_id', rankingListId)
       .eq('movie_id', movieId)
@@ -138,7 +139,7 @@ export const rankingService = {
     }
 
     const { data: created, error: createError } = await supabase
-      .from('ranking_items')
+      .from('ranking_list_items')
       .insert({
         ranking_list_id: rankingListId,
         movie_id: movieId,
@@ -156,13 +157,73 @@ export const rankingService = {
     limit = 50
   ): Promise<RankingItem[]> {
     const { data, error } = await supabase
-      .from('ranking_items')
+      .from('ranking_list_items')
       .select(`*, movie:movies(*)`)
       .eq('ranking_list_id', rankingListId)
       .order('elo_score', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    return data || [];
+    return (data || []).map((item, index) => ({
+      ...item,
+      position: index + 1,
+    }));
   },
+
+  async reorderRankingItems(
+    rankingListId: string,
+    reorderedItems: Array<{
+      id: string;
+      movie_id: number;
+      new_position: number;
+    }>
+  ) {
+    const { data, error } = await supabase.rpc('reorder_ranking_list_items', {
+      p_ranking_list_id: rankingListId,
+      p_reordered_items: reorderedItems,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  async calculateMergedScores(
+    rankingListId: string,
+    weights?: {
+      elo: number;
+      userRating: number;
+      position: number;
+      popularity: number;
+    }
+  ) {
+    const { data, error } = await supabase.rpc(
+      'calculate_merged_ranking_scores',
+      {
+        p_ranking_list_id: rankingListId,
+        p_weights: weights,
+      }
+    );
+
+    if (error) throw error;
+    return data;
+  },
+};
+
+export const useEloConversions = () => {
+  return {
+    ratingToElo: async (rating: number) => {
+      const { data, error } = await supabase.rpc('rating_to_elo', {
+        p_rating: rating,
+      });
+      if (error) throw error;
+      return data;
+    },
+    eloToRating: async (eloScore: number) => {
+      const { data, error } = await supabase.rpc('elo_to_rating', {
+        p_elo_score: eloScore,
+      });
+      if (error) throw error;
+      return data;
+    },
+  };
 };

@@ -1,6 +1,6 @@
-// NOT AUDITED
+// Audited: 11/08/2025
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
 import { createPortal } from 'react-dom';
@@ -21,12 +21,9 @@ interface ToastProps {
 }
 
 const ToastItem: React.FC<ToastProps> = ({ toast, onDismiss }) => {
-  const [isVisible, setIsVisible] = useState(true);
-
   useEffect(() => {
     const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(() => onDismiss(toast.id), 300); // Wait for exit animation
+      setTimeout(() => onDismiss(toast.id), 300);
     }, toast.duration || 5000);
 
     return () => clearTimeout(timer);
@@ -73,7 +70,6 @@ const ToastItem: React.FC<ToastProps> = ({ toast, onDismiss }) => {
       </div>
       <button
         onClick={() => {
-          setIsVisible(false);
           setTimeout(() => onDismiss(toast.id), 300);
         }}
         className='text-gray-400 hover:text-gray-600 transition-colors'>

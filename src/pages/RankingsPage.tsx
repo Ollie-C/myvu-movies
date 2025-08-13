@@ -1,7 +1,7 @@
-// NOT AUDITED
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+// Icons
 import {
   Star,
   BarChart3,
@@ -9,34 +9,96 @@ import {
   Zap,
   Trophy,
   Target,
+  Brain,
 } from 'lucide-react';
+
+// Components
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
-import { useAuth } from '@/context/AuthContext';
-import {
-  useUnratedMovies,
-  useUpdateRating,
-  useRatingStats,
-  useRankedMovies,
-} from '@/utils/hooks/supabase/queries/useRanking';
 import StandardRatingModal from '@/components/movie/RatingModal';
 
+// Contexts
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
+
+// Services
+import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
+
+// Updated hooks
+import { useRankedMovies } from '@/utils/hooks/supabase/queries/useRanking';
+import { useWatchedMovies } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+
 const Rankings = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
   const [isStandardRatingOpen, setIsStandardRatingOpen] = useState(false);
   const [showRankedMovies, setShowRankedMovies] = useState(false);
 
-  // Use the new hooks with userId
-  const { data: unratedMovies = [], isLoading: isLoadingUnrated } =
-    useUnratedMovies(user?.id);
-  const { data: rankedMovies = [] } = useRankedMovies(user?.id);
-  const { data: ratingStats } = useRatingStats(user?.id);
-  const updateRatingMutation = useUpdateRating();
+  // Get unrated movies (watched but not rated)
+  const { data: watchedMoviesData, isLoading: watchedLoading } =
+    useWatchedMovies({
+      onlyRated: false,
+      sortBy: 'watched_date',
+      sortOrder: 'desc',
+    });
+
+  // Get ranked movies (rated movies)
+  const { data: rankedMoviesData, isLoading: rankedLoading } = useRankedMovies(
+    user?.id
+  );
+
+  // Calculate unrated movies
+  const unratedMovies =
+    watchedMoviesData?.data?.filter((movie) => !movie.rating) || [];
+  const rankedMovies = rankedMoviesData?.data || [];
+
+  // Calculate stats from the data we have
+  const ratingStats = watchedMoviesData?.data
+    ? {
+        totalWatched: watchedMoviesData.data.length,
+        totalRated: watchedMoviesData.data.filter((movie) => movie.rating)
+          .length,
+        totalUnrated: watchedMoviesData.data.filter((movie) => !movie.rating)
+          .length,
+        averageRating:
+          watchedMoviesData.data.filter((movie) => movie.rating).length > 0
+            ? watchedMoviesData.data
+                .filter((movie) => movie.rating)
+                .reduce((sum, movie) => sum + (movie.rating || 0), 0) /
+              watchedMoviesData.data.filter((movie) => movie.rating).length
+            : 0,
+        distribution: calculateRatingDistribution(
+          watchedMoviesData.data.filter((movie) => movie.rating)
+        ),
+      }
+    : null;
+
+  // Helper function to calculate rating distribution
+  function calculateRatingDistribution(ratedMovies: any[]) {
+    const distribution = {
+      '1-2': 0,
+      '3-4': 0,
+      '5-6': 0,
+      '7-8': 0,
+      '9-10': 0,
+    };
+
+    ratedMovies.forEach((movie) => {
+      const rating = movie.rating;
+      if (rating <= 2) distribution['1-2']++;
+      else if (rating <= 4) distribution['3-4']++;
+      else if (rating <= 6) distribution['5-6']++;
+      else if (rating <= 8) distribution['7-8']++;
+      else distribution['9-10']++;
+    });
+
+    return distribution;
+  }
 
   const handleStartStandardRating = () => {
-    if (!user?.id) return;
     setIsStandardRatingOpen(true);
+    setShowRankedMovies(false);
   };
 
   const handleRateMovie = async (
@@ -47,33 +109,17 @@ const Rankings = () => {
     if (!user?.id) return;
 
     try {
-      await updateRatingMutation.mutateAsync({
-        userId: user.id,
-        movieId,
-        rating,
-        notes,
-      });
+      await watchedMoviesService.updateRating(user.id, movieId, rating);
+
+      if (notes) {
+        await watchedMoviesService.updateNotes(user.id, movieId, notes);
+      }
+
+      showToast('success', 'Movie rated successfully!');
     } catch (error) {
-      console.error('Error updating rating:', error);
+      showToast('error', 'Failed to rate movie');
     }
   };
-
-  // Convert ranked movies to the format expected by StandardRatingModal
-  const rankedMoviesForModal = rankedMovies.map((rankedMovie) => ({
-    id: `ranked-${rankedMovie.movie_id}`, // Generate a unique ID for ranked movies
-    movie_id: rankedMovie.movie_id,
-    rating: rankedMovie.rating,
-    elo_score: rankedMovie.elo_score,
-    movie: rankedMovie.movie,
-    // Add other required fields with default values
-    user_id: user?.id || '',
-    watched_date: new Date().toISOString().split('T')[0],
-    notes: null,
-    favorite: false,
-    rewatch_count: 0,
-    created_at: null,
-    updated_at: null,
-  }));
 
   if (!user) {
     return (
@@ -84,109 +130,168 @@ const Rankings = () => {
     );
   }
 
+  const isLoading = watchedLoading || rankedLoading;
+
+  console.log('here', watchedMoviesData?.data.length);
+
   return (
     <div className='container mx-auto px-4 py-8'>
       {/* Hero Section */}
-      <div className='text-center mb-12'>
+      <div className='text-left mb-12'>
         <div className='inline-flex items-center gap-3 mb-4'>
-          <div className='p-3 border-2 border-black rounded-full'>
-            <Trophy className='w-8 h-8' />
-          </div>
-          <h1 className='text-4xl font-bold'>Movie Rankings</h1>
+          <h1 className='text-4xl font-bold'>Arena</h1>
         </div>
-        <p className='text-lg text-gray-600 max-w-2xl mx-auto'>
+        <p className='text-lg text-gray-600 max-w-2xl ml-0'>
           Rate and rank your watched movies to discover your favorites and build
           your personal movie hierarchy
         </p>
       </div>
-
-      {/* Rating Methods */}
-      <div className='mb-12'>
-        <h2 className='text-2xl font-bold mb-6 flex items-center gap-3'>
-          <Target className='w-6 h-6' />
-          Rating Methods
-        </h2>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
-          {/* Standard Rating */}
-          <Card className='p-8 border-2 border-black hover:bg-gray-50 transition-all duration-300'>
-            <div className='flex items-center gap-4 mb-6'>
-              <div className='p-4 border-2 border-black rounded-xl'>
-                <Star className='w-8 h-8' />
-              </div>
-              <div>
-                <h3 className='text-xl font-bold'>Standard Rating</h3>
-                <p className='text-sm text-gray-600'>Rate movies one by one</p>
-              </div>
-            </div>
-            <p className='text-gray-700 mb-6 leading-relaxed'>
-              Go through your unrated movies systematically. Rate each one and
-              see how it fits into your overall rankings.
-            </p>
-            {unratedMovies.length > 0 && (
-              <div className='mb-6 p-4 border border-gray-300 rounded-lg bg-gray-50'>
-                <p className='text-sm font-medium'>
-                  {unratedMovies.length} movie
-                  {unratedMovies.length !== 1 ? 's' : ''} waiting to be rated
-                </p>
-              </div>
-            )}
-            <div className='space-y-3'>
-              <Button
-                onClick={handleStartStandardRating}
-                disabled={unratedMovies.length === 0}
-                className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300'>
-                {unratedMovies.length === 0
-                  ? 'All Caught Up!'
-                  : 'Rate Unrated Movies'}
-              </Button>
-
-              <Button
-                onClick={() => {
-                  setShowRankedMovies(true);
-                  setIsStandardRatingOpen(true);
-                }}
-                disabled={rankedMovies.length === 0}
-                variant='secondary'
-                className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300'>
-                View Ranked Movies ({rankedMovies.length})
-              </Button>
-            </div>
-          </Card>
-
-          {/* Versus Rating */}
-          <Card className='p-8 border-2 border-black hover:bg-gray-50 transition-all duration-300'>
-            <div className='flex items-center gap-4 mb-6'>
-              <div className='p-4 border-2 border-black rounded-xl'>
-                <BarChart3 className='w-8 h-8' />
-              </div>
-              <div>
-                <h3 className='text-xl font-bold'>Versus Rating</h3>
-                <p className='text-sm text-gray-600'>
-                  Head-to-head comparisons
-                </p>
-              </div>
-            </div>
-            <p className='text-gray-700 mb-6 leading-relaxed'>
-              Compare movies directly against each other. Make quick decisions
-              to build your rankings through battle.
-            </p>
-            <Button
-              onClick={() => navigate('/versus')}
-              variant='secondary'
-              className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300'>
-              Start Versus
-              <ChevronRight className='w-4 h-4 ml-2' />
-            </Button>
-          </Card>
+      {/* Loading State */}
+      {isLoading && (
+        <div className='text-center py-8'>
+          <p className='text-secondary'>Loading your movie data...</p>
         </div>
-      </div>
+      )}
+      {/* Ranking Methods */}
+      {!isLoading && (
+        <div className='mb-12'>
+          <h2 className='text-2xl font-bold mb-6 flex items-center gap-3'>
+            Ranking Methods
+          </h2>
+          <div className='grid grid-cols-1 md:grid-cols-4 gap-8'>
+            {/* Standard Rating */}
+            <Card className='p-8 border-2 border-black hover:bg-gray-50 transition-all duration-300'>
+              <div className='flex items-center gap-4 mb-6'>
+                <div className='p-4 border-2 border-black rounded-xl'>
+                  <Star className='w-6 h-6' />
+                </div>
+                <div>
+                  <h3 className='text-xl font-bold'>Standard Rating</h3>
+                  <p className='text-sm text-gray-600'>
+                    Rate movies one by one
+                  </p>
+                </div>
+              </div>
+              <p className='text-gray-700 mb-6 leading-relaxed'>
+                Go through your unrated movies systematically. Rate each one and
+                see how it fits into your overall rankings.
+              </p>
+              {unratedMovies.length > 0 && (
+                <div className='mb-6 p-4 border border-gray-300 rounded-lg bg-gray-50'>
+                  <p className='text-sm font-medium'>
+                    {unratedMovies.length} movie
+                    {unratedMovies.length !== 1 ? 's' : ''} waiting to be rated
+                  </p>
+                </div>
+              )}
+              <div className='space-y-3'>
+                {watchedMoviesData?.data?.length !== 0 && (
+                  <Button
+                    onClick={handleStartStandardRating}
+                    disabled={unratedMovies.length === 0}
+                    className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300'>
+                    {unratedMovies.length === 0
+                      ? 'All Caught Up!'
+                      : 'Rate Unrated Movies'}
+                  </Button>
+                )}
 
+                <Button
+                  onClick={() => {
+                    setShowRankedMovies(true);
+                    setIsStandardRatingOpen(true);
+                  }}
+                  disabled={rankedMovies.length === 0}
+                  variant='secondary'
+                  className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300'>
+                  View Ranked Movies ({rankedMovies.length})
+                </Button>
+              </div>
+            </Card>
+
+            {/* Versus Rating */}
+            <Card className='p-8 border-2 border-black hover:bg-gray-50 transition-all duration-300'>
+              <div className='flex items-center gap-4 mb-6'>
+                <div className='p-4 border-2 border-black rounded-xl'>
+                  <BarChart3 className='w-6 h-6' />
+                </div>
+                <div>
+                  <h3 className='text-xl font-bold'>Versus</h3>
+                  <p className='text-sm text-gray-600'>
+                    Head-to-head comparisons
+                  </p>
+                </div>
+              </div>
+              <p className='text-gray-700 mb-6 leading-relaxed'>
+                Compare movies directly against each other. Make quick decisions
+                to build your rankings through battle.
+              </p>
+              <Button
+                onClick={() => navigate('/versus')}
+                variant='secondary'
+                className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center'>
+                Start Versus
+                <ChevronRight className='w-4 h-4 ml-2' />
+              </Button>
+            </Card>
+
+            {/* Tiers */}
+            <Card className='p-8 border-2 border-black hover:bg-gray-50 transition-all duration-300'>
+              <div className='flex items-center gap-4 mb-6'>
+                <div className='p-4 border-2 border-black rounded-xl'>
+                  <Trophy className='w-6 h-6' />
+                </div>
+                <div>
+                  <h3 className='text-xl font-bold'>Tiers</h3>
+                  <p className='text-sm text-gray-600'>
+                    Rank your movies into tiers
+                  </p>
+                </div>
+              </div>
+              <p className='text-gray-700 mb-6 leading-relaxed'>
+                Rank your movies into tiers based on your ratings.
+              </p>
+              <Button
+                onClick={() => navigate('/versus')}
+                variant='secondary'
+                className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center'>
+                Build Tiers
+                <ChevronRight className='w-4 h-4 ml-2' />
+              </Button>
+            </Card>
+
+            {/* Smart Rankings */}
+            <Card className='p-8 border-2 border-black hover:bg-gray-50 transition-all duration-300'>
+              <div className='flex items-center gap-4 mb-6'>
+                <div className='p-4 border-2 border-black rounded-xl'>
+                  <Brain className='w-6 h-6' />
+                </div>
+                <div>
+                  <h3 className='text-xl font-bold'>Smart Rankings</h3>
+                  <p className='text-sm text-gray-600'>
+                    Rank your movies based on your ratings
+                  </p>
+                </div>
+              </div>
+              <p className='text-gray-700 mb-6 leading-relaxed'>
+                Rank your movies based on your ratings.
+              </p>
+              <Button
+                onClick={() => navigate('/versus')}
+                variant='secondary'
+                className='w-full border-2 border-black bg-white text-black hover:bg-black hover:text-white font-semibold py-3 transition-all duration-300 flex items-center justify-center'>
+                Start Smart Rankings
+                <ChevronRight className='w-4 h-4 ml-2' />
+              </Button>
+            </Card>
+          </div>
+        </div>
+      )}
       {/* Rating Stats */}
-      {ratingStats && (
+      {!isLoading && ratingStats && (
         <div className='space-y-8'>
           <h2 className='text-2xl font-bold mb-6 flex items-center gap-3'>
-            <BarChart3 className='w-6 h-6' />
-            Your Statistics
+            Your Stats
           </h2>
 
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6'>
@@ -313,7 +418,6 @@ const Rankings = () => {
           )}
         </div>
       )}
-
       {/* Standard Rating Modal */}
       <StandardRatingModal
         isOpen={isStandardRatingOpen}
@@ -321,7 +425,7 @@ const Rankings = () => {
           setIsStandardRatingOpen(false);
           setShowRankedMovies(false);
         }}
-        movies={showRankedMovies ? rankedMoviesForModal : unratedMovies}
+        movies={showRankedMovies ? rankedMovies : unratedMovies}
         onRateMovie={handleRateMovie}
       />
     </div>

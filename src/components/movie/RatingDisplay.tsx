@@ -1,4 +1,4 @@
-// NOT AUDITED
+// AUDITED 11/08/2025
 
 import React from 'react';
 import { Star } from 'lucide-react';
@@ -78,9 +78,6 @@ export const RatingDisplay: React.FC<RatingDisplayProps> = ({
               TMDB:
             </span>
           )}
-          <div className='flex gap-0.5'>
-            {renderStars(tmdbRating, 'blue-500')}
-          </div>
           <span className={cn('font-medium text-blue-600', currentSize.text)}>
             {formatRating(tmdbRating)}
           </span>

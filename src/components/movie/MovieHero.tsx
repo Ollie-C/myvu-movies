@@ -1,4 +1,4 @@
-// NOT AUDITED
+// AUDITED 11/08/2025
 
 import React from 'react';
 import { tmdb } from '@/lib/api/tmdb';
@@ -22,12 +22,6 @@ const MovieHero: React.FC<MovieHeroProps> = ({ movie, director }) => {
   const backdropUrl = movie.backdrop_path
     ? tmdb.getImageUrl(movie.backdrop_path, 'original')
     : '/movie-placeholder-backdrop.jpg';
-
-  const formatRuntime = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
-  };
 
   const formatReleaseDate = (dateString: string) => {
     return new Date(dateString).getFullYear();
@@ -60,10 +54,6 @@ const MovieHero: React.FC<MovieHeroProps> = ({ movie, director }) => {
                 </span>
               )}
 
-              {movie.runtime && (
-                <span className='text-lg'>{formatRuntime(movie.runtime)}</span>
-              )}
-
               {director && (
                 <span className='text-lg'>Directed by {director.name}</span>
               )}
@@ -81,17 +71,6 @@ const MovieHero: React.FC<MovieHeroProps> = ({ movie, director }) => {
                 ))}
               </div>
             )}
-
-            {/* Rating */}
-            <div className='flex items-center gap-2 mb-4'>
-              <div className='flex items-center gap-1'>
-                <span className='text-yellow-400 text-xl'>★</span>
-                <span className='text-white font-semibold'>
-                  {movie.vote_average.toFixed(1)}
-                </span>
-              </div>
-              <span className='text-white/70'>/ 10</span>
-            </div>
 
             {/* Overview */}
             {movie.overview && (

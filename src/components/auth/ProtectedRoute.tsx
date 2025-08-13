@@ -1,4 +1,4 @@
-// NOT AUDITED
+// AUDITED 07/08/2025
 
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';

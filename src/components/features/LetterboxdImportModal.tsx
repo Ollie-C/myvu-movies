@@ -1,4 +1,4 @@
-// NOT AUDITED
+// Audited: 11/08/2025
 
 import { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle, XCircle, Download } from 'lucide-react';
@@ -19,6 +19,15 @@ interface LetterboxdImportModalProps {
   onClose: () => void;
 }
 
+interface ImportState {
+  file: File | null;
+  isValidating: boolean;
+  validationError: string | null;
+  isImporting: boolean;
+  progress: ImportProgress | null;
+  result: ImportResult | null;
+}
+
 export function LetterboxdImportModal({
   isOpen,
   onClose,
@@ -27,37 +36,46 @@ export function LetterboxdImportModal({
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [file, setFile] = useState<File | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const [progress, setProgress] = useState<ImportProgress | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [importState, setImportState] = useState<ImportState>({
+    file: null,
+    isValidating: false,
+    validationError: null,
+    isImporting: false,
+    progress: null,
+    result: null,
+  });
 
   const importMutation = useMutation({
     mutationFn: async (entries: any[]) => {
       return importFromLetterboxd(entries, user!.id, (progress) => {
-        setProgress(progress);
+        setImportState((prev) => ({ ...prev, progress }));
       });
     },
     onSuccess: (importResult) => {
-      setResult(importResult);
-      setIsImporting(false);
-      // Invalidate relevant queries to refresh the UI
+      setImportState((prev) => ({
+        ...prev,
+        result: importResult,
+        isImporting: false,
+      }));
       queryClient.invalidateQueries({ queryKey: ['user-movies'] });
       queryClient.invalidateQueries({ queryKey: ['watched-movies'] });
       queryClient.invalidateQueries({ queryKey: ['watchlist'] });
     },
     onError: (error) => {
       console.error('Import failed:', error);
-      setIsImporting(false);
-      setResult({
-        successful: 0,
-        failed: 0,
-        errors: [error instanceof Error ? error.message : 'Import failed'],
-      });
+      setImportState((prev) => ({
+        ...prev,
+        isImporting: false,
+        result: {
+          successful: 0,
+          failed: 0,
+          errors: [error instanceof Error ? error.message : 'Import failed'],
+        },
+      }));
     },
   });
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -65,65 +83,93 @@ export function LetterboxdImportModal({
     const selectedFile = event.target.files?.[0];
     if (!selectedFile) return;
 
-    setFile(selectedFile);
-    setValidationError(null);
-    setProgress(null);
-    setResult(null);
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setImportState((prev) => ({
+        ...prev,
+        validationError: 'File size exceeds 5MB limit',
+      }));
+      return;
+    }
 
-    // Validate the file
-    setIsValidating(true);
+    setImportState((prev) => ({
+      ...prev,
+      file: selectedFile,
+      validationError: null,
+      progress: null,
+      result: null,
+    }));
+
+    setImportState((prev) => ({ ...prev, isValidating: true }));
     try {
       const content = await selectedFile.text();
       const validation = validateLetterboxdCSV(content);
 
       if (!validation.valid) {
-        setValidationError(validation.error || 'Invalid file format');
-        setFile(null);
+        setImportState((prev) => ({
+          ...prev,
+          validationError: validation.error || 'Invalid file format',
+        }));
+        setImportState((prev) => ({ ...prev, file: null }));
       }
     } catch (error) {
-      setValidationError('Failed to read file');
-      setFile(null);
+      setImportState((prev) => ({
+        ...prev,
+        validationError: 'Failed to read file',
+      }));
+      setImportState((prev) => ({ ...prev, file: null }));
     } finally {
-      setIsValidating(false);
+      setImportState((prev) => ({ ...prev, isValidating: false }));
     }
   };
 
   const handleImport = async () => {
-    if (!file) return;
+    if (!importState.file) return;
 
-    setIsImporting(true);
-    setProgress(null);
-    setResult(null);
+    setImportState((prev) => ({
+      ...prev,
+      isImporting: true,
+      progress: null,
+      result: null,
+    }));
 
     try {
-      const content = await file.text();
+      const content = await importState.file.text();
       const entries = parseLetterboxdCSV(content);
 
       await importMutation.mutateAsync(entries);
     } catch (error) {
       console.error('Import error:', error);
-      setIsImporting(false);
-      setResult({
-        successful: 0,
-        failed: 0,
-        errors: [error instanceof Error ? error.message : 'Import failed'],
-      });
+      setImportState((prev) => ({
+        ...prev,
+        isImporting: false,
+        result: {
+          successful: 0,
+          failed: 0,
+          errors: [error instanceof Error ? error.message : 'Import failed'],
+        },
+      }));
     }
   };
 
   const handleClose = () => {
-    setFile(null);
-    setValidationError(null);
-    setProgress(null);
-    setResult(null);
+    setImportState((prev) => ({
+      ...prev,
+      file: null,
+      validationError: null,
+      progress: null,
+      result: null,
+    }));
     onClose();
   };
 
   const resetForm = () => {
-    setFile(null);
-    setValidationError(null);
-    setProgress(null);
-    setResult(null);
+    setImportState((prev) => ({
+      ...prev,
+      file: null,
+      validationError: null,
+      progress: null,
+      result: null,
+    }));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -148,7 +194,7 @@ export function LetterboxdImportModal({
             </Button>
           </div>
 
-          {!result ? (
+          {!importState.result ? (
             <>
               {/* File Upload Section */}
               <div className='mb-6'>
@@ -161,7 +207,7 @@ export function LetterboxdImportModal({
                     className='hidden'
                   />
 
-                  {!file ? (
+                  {!importState.file ? (
                     <div>
                       <Upload className='w-12 h-12 text-secondary mx-auto mb-4' />
                       <p className='text-lg font-medium text-primary mb-2'>
@@ -181,9 +227,11 @@ export function LetterboxdImportModal({
                     <div className='flex items-center justify-center gap-3'>
                       <FileText className='w-8 h-8 text-green-600' />
                       <div className='text-left'>
-                        <p className='font-medium text-primary'>{file.name}</p>
+                        <p className='font-medium text-primary'>
+                          {importState.file.name}
+                        </p>
                         <p className='text-sm text-secondary'>
-                          {(file.size / 1024).toFixed(1)} KB
+                          {(importState.file.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
                       <Button
@@ -197,16 +245,18 @@ export function LetterboxdImportModal({
                   )}
                 </div>
 
-                {validationError && (
+                {importState.validationError && (
                   <div className='mt-4 p-3 bg-red-50 border border-red-200 rounded-lg'>
                     <div className='flex items-center gap-2 text-red-700'>
                       <XCircle className='w-4 h-4' />
-                      <span className='text-sm'>{validationError}</span>
+                      <span className='text-sm'>
+                        {importState.validationError}
+                      </span>
                     </div>
                   </div>
                 )}
 
-                {isValidating && (
+                {importState.isValidating && (
                   <div className='mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg'>
                     <div className='flex items-center gap-2 text-blue-700'>
                       <div className='w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin' />
@@ -217,39 +267,44 @@ export function LetterboxdImportModal({
               </div>
 
               {/* Import Button */}
-              {file && !validationError && !isValidating && (
-                <div className='flex justify-end gap-3'>
-                  <Button variant='ghost' onClick={resetForm}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleImport}
-                    disabled={isImporting}
-                    className='bg-primary hover:bg-primary/90'>
-                    {isImporting ? 'Importing...' : 'Start Import'}
-                  </Button>
-                </div>
-              )}
+              {importState.file &&
+                !importState.validationError &&
+                !importState.isValidating && (
+                  <div className='flex justify-end gap-3'>
+                    <Button variant='ghost' onClick={resetForm}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleImport}
+                      disabled={importState.isImporting}
+                      className='bg-primary hover:bg-primary/90'>
+                      {importState.isImporting
+                        ? 'Importing...'
+                        : 'Start Import'}
+                    </Button>
+                  </div>
+                )}
             </>
           ) : (
             /* Results Section */
             <div className='space-y-6'>
               <div className='text-center'>
                 <div className='flex items-center justify-center gap-2 mb-4'>
-                  {result.successful > 0 ? (
+                  {importState.result.successful > 0 ? (
                     <CheckCircle className='w-8 h-8 text-green-600' />
                   ) : (
                     <XCircle className='w-8 h-8 text-red-600' />
                   )}
                   <h3 className='text-lg font-semibold text-primary'>
-                    Import {result.successful > 0 ? 'Completed' : 'Failed'}
+                    Import{' '}
+                    {importState.result.successful > 0 ? 'Completed' : 'Failed'}
                   </h3>
                 </div>
 
                 <div className='grid grid-cols-2 gap-4 mb-6'>
                   <div className='p-4 bg-green-50 border border-green-200 rounded-lg'>
                     <div className='text-2xl font-bold text-green-700'>
-                      {result.successful}
+                      {importState.result.successful}
                     </div>
                     <div className='text-sm text-green-600'>
                       Successfully imported
@@ -257,17 +312,17 @@ export function LetterboxdImportModal({
                   </div>
                   <div className='p-4 bg-red-50 border border-red-200 rounded-lg'>
                     <div className='text-2xl font-bold text-red-700'>
-                      {result.failed}
+                      {importState.result.failed}
                     </div>
                     <div className='text-sm text-red-600'>Failed to import</div>
                   </div>
                 </div>
 
-                {result.errors.length > 0 && (
+                {importState.result.errors.length > 0 && (
                   <div className='text-left'>
                     <h4 className='font-medium text-primary mb-2'>Errors:</h4>
                     <div className='max-h-32 overflow-y-auto space-y-1'>
-                      {result.errors.map((error, index) => (
+                      {importState.result.errors.map((error, index) => (
                         <div
                           key={index}
                           className='text-sm text-red-600 bg-red-50 p-2 rounded'>
@@ -278,22 +333,33 @@ export function LetterboxdImportModal({
                   </div>
                 )}
 
-                {result.debugInfo && (
+                {importState.result.debugInfo && (
                   <div className='text-left mt-4 p-4 bg-gray-50 rounded-lg'>
                     <h4 className='font-medium text-primary mb-2'>
                       Debug Info:
                     </h4>
                     <div className='text-sm text-secondary space-y-1'>
-                      <div>Total parsed: {result.debugInfo.totalParsed}</div>
                       <div>
-                        Duplicates skipped: {result.debugInfo.duplicatesSkipped}
+                        Total parsed: {importState.result.debugInfo.totalParsed}
                       </div>
-                      <div>API failures: {result.debugInfo.apiFailures}</div>
-                      <div>DB failures: {result.debugInfo.dbFailures}</div>
-                      <div>Total batches: {result.debugInfo.totalBatches}</div>
+                      <div>
+                        Duplicates skipped:{' '}
+                        {importState.result.debugInfo.duplicatesSkipped}
+                      </div>
+                      <div>
+                        API failures: {importState.result.debugInfo.apiFailures}
+                      </div>
+                      <div>
+                        DB failures: {importState.result.debugInfo.dbFailures}
+                      </div>
+                      <div>
+                        Total batches:{' '}
+                        {importState.result.debugInfo.totalBatches}
+                      </div>
                       <div>
                         Avg batch time:{' '}
-                        {Math.round(result.debugInfo.avgBatchTime)}ms
+                        {Math.round(importState.result.debugInfo.avgBatchTime)}
+                        ms
                       </div>
                     </div>
                   </div>
@@ -314,14 +380,14 @@ export function LetterboxdImportModal({
           )}
 
           {/* Progress Section */}
-          {isImporting && progress && (
+          {importState.isImporting && importState.progress && (
             <div className='mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
               <div className='flex items-center justify-between mb-2'>
                 <span className='text-sm font-medium text-blue-700'>
                   Importing movies...
                 </span>
                 <span className='text-sm text-blue-600'>
-                  {progress.processed}/{progress.total}
+                  {importState.progress.processed}/{importState.progress.total}
                 </span>
               </div>
 
@@ -329,21 +395,27 @@ export function LetterboxdImportModal({
                 <div
                   className='bg-blue-600 h-2 rounded-full transition-all duration-300'
                   style={{
-                    width: `${(progress.processed / progress.total) * 100}%`,
+                    width: `${
+                      (importState.progress.processed /
+                        importState.progress.total) *
+                      100
+                    }%`,
                   }}
                 />
               </div>
 
               <div className='text-xs text-blue-600 space-y-1'>
                 <div>
-                  Batch {progress.currentBatch}/{progress.totalBatches}
+                  Batch {importState.progress.currentBatch}/
+                  {importState.progress.totalBatches}
                 </div>
                 <div>
-                  Successful: {progress.successful} | Failed: {progress.failed}
+                  Successful: {importState.progress.successful} | Failed:{' '}
+                  {importState.progress.failed}
                 </div>
-                {progress.currentMovies.length > 0 && (
+                {importState.progress.currentMovies.length > 0 && (
                   <div className='truncate'>
-                    Current: {progress.currentMovies.join(', ')}
+                    Current: {importState.progress.currentMovies.join(', ')}
                   </div>
                 )}
               </div>
@@ -351,7 +423,7 @@ export function LetterboxdImportModal({
           )}
 
           {/* Instructions */}
-          {!file && !result && (
+          {!importState.file && !importState.result && (
             <div className='mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg'>
               <h4 className='font-medium text-primary mb-2 flex items-center gap-2'>
                 <Download className='w-4 h-4' />

@@ -13,8 +13,7 @@ export const WatchedMovieSchema = z.object({
   rating: z.number().min(0).max(10).nullable(),
   notes: z.string().nullable(),
   favorite: z.boolean().nullable(),
-  rewatch_count: z.number().nullable(),
-  elo_score: z.number().nullable(), // Add ELO score field
+  elo_score: z.number().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
 }) satisfies z.ZodType<WatchedMovieRow>;

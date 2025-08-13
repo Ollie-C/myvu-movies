@@ -1,5 +1,5 @@
-// NOT AUDITED
-
+// AUDITED 07/08/2025
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -15,7 +15,9 @@ import { Button } from '@/components/common/Button';
 import { Textarea } from '@/components/common/Textarea';
 import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 import { useBatchRating } from '@/utils/hooks/useBatchRating';
-import { useRatingModal } from '@/utils/hooks/useRatingModal';
+
+import { useAuth } from '@/context/AuthContext';
+import { useRankedMovies } from '@/utils/hooks/supabase/queries/useRanking';
 
 interface StandardRatingModalProps {
   isOpen: boolean;
@@ -34,34 +36,161 @@ export default function StandardRatingModal({
   movies,
   onRateMovie,
 }: StandardRatingModalProps) {
+  const { user } = useAuth();
+
+  // Local modal state
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+
+  // Batch rating logic
   const batchRating = useBatchRating({
     movies,
     onRateMovie,
     onComplete: onClose,
   });
 
-  const ratingModal = useRatingModal({
-    movieId: batchRating.currentMovie?.movie_id || undefined,
-    rating: batchRating.rating,
-    currentMovie: batchRating.currentMovie
-      ? {
-          title: batchRating.currentMovie.movie.title,
-          poster_path: batchRating.currentMovie.movie.poster_path,
-          release_date: batchRating.currentMovie.movie.release_date,
-        }
-      : undefined,
-    onRatingChange: batchRating.setRating,
-    onRatingComplete: batchRating.handleNext,
-  });
+  // Data for advanced mode
+  const { data: rankedMoviesResult, isLoading: isLoadingRanked } =
+    useRankedMovies(user?.id);
 
-  if (ratingModal.leagueTableSnippet) {
-    console.log(
-      'ratingModal.leagueTableSnippet',
-      ratingModal.leagueTableSnippet
-    );
-  }
+  const rankedMovies = rankedMoviesResult?.data || [];
+
+  // Simple handlers for rating input
+  const handleStarClick = useCallback(
+    (starRating: number) => {
+      batchRating.setRating(starRating);
+    },
+    [batchRating.setRating]
+  );
+
+  const handleInputChange = useCallback(
+    (value: string) => {
+      if (value === '') {
+        batchRating.setRating(0);
+        return;
+      }
+
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue) && numValue >= 0 && numValue <= 10) {
+        batchRating.setRating(numValue);
+      }
+    },
+    [batchRating.setRating]
+  );
+
+  const handleInputBlur = useCallback(
+    (value: string) => {
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        const roundedValue = Math.round(numValue * 10) / 10;
+        if (roundedValue >= 0 && roundedValue <= 10) {
+          batchRating.setRating(roundedValue);
+        }
+      }
+    },
+    [batchRating.setRating]
+  );
+
+  // Calculate current position (simplified logic)
+  const getCurrentPosition = useCallback(() => {
+    let position = 1;
+    for (const movie of rankedMovies) {
+      if (movie.rating && movie.rating > (batchRating.rating || 0)) {
+        position++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      position,
+      totalRanked: rankedMovies.length,
+    };
+  }, [batchRating.rating, rankedMovies]);
+
+  // Get league table snippet (simplified)
+  const getLeagueTableSnippet = useCallback(() => {
+    if (!batchRating.rating || !rankedMovies.length) return [];
+
+    const currentPos = getCurrentPosition();
+    if (!currentPos) return [];
+
+    const position = currentPos.position;
+    const startIndex = Math.max(0, position - 3);
+    const endIndex = Math.min(rankedMovies.length, position + 2);
+
+    const snippet = [];
+    let currentInserted = false;
+
+    for (let i = startIndex; i < endIndex; i++) {
+      const rankedMovie = rankedMovies[i];
+      const moviePosition = i + 1;
+
+      // Insert current movie at correct position
+      if (!currentInserted && moviePosition >= position) {
+        snippet.push({
+          movie_id: batchRating.currentMovie?.movie_id || 0,
+          rating: batchRating.rating,
+          movie: batchRating.currentMovie?.movie,
+          position,
+          isCurrent: true,
+          displayPosition: position,
+        });
+        currentInserted = true;
+      }
+
+      // Add existing ranked movie
+      if (rankedMovie) {
+        snippet.push({
+          ...rankedMovie,
+          isCurrent: false,
+          displayPosition: moviePosition,
+        });
+      }
+    }
+
+    // If current movie should be at the end
+    if (!currentInserted) {
+      snippet.push({
+        movie_id: batchRating.currentMovie?.movie_id || 0,
+        rating: batchRating.rating,
+        movie: batchRating.currentMovie?.movie,
+        position,
+        isCurrent: true,
+        displayPosition: position,
+      });
+    }
+
+    return snippet.slice(0, 5); // Limit to 5 items
+  }, [
+    batchRating.rating,
+    batchRating.currentMovie,
+    rankedMovies,
+    getCurrentPosition,
+  ]);
+
+  // Simplified position change (just adjust rating slightly)
+  const handlePositionChange = useCallback(
+    (direction: 'up' | 'down') => {
+      const snippet = getLeagueTableSnippet();
+      const currentIndex = snippet.findIndex((movie) => movie.isCurrent);
+
+      if (direction === 'up' && currentIndex > 0) {
+        const movieAbove = snippet[currentIndex - 1];
+        const newRating = Math.min(10, (movieAbove.rating || 0) + 0.1);
+        batchRating.setRating(newRating);
+      } else if (direction === 'down' && currentIndex < snippet.length - 1) {
+        const movieBelow = snippet[currentIndex + 1];
+        const newRating = Math.max(0, (movieBelow.rating || 0) - 0.1);
+        batchRating.setRating(newRating);
+      }
+    },
+    [getLeagueTableSnippet, batchRating.setRating]
+  );
 
   if (!isOpen || !batchRating.currentMovie) return null;
+
+  const currentPosition = getCurrentPosition();
+  const leagueTableSnippet = getLeagueTableSnippet();
 
   return (
     <AnimatePresence>
@@ -82,12 +211,8 @@ export default function StandardRatingModal({
                 <h2 className='text-2xl font-bold'>Rate Your Movies</h2>
                 <div className='flex items-center gap-2'>
                   <Button
-                    onClick={() =>
-                      ratingModal.setIsAdvancedMode(!ratingModal.isAdvancedMode)
-                    }
-                    variant={
-                      ratingModal.isAdvancedMode ? 'primary' : 'secondary'
-                    }
+                    onClick={() => setIsAdvancedMode(!isAdvancedMode)}
+                    variant={isAdvancedMode ? 'primary' : 'secondary'}
                     size='sm'
                     className='flex items-center gap-2'>
                     <TrendingUp className='w-4 h-4' />
@@ -132,7 +257,7 @@ export default function StandardRatingModal({
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                           <button
                             key={star}
-                            onClick={() => ratingModal.handleStarClick(star)}
+                            onClick={() => handleStarClick(star)}
                             className='p-0.5 transition-colors hover:scale-110'>
                             <Star
                               className={`w-6 h-6 ${
@@ -153,12 +278,8 @@ export default function StandardRatingModal({
                           max='10'
                           step='0.1'
                           value={batchRating.rating || ''}
-                          onChange={(e) =>
-                            ratingModal.handleInputChange(e.target.value)
-                          }
-                          onBlur={(e) =>
-                            ratingModal.handleInputBlur(e.target.value)
-                          }
+                          onChange={(e) => handleInputChange(e.target.value)}
+                          onBlur={(e) => handleInputBlur(e.target.value)}
                           className='w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm'
                           placeholder='0.0'
                         />
@@ -213,52 +334,45 @@ export default function StandardRatingModal({
               </div>
 
               {/* Right Panel - League Table (Advanced Mode) */}
-              {ratingModal.isAdvancedMode && (
+              {isAdvancedMode && (
                 <div className='w-1/2 p-6 overflow-y-auto'>
                   <div className='space-y-6'>
                     <div className='flex items-center justify-between'>
                       <h3 className='text-xl font-bold'>Your Rankings</h3>
-                      {ratingModal.currentPosition && (
+                      {currentPosition && (
                         <div className='text-sm text-secondary'>
-                          Position {ratingModal.currentPosition} of{' '}
-                          {ratingModal.totalRanked}
+                          Position {currentPosition.position} of{' '}
+                          {currentPosition.totalRanked}
                         </div>
                       )}
                     </div>
 
-                    {ratingModal.isLoadingRanked ? (
+                    {isLoadingRanked ? (
                       <div className='text-center py-8'>
                         <p className='text-secondary'>
                           Loading your rankings...
                         </p>
                       </div>
-                    ) : ratingModal.leagueTableSnippet.length > 0 ? (
+                    ) : leagueTableSnippet.length > 0 ? (
                       <div className='space-y-4'>
                         {/* Position Controls */}
                         <div className='flex items-center justify-center gap-4'>
                           <Button
-                            onClick={() =>
-                              ratingModal.handlePositionChange('up')
-                            }
+                            onClick={() => handlePositionChange('up')}
                             variant='secondary'
                             size='sm'
-                            disabled={
-                              ratingModal.leagueTableSnippet[0]?.isCurrent
-                            }
+                            disabled={leagueTableSnippet[0]?.isCurrent}
                             className='flex items-center gap-2'>
                             <ChevronUp className='w-4 h-4' />
                             Move Up
                           </Button>
                           <Button
-                            onClick={() =>
-                              ratingModal.handlePositionChange('down')
-                            }
+                            onClick={() => handlePositionChange('down')}
                             variant='secondary'
                             size='sm'
                             disabled={
-                              ratingModal.leagueTableSnippet[
-                                ratingModal.leagueTableSnippet.length - 1
-                              ]?.isCurrent
+                              leagueTableSnippet[leagueTableSnippet.length - 1]
+                                ?.isCurrent
                             }
                             className='flex items-center gap-2'>
                             <ChevronDown className='w-4 h-4' />
@@ -268,9 +382,9 @@ export default function StandardRatingModal({
 
                         {/* League Table */}
                         <div className='space-y-2'>
-                          {ratingModal.leagueTableSnippet.map((movie) => (
+                          {leagueTableSnippet.map((movie, index) => (
                             <div
-                              key={movie.movie_id}
+                              key={`${movie.movie_id}-${index}`}
                               className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all ${
                                 movie.isCurrent
                                   ? 'bg-primary/10 border-primary shadow-md'

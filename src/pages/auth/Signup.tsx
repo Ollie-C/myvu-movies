@@ -1,4 +1,4 @@
-// NOT AUDITED
+// AUDITED 11/08/2025
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -18,15 +18,52 @@ export function Signup() {
   const { signUp } = useAuth();
   const navigate = useNavigate();
 
+  const [validationErrors, setValidationErrors] = useState<{
+    email?: string;
+    password?: string;
+    username?: string;
+  }>({});
+
+  const validateForm = () => {
+    const errors: typeof validationErrors = {};
+
+    if (username.length < 3) {
+      errors.username = 'Username must be at least 3 characters';
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      errors.username =
+        'Username can only contain letters, numbers, and underscores';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+
+    if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters';
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!validateForm()) return;
+
     setError('');
     setLoading(true);
 
     try {
-      await signUp(email, password, username);
-      setSuccess(true);
-      setTimeout(() => navigate('/'), 2000);
+      const { user } = await signUp(email, password, username);
+
+      if (user && !user.email_confirmed_at) {
+        setSuccess(true);
+      } else {
+        navigate('/', { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');
     } finally {

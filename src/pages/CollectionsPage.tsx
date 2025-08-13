@@ -1,33 +1,25 @@
-// NOT AUDITED
-
-import { Plus } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+// AUDITED 06/08/2025
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card } from '@/components/common/Card';
-import { Folder } from 'lucide-react';
+
+// Icons
+import { Plus, Folder } from 'lucide-react';
+
+// Hooks
+import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
+import { useCreateCollection } from '@/utils/hooks/supabase/mutations/useCollectionMutations';
 import { useAuth } from '@/context/AuthContext';
-import { collectionService } from '@/services/supabase/collection.service';
+
+// Components
+import { Card } from '@/components/common/Card';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 import CollectionCard from '@/components/collections/CollectionCard';
 
 const Collections = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Log collections page access
-  useEffect(() => {
-    console.log('📚 [CollectionsPage] Page loaded:', {
-      userId: user?.id,
-      email: user?.email,
-      pathname: window.location.pathname,
-    });
-  }, [user]);
-
-  // Fetch user collections with previews using the proper hook
   const {
     data: collections = [],
     isLoading,
@@ -36,21 +28,7 @@ const Collections = () => {
     limit: 20,
   });
 
-  // Create collection mutation
-  const createCollectionMutation = useMutation({
-    mutationFn: (
-      data: Parameters<typeof collectionService.createCollection>[1]
-    ) => collectionService.createCollection(user!.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-      setIsModalOpen(false);
-    },
-  });
-
-  // console.log('Collections data:', collections);
-  // console.log('Collections loading:', isLoading);
-  // console.log('Collections error:', error);
-  // console.log('User ID:', user?.id);
+  const createCollectionMutation = useCreateCollection();
 
   if (!user) {
     return (
@@ -137,6 +115,7 @@ const Collections = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={async (data) => {
           await createCollectionMutation.mutateAsync(data);
+          setIsModalOpen(false);
         }}
         title='Create New Collection'
       />

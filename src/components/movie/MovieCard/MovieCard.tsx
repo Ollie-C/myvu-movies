@@ -1,11 +1,11 @@
-// NOT AUDITED
+// Audited: 11/08/2025
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
-import { MovieCardOverlay } from './MovieCard/Overlay';
-import { MovieCardRanking } from './MovieCard/Ranking';
+import { MovieCardOverlay } from './Overlay';
+import { MovieCardRanking } from './Ranking';
 import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
 
@@ -20,7 +20,7 @@ interface MovieCardProps {
   disableLink?: boolean;
 }
 
-export const MovieCard = ({
+const MovieCard = ({
   userMovie,
   onRemoveFromWatched,
   onRemoveFromWatchlist,
@@ -34,10 +34,23 @@ export const MovieCard = ({
   const userRating = 'rating' in userMovie ? userMovie.rating : null;
   const navigate = useNavigate();
 
-  const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [hasInitiallyExpanded, setHasInitiallyExpanded] = useState(false);
   const plusButtonRef = useRef<HTMLButtonElement>(null);
+
+  const ANIMATION_CONFIG = {
+    INITIAL_DELAY: 200,
+    STAGGER_DELAY: 70,
+    MAX_ANIMATED_ITEMS: 80,
+  };
+
+  const [cardState, setCardState] = useState<{
+    isHovered: boolean;
+    hasInitiallyExpanded: boolean;
+    showCollectionDropdown: boolean;
+  }>({
+    isHovered: false,
+    hasInitiallyExpanded: false,
+    showCollectionDropdown: false,
+  });
 
   const imageUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
@@ -45,23 +58,25 @@ export const MovieCard = ({
 
   // Initial animation delay
   React.useEffect(() => {
-    const initialDelay = 200;
-    const staggerDelay = 70;
-    let cardDelay = initialDelay + index * staggerDelay;
+    let cardDelay =
+      ANIMATION_CONFIG.INITIAL_DELAY + index * ANIMATION_CONFIG.STAGGER_DELAY;
 
-    if (index > 80) {
+    if (index > ANIMATION_CONFIG.MAX_ANIMATED_ITEMS) {
       cardDelay = 0;
     }
 
     const timer = setTimeout(() => {
-      setHasInitiallyExpanded(true);
+      setCardState((prev) => ({
+        ...prev,
+        hasInitiallyExpanded: true,
+      }));
     }, cardDelay);
 
     return () => clearTimeout(timer);
-  }, [index]);
+  }, []);
 
   const handleCardClick = () => {
-    if (!showCollectionDropdown && !disableLink) {
+    if (!cardState.showCollectionDropdown && !disableLink) {
       navigate(`/movies/${movie.tmdb_id}`);
     }
   };
@@ -69,7 +84,10 @@ export const MovieCard = ({
   const handleAddToListClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowCollectionDropdown(!showCollectionDropdown);
+    setCardState((prev) => ({
+      ...prev,
+      showCollectionDropdown: !prev.showCollectionDropdown,
+    }));
   };
 
   return (
@@ -78,8 +96,12 @@ export const MovieCard = ({
 
       <motion.div
         className='bg-white border border-gray-300 hover:border-black group relative transition-all duration-200 rounded-sm'
-        onHoverStart={() => setIsHovered(true)}
-        onHoverEnd={() => setIsHovered(false)}>
+        onHoverStart={() =>
+          setCardState((prev) => ({ ...prev, isHovered: true }))
+        }
+        onHoverEnd={() =>
+          setCardState((prev) => ({ ...prev, isHovered: false }))
+        }>
         <div className='block cursor-pointer' onClick={handleCardClick}>
           <div className='relative pb-[150%]'>
             <img
@@ -91,8 +113,8 @@ export const MovieCard = ({
             <MovieCardOverlay
               movie={movie}
               userRating={userRating}
-              isHovered={isHovered}
-              hasInitiallyExpanded={hasInitiallyExpanded}
+              isHovered={cardState.isHovered}
+              hasInitiallyExpanded={cardState.hasInitiallyExpanded}
               isWatchlistView={isWatchlistView}
               isWatchedList={isWatchedList}
               onRemoveFromWatched={onRemoveFromWatched}
@@ -106,7 +128,7 @@ export const MovieCard = ({
 
         {/* Collection Dropdown */}
         <AnimatePresence>
-          {showCollectionDropdown && (
+          {cardState.showCollectionDropdown && (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -114,8 +136,13 @@ export const MovieCard = ({
               transition={{ duration: 0.1 }}
               className='absolute top-full left-0 right-0 z-30 mt-1'>
               <CollectionDropdown
-                isOpen={showCollectionDropdown}
-                onClose={() => setShowCollectionDropdown(false)}
+                isOpen={cardState.showCollectionDropdown}
+                onClose={() =>
+                  setCardState((prev) => ({
+                    ...prev,
+                    showCollectionDropdown: false,
+                  }))
+                }
                 movie={movie}
               />
             </motion.div>

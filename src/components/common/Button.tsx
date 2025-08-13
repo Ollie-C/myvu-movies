@@ -1,5 +1,4 @@
-// NOT AUDITED
-
+// Audited: 11/08/2025
 import { cn } from '@/utils/cn';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

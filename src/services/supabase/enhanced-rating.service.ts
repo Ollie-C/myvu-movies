@@ -61,7 +61,7 @@ export const enhancedRatingService = {
       return {
         totalRated: 0,
         averageRating: 0,
-        averageElo: 1500,
+        averageElo: 1200,
         ratingDistribution: {
           '9-10': 0,
           '8-8.9': 0,
@@ -76,7 +76,7 @@ export const enhancedRatingService = {
     const averageRating =
       ratings.reduce((sum, movie) => sum + (movie.rating || 0), 0) / totalRated;
     const averageElo =
-      ratings.reduce((sum, movie) => sum + (movie.elo_score || 1500), 0) /
+      ratings.reduce((sum, movie) => sum + (movie.elo_score || 1200), 0) /
       totalRated;
 
     return {

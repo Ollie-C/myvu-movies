@@ -1,5 +1,4 @@
-// NOT AUDITED
-
+// audited: 12/08/2025
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
@@ -14,20 +13,18 @@ interface Movie {
 
 interface CollectionPreviewProps {
   collectionTitle: string;
-  movies: Movie[]; // Array of up to 6 movies
+  movies: Movie[];
   onCollectionClick?: () => void;
   size?: 'small' | 'medium' | 'large';
 }
 
 const CollectionPreview: React.FC<CollectionPreviewProps> = ({
-  collectionTitle,
   movies,
   onCollectionClick,
   size = 'medium',
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Take only the first 6 movies
   const displayMovies = movies.slice(0, 6);
 
   const getCardSize = () => {
@@ -42,27 +39,22 @@ const CollectionPreview: React.FC<CollectionPreviewProps> = ({
     }
   };
 
-  // Debug log to check movie count
-  // console.log(
-  //   `Collection "${collectionTitle}" has ${displayMovies.length} movies for preview`
-  // );
-
   return (
     <div className='cursor-pointer' onClick={onCollectionClick}>
       <div
         className='relative h-[220px] w-full max-w-[300px]'
+        style={{ perspective: '1000px' }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}>
         {displayMovies.map((movie, index) => {
-          // Reduced angles - more subtle rotation
-          const baseRotation = isHovered ? 0.1 : -2 + index * 0.3;
+          const baseRotation = isHovered ? -15 + index * 6 : -3 + index * 1;
           const xOffset = isHovered ? index * 40 : index * 20;
-          const yOffset = 0;
+          const yOffset = isHovered ? Math.sin(index * 0.5) * 10 : 0;
           const zIndex = 6 - index;
 
           return (
             <motion.div
-              key={movie.id || `movie-${index}`} // Fallback key if id is missing
+              key={movie.id || `movie-${index}`}
               className={clsx(
                 'absolute top-0 left-0',
                 getCardSize(),
@@ -71,13 +63,20 @@ const CollectionPreview: React.FC<CollectionPreviewProps> = ({
               )}
               style={{
                 zIndex,
-                transformOrigin: 'bottom left',
+                transformOrigin: 'bottom center',
               }}
-              initial={false}
+              initial={{
+                rotate: 0,
+                x: 0,
+                scale: 0.8,
+                opacity: 0,
+              }}
               animate={{
                 rotate: baseRotation,
                 x: xOffset,
                 y: yOffset,
+                scale: 1,
+                opacity: 1,
               }}
               transition={{
                 type: 'spring',
@@ -102,7 +101,7 @@ const CollectionPreview: React.FC<CollectionPreviewProps> = ({
                   loading='lazy'
                   onError={(e) => {
                     console.error(`Failed to load poster for ${movie.title}`);
-                    e.currentTarget.src = '/placeholder-movie-poster.jpg'; // Fallback image
+                    e.currentTarget.src = '/placeholder-movie-poster.jpg';
                   }}
                 />
               ) : (
@@ -113,12 +112,10 @@ const CollectionPreview: React.FC<CollectionPreviewProps> = ({
                 </div>
               )}
 
-              {/* Gradient overlay for depth when stacked */}
               {!isHovered && index > 0 && (
                 <div className='absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-transparent pointer-events-none' />
               )}
 
-              {/* Movie title overlay on hover */}
               <motion.div
                 className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-4'
                 animate={{

@@ -1,146 +1,103 @@
-// NOT AUDITED
+// AUDITED 11/08/2025
 
-import {
-  useQuery,
-  useQueryClient,
-  useInfiniteQuery,
-} from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { collectionService } from '@/services/supabase/collection.service';
-import type {
-  Collection,
-  CollectionWithCount,
-} from '@/schemas/collection.schema';
+import type { Collection } from '@/schemas/collection.schema';
 import type {
   CollectionWithItems,
   CollectionPreview,
 } from '@/schemas/collection-combined.schema';
 
-// Better typed filters
+// Types
 interface CollectionFilters {
-  userId?: string;
   limit?: number;
-  withPreviews?: boolean;
   withCounts?: boolean;
   isRankedOnly?: boolean;
   sortBy?: 'updated_at' | 'created_at' | 'name';
   sortOrder?: 'asc' | 'desc';
 }
 
-// Query keys factory with better typing
+// Query keys factory
 export const collectionKeys = {
   all: ['collections'] as const,
   lists: () => [...collectionKeys.all, 'list'] as const,
-  list: (filters: CollectionFilters) =>
-    [...collectionKeys.lists(), filters] as const,
-  detail: (id: string) => [...collectionKeys.all, 'detail', id] as const,
-  preview: (id: string) => [...collectionKeys.all, 'preview', id] as const,
-  withPreviews: (userId: string) =>
-    [...collectionKeys.all, 'withPreviews', userId] as const,
+  list: (userId: string, filters?: CollectionFilters) =>
+    [...collectionKeys.lists(), userId, filters] as const,
+  detail: (userId: string, id: string) =>
+    [...collectionKeys.all, 'detail', userId, id] as const,
+  preview: (userId: string, id: string) =>
+    [...collectionKeys.all, 'preview', userId, id] as const,
+  withPreviews: (userId: string, limit?: number) =>
+    [...collectionKeys.all, 'withPreviews', userId, limit] as const,
   withMovie: (userId: string, movieId: number) =>
     [...collectionKeys.all, 'withMovie', userId, movieId] as const,
   stats: (userId: string) => [...collectionKeys.all, 'stats', userId] as const,
-  infinite: (filters: CollectionFilters) =>
-    [...collectionKeys.all, 'infinite', filters] as const,
 };
 
-// Main collections hook with better options
+// Main collections hook (simplified)
 export const useCollections = (options?: CollectionFilters) => {
   const { user } = useAuth();
-  const {
-    limit,
-    withPreviews = false,
-    withCounts = true,
-    isRankedOnly = false,
-    sortBy = 'updated_at',
-    sortOrder = 'desc',
-  } = options || {};
 
   return useQuery({
-    queryKey: collectionKeys.list({ ...options, userId: user?.id }),
-    queryFn: async (): Promise<CollectionPreview[] | CollectionWithCount[]> => {
+    queryKey: collectionKeys.list(user?.id || '', options),
+    queryFn: () => {
       if (!user?.id) throw new Error('User not authenticated');
 
-      let collections;
-
-      if (withPreviews) {
-        collections = await collectionService.getUserCollectionsWithPreviews(
-          user.id,
-          limit
-        );
-      } else {
-        collections = await collectionService.getUserCollections(user.id, {
-          limit,
-          withCounts,
-          isRankedOnly,
-        });
-      }
-
-      // Client-side sorting (if not handled by service)
-      if (sortBy !== 'updated_at' || sortOrder !== 'desc') {
-        collections.sort((a, b) => {
-          let comparison = 0;
-
-          switch (sortBy) {
-            case 'name':
-              comparison = a.name.localeCompare(b.name);
-              break;
-            case 'created_at':
-              comparison =
-                new Date(a.created_at || 0).getTime() -
-                new Date(b.created_at || 0).getTime();
-              break;
-            case 'updated_at':
-            default:
-              comparison =
-                new Date(a.updated_at || 0).getTime() -
-                new Date(b.updated_at || 0).getTime();
-              break;
-          }
-
-          return sortOrder === 'desc' ? -comparison : comparison;
-        });
-      }
-
-      return collections;
+      return collectionService.getUserCollections(user.id, options);
     },
     enabled: !!user?.id,
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
   });
 };
 
-// Get a single collection with its items
-export const useCollection = (collectionId: string | undefined) => {
+export const useCollectionsWithPreviews = (limit?: number) => {
+  const { user } = useAuth();
+
+  return useQuery<CollectionPreview[], Error>({
+    queryKey: collectionKeys.withPreviews(user?.id || '', limit),
+    queryFn: () => {
+      if (!user?.id) throw new Error('User not authenticated');
+
+      return collectionService.getUserCollectionsWithPreviews(user.id, limit);
+    },
+    enabled: !!user?.id,
+    staleTime: 30 * 1000,
+  });
+};
+
+// Single collection with items
+export const useCollection = (collectionId?: string) => {
   const { user } = useAuth();
 
   return useQuery<CollectionWithItems | null, Error>({
-    queryKey: collectionKeys.detail(collectionId || ''),
+    queryKey: collectionKeys.detail(user?.id || '', collectionId || ''),
     queryFn: () => {
       if (!collectionId) return null;
       return collectionService.getCollection(collectionId);
     },
     enabled: !!user?.id && !!collectionId,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 60 * 1000,
   });
 };
 
-// Get collection preview (lighter query)
-export const useCollectionPreview = (collectionId: string | undefined) => {
+// Collection preview (lighter query)
+export const useCollectionPreview = (collectionId?: string) => {
   const { user } = useAuth();
 
   return useQuery<CollectionPreview | null, Error>({
-    queryKey: collectionKeys.preview(collectionId || ''),
+    queryKey: collectionKeys.preview(user?.id || '', collectionId || ''),
     queryFn: () => {
       if (!collectionId) return null;
       return collectionService.getCollectionPreview(collectionId);
     },
     enabled: !!user?.id && !!collectionId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 };
 
-// Get collections with movie status
-export const useCollectionsWithMovie = (movieId: number | undefined) => {
+// Collections with movie status
+export const useCollectionsWithMovie = (movieId?: number) => {
   const { user } = useAuth();
 
   return useQuery({
@@ -154,7 +111,7 @@ export const useCollectionsWithMovie = (movieId: number | undefined) => {
   });
 };
 
-// Get user collection statistics
+// Collection statistics
 export const useCollectionStats = () => {
   const { user } = useAuth();
 
@@ -165,160 +122,41 @@ export const useCollectionStats = () => {
       return collectionService.getCollectionStats(user.id);
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 };
 
-// Infinite scroll for collections (useful for large lists)
-export const useCollectionsInfinite = (
-  options?: Omit<CollectionFilters, 'limit'>
-) => {
-  const { user } = useAuth();
-  const limit = 20;
-
-  return useInfiniteQuery({
-    queryKey: collectionKeys.infinite({ ...options, userId: user?.id, limit }),
-    queryFn: async ({ pageParam = 0 }) => {
-      if (!user?.id) throw new Error('User not authenticated');
-
-      const collections = await collectionService.getUserCollections(user.id, {
-        ...options,
-        limit,
-        // offset: pageParam * limit, // If your service supports offset
-      });
-
-      // Simulate pagination
-      const start = pageParam * limit;
-      const end = start + limit;
-      return collections.slice(start, end);
-    },
-    getNextPageParam: (lastPage, allPages) => {
-      return lastPage.length === limit ? allPages.length : undefined;
-    },
-    initialPageParam: 0,
-    enabled: !!user?.id,
-  });
-};
-
-// Prefetch utilities
-export const usePrefetchCollection = () => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
+// Check if movie is in any collections (simplified)
+export const useIsMovieInCollections = (movieId?: number) => {
+  const { data: collectionsWithMovie } = useCollectionsWithMovie(movieId);
 
   return {
-    prefetchCollection: (collectionId: string) => {
-      if (!user?.id || !collectionId) return;
-
-      return queryClient.prefetchQuery({
-        queryKey: collectionKeys.detail(collectionId),
-        queryFn: () => collectionService.getCollection(collectionId),
-        staleTime: 60 * 1000,
-      });
-    },
-
-    prefetchCollectionPreview: (collectionId: string) => {
-      if (!user?.id || !collectionId) return;
-
-      return queryClient.prefetchQuery({
-        queryKey: collectionKeys.preview(collectionId),
-        queryFn: () => collectionService.getCollectionPreview(collectionId),
-        staleTime: 5 * 60 * 1000,
-      });
-    },
-
-    prefetchCollections: () => {
-      if (!user?.id) return;
-
-      return queryClient.prefetchQuery({
-        queryKey: collectionKeys.list({ userId: user.id }),
-        queryFn: () => collectionService.getUserCollections(user.id),
-        staleTime: 30 * 1000,
-      });
-    },
+    data:
+      collectionsWithMovie?.some(({ inCollection }) => inCollection) ?? false,
+    isLoading: !collectionsWithMovie,
   };
 };
 
-// Check if a movie is in any collections
-export const useIsMovieInCollections = (movieId: number | undefined) => {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: [...collectionKeys.all, 'movieInAny', user?.id, movieId],
-    queryFn: async () => {
-      if (!user?.id || !movieId) return false;
-
-      const result = await collectionService.getCollectionsWithMovie(
-        user.id,
-        movieId
-      );
-
-      return result.some(({ inCollection }) => inCollection);
-    },
-    enabled: !!user?.id && !!movieId,
-    staleTime: 30 * 1000,
-  });
-};
-
-// Hook to check if user can edit a collection
-export const useCanEditCollection = (
-  collection: Collection | null | undefined
-) => {
+// Simple utility hook (no complex logic)
+export const useCanEditCollection = (collection?: Collection | null) => {
   const { user } = useAuth();
 
   if (!collection || !user?.id) return false;
   return collection.user_id === user.id;
 };
 
-// Get collections with previews (typed specifically for previews)
-export const useCollectionsWithPreviews = (
-  options?: Omit<CollectionFilters, 'withPreviews'>
-) => {
+// Prefetch utilities (simplified)
+export const usePrefetchCollection = () => {
   const { user } = useAuth();
-  const {
-    limit,
-    withCounts = true,
-    isRankedOnly = false,
-    sortBy = 'updated_at',
-    sortOrder = 'desc',
-  } = options || {};
+  const queryClient = useQueryClient();
 
-  return useQuery<CollectionPreview[], Error>({
-    queryKey: collectionKeys.withPreviews(user?.id || ''),
-    queryFn: async (): Promise<CollectionPreview[]> => {
-      if (!user?.id) throw new Error('User not authenticated');
+  return (collectionId: string) => {
+    if (!user?.id || !collectionId) return;
 
-      const collections =
-        await collectionService.getUserCollectionsWithPreviews(user.id, limit);
-
-      // Client-side sorting (if not handled by service)
-      if (sortBy !== 'updated_at' || sortOrder !== 'desc') {
-        collections.sort((a, b) => {
-          let comparison = 0;
-
-          switch (sortBy) {
-            case 'name':
-              comparison = a.name.localeCompare(b.name);
-              break;
-            case 'created_at':
-              comparison =
-                new Date(a.created_at || 0).getTime() -
-                new Date(b.created_at || 0).getTime();
-              break;
-            case 'updated_at':
-            default:
-              comparison =
-                new Date(a.updated_at || 0).getTime() -
-                new Date(b.updated_at || 0).getTime();
-              break;
-          }
-
-          return sortOrder === 'desc' ? -comparison : comparison;
-        });
-      }
-
-      return collections;
-    },
-    enabled: !!user?.id,
-    staleTime: 30 * 1000, // 30 seconds
-  });
+    queryClient.prefetchQuery({
+      queryKey: collectionKeys.detail(user.id, collectionId),
+      queryFn: () => collectionService.getCollection(collectionId),
+      staleTime: 60 * 1000,
+    });
+  };
 };

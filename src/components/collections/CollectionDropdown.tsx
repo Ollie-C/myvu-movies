@@ -1,151 +1,105 @@
-// NOT AUDITED
-
+// AUDITED 12/08/2025
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Check, Folder, FolderPlus } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  collectionService,
-  type Collection,
-} from '@/services/supabase/collection.service';
-import { movieService } from '@/services/supabase/movies.service';
-import { useAuth } from '@/context/AuthContext';
+import { Check, Folder, FolderPlus, AlertCircle } from 'lucide-react';
 import { CollectionModal } from './CollectionModal';
-import type { TMDBMovie } from '@/schemas/movie.schema';
+
+import {
+  useCollections,
+  useCollectionsWithMovie,
+} from '@/utils/hooks/supabase/queries/useCollections';
+import {
+  useCreateCollection,
+  useToggleMovieInCollection,
+} from '@/utils/hooks/supabase/mutations/useCollectionMutations';
+import type { CollectionInsert } from '@/schemas/collection.schema';
+import type { Movie } from '@/schemas/movie.schema';
 
 interface CollectionDropdownProps {
   isOpen: boolean;
   onClose: () => void;
-  movie:
-    | TMDBMovie
-    | {
-        id: number;
-        tmdb_id: number;
-        title: string;
-        poster_path: string | null;
-      };
-  position?: { top?: number; bottom?: number; left?: number; right?: number };
+  movie: Movie;
 }
 
 export function CollectionDropdown({
   isOpen,
   onClose,
   movie,
-  position = { top: 0, left: 0 },
 }: CollectionDropdownProps) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loadingCollectionId, setLoadingCollectionId] = useState<string | null>(
     null
   );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Get user collections
-  const { data: collections = [] } = useQuery({
-    queryKey: ['user-collections', user?.id],
-    queryFn: () => collectionService.getUserCollections(user!.id),
-    enabled: !!user?.id && isOpen,
+  const {
+    data: collections = [],
+    isLoading: collectionsLoading,
+    error: collectionsError,
+  } = useCollections({
+    withCounts: true,
+    sortBy: 'name',
+    sortOrder: 'asc',
   });
 
-  // Get movie's current collections
-  const { data: movieCollections = [] } = useQuery({
-    queryKey: ['movie-collections', user?.id, movie.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
+  // Ensure movie.id is a valid number before calling the hook
+  const movieId =
+    typeof movie.id === 'number' && !isNaN(movie.id) && movie.id > 0
+      ? movie.id
+      : undefined;
 
-      // First ensure movie is cached
-      const cachedMovie = await movieService.cacheMovie(movie as TMDBMovie);
-      return collectionService.getCollectionsWithMovie(user.id, cachedMovie.id);
-    },
-    enabled: !!user?.id && isOpen,
-  });
+  const {
+    data: movieCollections = [],
+    isLoading: movieCollectionsLoading,
+    error: movieCollectionsError,
+  } = useCollectionsWithMovie(movieId);
 
-  // Mutation for adding/removing movies from collections
-  const toggleMovieInCollectionMutation = useMutation({
-    mutationFn: async ({
-      collectionId,
-      inCollection,
-    }: {
-      collectionId: string;
-      inCollection: boolean;
-    }) => {
-      if (!user?.id) throw new Error('Must be logged in');
+  const createCollectionMutation = useCreateCollection();
 
-      const cachedMovie = await movieService.cacheMovie(movie as TMDBMovie);
+  const toggleMovieInCollection = useToggleMovieInCollection();
 
-      if (inCollection) {
-        await collectionService.removeMovieFromCollection(
-          collectionId,
-          cachedMovie.id
-        );
-      } else {
-        await collectionService.addMovieToCollection(
-          collectionId,
-          cachedMovie.id
-        );
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-collections'] });
-      queryClient.invalidateQueries({ queryKey: ['movie-collections'] });
-      // Also invalidate any collection details queries that might be open
-      queryClient.invalidateQueries({ queryKey: ['collection-details'] });
-      // Force refetch any open collection details
-      queryClient.refetchQueries({ queryKey: ['collection-details'] });
-    },
-    onSettled: () => {
+  const handleToggleCollection = async (
+    collectionId: string,
+    movieId: number
+  ) => {
+    try {
+      setLoadingCollectionId(collectionId);
+      await toggleMovieInCollection.mutateAsync({
+        collectionId,
+        movieId,
+      });
+    } catch (error) {
+      console.error('Error toggling collection:', error);
+    } finally {
       setLoadingCollectionId(null);
-    },
-  });
+    }
+  };
 
-  // Mutation for creating new collection
-  const createCollectionMutation = useMutation({
-    mutationFn: (
-      data: Parameters<typeof collectionService.createCollection>[1]
-    ) => collectionService.createCollection(user!.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user-collections'] });
-      setIsModalOpen(false);
-    },
-  });
-
-  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node)
       ) {
         onClose();
       }
-    }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isOpen, onClose]);
-
-  const handleToggleCollection = async (
-    collectionId: string,
-    inCollection: boolean
-  ) => {
-    // console.log('Toggling collection:', {
-    //   collectionId,
-    //   inCollection,
-    //   movieId: movie.id,
-    // });
-    setLoadingCollectionId(collectionId);
-    await toggleMovieInCollectionMutation.mutateAsync({
-      collectionId,
-      inCollection,
-    });
-  };
-
-  if (!isOpen) return null;
 
   const isMovieInCollection = (collectionId: string) => {
     return (
@@ -154,48 +108,74 @@ export function CollectionDropdown({
     );
   };
 
+  if (!isOpen) return null;
+
+  const hasError = collectionsError || movieCollectionsError;
+  const isLoading = collectionsLoading || movieCollectionsLoading;
+
   return (
     <>
       <div
         ref={dropdownRef}
-        className='fixed z-50 bg-surface border border-border rounded-lg shadow-2xl min-w-[240px] max-w-[300px]'
-        style={{
-          top: position.top,
-          bottom: position.bottom,
-          left: position.left,
-          right: position.right,
-        }}>
+        className='relative z-50 bg-surface border border-border rounded-lg shadow-2xl min-w-[240px] max-w-[300px]'
+        role='dialog'
+        aria-modal='true'
+        aria-labelledby='dropdown-title'>
+        {/* Header */}
         <div className='p-3 border-b border-border'>
-          <h3 className='font-medium text-primary text-sm'>
+          <h3 id='dropdown-title' className='font-medium text-primary text-sm'>
             Add to Collection
           </h3>
-          <p className='text-xs text-secondary truncate'>{movie.title}</p>
+          <p className='text-xs text-secondary truncate' title={movie.title}>
+            {movie.title}
+          </p>
         </div>
 
+        {/* Content */}
         <div className='max-h-64 overflow-y-auto'>
-          {collections.length === 0 ? (
+          {hasError ? (
+            <div className='p-4 text-center'>
+              <AlertCircle className='w-8 h-8 text-red-500 mx-auto mb-2' />
+              <p className='text-sm text-red-600'>Failed to load collections</p>
+            </div>
+          ) : isLoading ? (
+            <div className='p-4 text-center'>
+              <div className='w-6 h-6 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-2' />
+              <p className='text-sm text-secondary'>Loading collections...</p>
+            </div>
+          ) : collections.length === 0 ? (
             <div className='p-4 text-center text-secondary'>
+              <Folder className='w-8 h-8 mx-auto mb-2 opacity-50' />
               <p className='text-sm'>No collections yet</p>
+              <p className='text-xs mt-1'>Create your first collection below</p>
             </div>
           ) : (
             <div className='py-2'>
               {collections.map((collection) => {
                 const inCollection = isMovieInCollection(collection.id);
-                const isLoading = loadingCollectionId === collection.id;
+                const isCollectionLoading =
+                  loadingCollectionId === collection.id;
 
                 return (
                   <button
                     key={collection.id}
                     onClick={() =>
-                      handleToggleCollection(collection.id, inCollection)
+                      handleToggleCollection(collection.id, movie.id)
                     }
-                    disabled={isLoading}
-                    className='w-full px-4 py-2 text-left hover:bg-surface-hover transition-colors flex items-center gap-3 disabled:opacity-50'>
+                    disabled={isCollectionLoading}
+                    className='w-full px-4 py-2 text-left hover:bg-surface-hover transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed'
+                    aria-pressed={inCollection}>
                     <div className='flex-shrink-0'>
                       {inCollection ? (
-                        <Check className='w-4 h-4 text-green-600' />
+                        <Check
+                          className='w-4 h-4 text-green-600'
+                          aria-label='In collection'
+                        />
                       ) : (
-                        <Folder className='w-4 h-4 text-secondary' />
+                        <Folder
+                          className='w-4 h-4 text-secondary'
+                          aria-label='Not in collection'
+                        />
                       )}
                     </div>
 
@@ -206,11 +186,15 @@ export function CollectionDropdown({
                       <p className='text-xs text-secondary'>
                         {collection._count?.collection_items || 0} movies
                         {collection.is_ranked && ' • Ranked'}
+                        {collection.is_public && ' • Public'}
                       </p>
                     </div>
 
-                    {isLoading && (
-                      <div className='w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin' />
+                    {isCollectionLoading && (
+                      <div
+                        className='w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin'
+                        aria-label='Updating collection'
+                      />
                     )}
                   </button>
                 );
@@ -219,26 +203,29 @@ export function CollectionDropdown({
           )}
         </div>
 
+        {/* Footer */}
         <div className='p-2 border-t border-border'>
           <button
             onClick={() => setIsModalOpen(true)}
-            className='w-full px-3 py-2 text-left hover:bg-surface-hover transition-colors flex items-center gap-3 rounded'>
+            disabled={createCollectionMutation.isPending}
+            className='w-full px-3 py-2 text-left hover:bg-surface-hover transition-colors flex items-center gap-3 rounded disabled:opacity-50 disabled:cursor-not-allowed'>
             <FolderPlus className='w-4 h-4 text-primary' />
             <span className='font-medium text-sm text-primary'>
-              Create New Collection
+              {createCollectionMutation.isPending
+                ? 'Creating...'
+                : 'Create New Collection'}
             </span>
           </button>
         </div>
       </div>
 
-      {/* Collection Creation Modal */}
       <CollectionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={async (data) => {
-          await createCollectionMutation.mutateAsync(data);
+          await createCollectionMutation.mutateAsync(data as CollectionInsert);
+          setIsModalOpen(false);
         }}
-        title='Create New Collection'
       />
     </>
   );

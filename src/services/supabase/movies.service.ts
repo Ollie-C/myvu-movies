@@ -2,7 +2,6 @@
 import { supabase } from '@/lib/supabase';
 import {
   MovieSchema,
-  MovieInsertSchema,
   movieHelpers,
   type Movie,
   type TMDBMovie,
@@ -20,19 +19,8 @@ export const movieService = {
       return existingMovie;
     }
 
-    const movieData = MovieInsertSchema.parse({
-      tmdb_id: tmdbMovie.id,
-      title: tmdbMovie.title,
-      poster_path: tmdbMovie.poster_path,
-      backdrop_path: tmdbMovie.backdrop_path,
-      overview: tmdbMovie.overview,
-      release_date: tmdbMovie.release_date,
-      vote_average: tmdbMovie.vote_average,
-      genres: tmdbMovie.genres || [],
-      original_language: tmdbMovie.original_language,
-      original_title: tmdbMovie.original_title,
-      popularity: tmdbMovie.popularity,
-    });
+    // Use the helper function to properly convert TMDB movie to local format
+    const movieData = movieHelpers.fromTMDB(tmdbMovie);
 
     const { data, error } = await supabase
       .from('movies')
@@ -78,17 +66,9 @@ export const movieService = {
 
   // updateMovie: Update movie in Supabase
   async updateMovie(movieId: number, tmdbMovie: TMDBMovie): Promise<Movie> {
+    // Use the helper function to properly convert TMDB movie to local format
     const updateData = {
-      title: tmdbMovie.title,
-      poster_path: tmdbMovie.poster_path,
-      backdrop_path: tmdbMovie.backdrop_path,
-      overview: tmdbMovie.overview,
-      release_date: tmdbMovie.release_date,
-      vote_average: tmdbMovie.vote_average,
-      genres: tmdbMovie.genres || [],
-      original_language: tmdbMovie.original_language,
-      original_title: tmdbMovie.original_title,
-      popularity: tmdbMovie.popularity,
+      ...movieHelpers.fromTMDB(tmdbMovie),
       updated_at: new Date().toISOString(),
     };
 
@@ -154,21 +134,7 @@ export const movieService = {
 
     if (newMovies.length === 0) return existingMovies;
 
-    const movieData = newMovies.map((movie) =>
-      MovieInsertSchema.parse({
-        tmdb_id: movie.id,
-        title: movie.title,
-        poster_path: movie.poster_path,
-        backdrop_path: movie.backdrop_path,
-        overview: movie.overview,
-        release_date: movie.release_date,
-        vote_average: movie.vote_average,
-        genres: movie.genres || [],
-        original_language: movie.original_language,
-        original_title: movie.original_title,
-        popularity: movie.popularity,
-      })
-    );
+    const movieData = newMovies.map((movie) => movieHelpers.fromTMDB(movie));
 
     const { data, error } = await supabase
       .from('movies')

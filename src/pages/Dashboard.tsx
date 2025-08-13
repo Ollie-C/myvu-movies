@@ -13,13 +13,11 @@ import {
 } from '@/utils/hooks/supabase/queries/useWatchedMovies';
 import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
 import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
-import { useRatingStats } from '@/utils/hooks/supabase/queries/useRanking';
 import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
-import { useActiveRankings } from '@/utils/hooks/supabase/queries/useRanking';
 
 // Components
 import CollectionCard from '@/components/collections/CollectionCard';
-import MovieCard from '@/components/movie/MovieCard';
+import MovieCard from '@/components/movie/MovieCard/MovieCard';
 import TopTenMoviesModal from '@/components/features/TopTenMoviesModal';
 
 const Dashboard = () => {
@@ -42,19 +40,13 @@ const Dashboard = () => {
     useCollectionsWithPreviews({
       limit: 3,
     });
-  const { data: ratingStats } = useRatingStats(user?.id || '');
-
-  const { data: activeRankings, isLoading: rankingsLoading } =
-    useActiveRankings(user?.id, 3);
   const { data: watchlistStats } = useWatchlistStats();
 
   console.log('🏠 [Dashboard] Data loaded:', {
     userStats,
-    ratingStats,
     favoriteMoviesCount: favoriteMovies?.length,
     recentMoviesCount: recentMovies?.length,
     collectionsCount: collections?.length,
-    activeRankingsCount: activeRankings?.length,
   });
 
   const formatWatchedDate = (dateString: string) => {
@@ -70,7 +62,7 @@ const Dashboard = () => {
     return date.toLocaleDateString();
   };
 
-  if (userStatsLoading || collectionsLoading || rankingsLoading) {
+  if (userStatsLoading || collectionsLoading) {
     return <div>Loading...</div>;
   }
 
@@ -256,7 +248,7 @@ const Dashboard = () => {
               <div className='p-8 text-center text-gray-500'>
                 <p>No recent movies</p>
                 <p className='text-sm mt-1'>
-                  Mark movies as watched to see them here
+                  Mark movies as watched to see them here.
                 </p>
               </div>
             )}
@@ -277,30 +269,11 @@ const Dashboard = () => {
           </div>
 
           <div className='space-y-3'>
-            {rankingsLoading ? (
-              <div className='bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500'>
-                <p>Loading rankings...</p>
-              </div>
-            ) : activeRankings && activeRankings.length > 0 ? (
-              activeRankings.map((ranking) => (
-                <Link key={ranking.id} to={`/rankings/${ranking.id}`}>
-                  <div className='bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors cursor-pointer'>
-                    <h3 className='font-medium text-gray-900 mb-2'>
-                      {ranking.name}
-                    </h3>
-                    <div className='flex items-center justify-between text-sm text-gray-500'>
-                      <span>{ranking.movieCount} movies</span>
-                      <span>{formatWatchedDate(ranking.updated_at)}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className='bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500'>
-                <p>No active rankings</p>
-                <p className='text-sm mt-1'>Create a ranking to get started</p>
-              </div>
-            )}
+            {/* No active rankings data available in useUserStats, so this section is empty */}
+            <div className='bg-white border border-gray-200 rounded-lg p-8 text-center text-gray-500'>
+              <p>No active rankings</p>
+              <p className='text-sm mt-1'>Create a ranking to get started</p>
+            </div>
           </div>
 
           {/* Quick Insights */}
@@ -327,39 +300,6 @@ const Dashboard = () => {
                   High priority watchlist: {watchlistStats.byPriority.high}
                 </p>
               )}
-            </div>
-          )}
-
-          {/* Rating Progress Bar */}
-          {ratingStats && ratingStats.totalWatched > 0 && (
-            <div className='mt-6 p-4 bg-white border border-gray-200 rounded-lg'>
-              <div className='space-y-3'>
-                <div className='flex justify-between items-center'>
-                  <h3 className='text-sm font-semibold text-gray-900'>
-                    Rating Progress
-                  </h3>
-                  <span className='text-xs text-gray-500'>
-                    {ratingStats.totalRated} of {ratingStats.totalWatched} rated
-                  </span>
-                </div>
-                <div className='w-full bg-gray-200 rounded-full h-2'>
-                  <div
-                    className='bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300'
-                    style={{
-                      width: `${
-                        (ratingStats.totalRated / ratingStats.totalWatched) *
-                        100
-                      }%`,
-                    }}
-                  />
-                </div>
-                <p className='text-xs text-gray-500 text-center'>
-                  {Math.round(
-                    (ratingStats.totalRated / ratingStats.totalWatched) * 100
-                  )}
-                  % complete
-                </p>
-              </div>
             </div>
           )}
         </div>
