@@ -1,5 +1,5 @@
 // AUDITED 01/08/2025
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 // Icons
@@ -21,7 +21,7 @@ import { Button } from '@/components/common/Button';
 import { Card } from '@/components/common/Card';
 import { RatingDisplay } from '@/components/movie/RatingDisplay';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
-import StandardRatingModal from '@/components/movie/RatingModal';
+import SimpleRatingModal from '@/components/movie/SimpleRatingModal';
 import MovieHero from '@/components/movie/MovieHero';
 import MovieCast from '@/components/movie/MovieCast';
 
@@ -42,7 +42,6 @@ const MovieDetails = () => {
   const { user } = useAuth();
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const addToCollectionButtonRef = useRef<HTMLDivElement>(null);
 
   // Log movie details page access
   useEffect(() => {
@@ -78,7 +77,7 @@ const MovieDetails = () => {
     toggleWatchlist.mutate({ movie, isInWatchlist });
   };
 
-  const handleRateMovie = async (rating: number) => {
+  const handleRateMovie = async (rating: number, notes?: string) => {
     if (!movie) return;
     updateRating.mutate({ movie, rating, isWatched });
   };
@@ -166,15 +165,13 @@ const MovieDetails = () => {
               </Button>
             )}
 
-            <div ref={addToCollectionButtonRef}>
-              <Button
-                variant='secondary'
-                onClick={() => setShowCollectionDropdown(true)}
-                className='flex items-center gap-2'>
-                <Plus className='w-4 h-4' />
-                Add to Collection
-              </Button>
-            </div>
+            <Button
+              variant='secondary'
+              onClick={() => setShowCollectionDropdown(true)}
+              className='flex items-center gap-2'>
+              <Plus className='w-4 h-4' />
+              Add to Collection
+            </Button>
 
             <Button
               onClick={() => setShowRatingModal(true)}
@@ -187,36 +184,13 @@ const MovieDetails = () => {
         </div>
       )}
 
-      {/* Standard Rating Modal */}
-      {movie && userStatus?.watchedMovie && (
-        <StandardRatingModal
+      {/* Simple Rating Modal */}
+      {movie && (
+        <SimpleRatingModal
           isOpen={showRatingModal}
           onClose={() => setShowRatingModal(false)}
-          movies={[
-            {
-              ...userStatus.watchedMovie,
-              movie: {
-                id: movie.movieId,
-                title: movie.title,
-                original_title: movie.original_title,
-                original_language: movie.original_language,
-                overview: movie.overview,
-                release_date: movie.release_date,
-                poster_path: movie.poster_path,
-                backdrop_path: movie.backdrop_path,
-                popularity: movie.popularity,
-                vote_average: movie.vote_average,
-                vote_count: movie.vote_count,
-                runtime: movie.runtime || null,
-                tagline: movie.tagline || null,
-                credits: movie.credits || null,
-                tmdb_id: movie.tmdbId,
-                genres: movie.genres || [],
-                created_at: null,
-                updated_at: null,
-              },
-            },
-          ]}
+          movie={movie}
+          currentRating={userRating}
           onRateMovie={handleRateMovie}
         />
       )}
@@ -242,10 +216,26 @@ const MovieDetails = () => {
         <CollectionDropdown
           isOpen={showCollectionDropdown}
           onClose={() => setShowCollectionDropdown(false)}
-          movie={movie}
-          position={{
-            top: addToCollectionButtonRef.current?.offsetTop,
-            left: addToCollectionButtonRef.current?.offsetLeft,
+          movie={{
+            id: movie.movieId,
+            tmdb_id: movie.tmdbId,
+            title: movie.title,
+            original_title: movie.original_title,
+            original_language: movie.original_language,
+            overview: movie.overview,
+            release_date: movie.release_date,
+            poster_path: movie.poster_path,
+            backdrop_path: movie.backdrop_path,
+            popularity: movie.popularity || 0,
+            vote_average: movie.vote_average || 0,
+            vote_count: movie.vote_count || 0,
+            genres: movie.genres || [],
+            runtime: movie.runtime || null,
+            tagline: movie.tagline || null,
+            credits: movie.credits || null,
+            created_at: null,
+            updated_at: null,
+            search_vector: null,
           }}
         />
       )}

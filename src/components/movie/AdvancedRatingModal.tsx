@@ -1,4 +1,3 @@
-// AUDITED 07/08/2025
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -19,7 +18,7 @@ import { useBatchRating } from '@/utils/hooks/useBatchRating';
 import { useAuth } from '@/context/AuthContext';
 import { useRankedMovies } from '@/utils/hooks/supabase/queries/useRanking';
 
-interface StandardRatingModalProps {
+interface AdvancedRatingModalProps {
   isOpen: boolean;
   onClose: () => void;
   movies: WatchedMovieWithMovie[];
@@ -30,12 +29,12 @@ interface StandardRatingModalProps {
   ) => Promise<void>;
 }
 
-export default function StandardRatingModal({
+export default function AdvancedRatingModal({
   isOpen,
   onClose,
   movies,
   onRateMovie,
-}: StandardRatingModalProps) {
+}: AdvancedRatingModalProps) {
   const { user } = useAuth();
 
   // Local modal state

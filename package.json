@@ -11,6 +11,9 @@
     "generate": "bunx supabase gen types typescript --project-id zunyckzkjrvrriuwggwf > src/types/database.types.ts"
   },
   "dependencies": {
+    "@nivo/bar": "^0.99.0",
+    "@nivo/pie": "^0.99.0",
+    "@nivo/radar": "^0.99.0",
     "@supabase/supabase-js": "^2.53.0",
     "@tailwindcss/vite": "^4.1.11",
     "@tanstack/react-query": "^5.84.1",

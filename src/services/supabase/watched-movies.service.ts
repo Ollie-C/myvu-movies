@@ -80,11 +80,12 @@ export const watchedMoviesService = {
 
   async getWatchedMovie(
     userId: string,
-    movieId: number
+    movieId: number,
+    includeMovie = false
   ): Promise<WatchedMovie | null> {
     const { data, error } = await supabase
       .from('watched_movies')
-      .select('*')
+      .select(includeMovie ? '*, movie:movies(*)' : '*')
       .eq('user_id', userId)
       .eq('movie_id', movieId)
       .single();
@@ -93,6 +94,24 @@ export const watchedMoviesService = {
       throw error;
     }
     return WatchedMovieSchema.parse(data);
+  },
+
+  async getWatchedMovieWithMovie(
+    userId: string,
+    movieId: number
+  ): Promise<WatchedMovieWithMovie | null> {
+    const { data, error } = await supabase
+      .from('watched_movies')
+      .select('*, movie:movies(*)')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return WatchedMovieWithMovieSchema.parse(data);
   },
 
   async markAsWatched(

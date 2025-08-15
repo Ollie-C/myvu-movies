@@ -81,17 +81,23 @@ export const useToggleWatched = () => {
           .catch(() => {});
       }
 
-      return movieData;
+      return { movieData, isWatched };
     },
-    onSuccess: (movieData) => {
-      // Update the store with the final state
+    onSuccess: ({ movieData, isWatched }) => {
       setMovieState(movieData.tmdbId, {
-        isWatched: true,
-        isInWatchlist: false, // Removed from watchlist when watched
+        isWatched: !isWatched,
+        isInWatchlist: false,
       });
 
-      // Only invalidate queries that need server data
       if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: watchedMoviesKeys.all,
+        });
+
+        queryClient.invalidateQueries({
+          queryKey: watchlistKeys.all,
+        });
+
         queryClient.invalidateQueries({
           queryKey: userStatsKeys.stats(user.id),
         });
@@ -130,15 +136,13 @@ export const useToggleWatchlist = () => {
         );
       }
 
-      return movieData;
+      return { movieData, isInWatchlist };
     },
-    onSuccess: (movieData) => {
-      // Update the store
+    onSuccess: ({ movieData, isInWatchlist }) => {
       setMovieState(movieData.tmdbId, {
-        isInWatchlist: true,
+        isInWatchlist: !isInWatchlist,
       });
 
-      // Only invalidate watchlist-specific queries
       queryClient.invalidateQueries({
         queryKey: watchlistKeys.all,
       });
@@ -169,6 +173,7 @@ export const useUpdateRating = () => {
       await watchedMoviesService.updateRating(user.id, movie.movieId, rating);
     },
     onSuccess: (_, { movie }) => {
+      console.log('onSuccess', movie);
       queryClient.invalidateQueries({
         queryKey: movieKeys.userStatus(user?.id || '', movie.tmdbId),
       });

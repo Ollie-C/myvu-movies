@@ -71,7 +71,7 @@ const Dashboard = () => {
       {/* Header with Lounge Title and Actions */}
       <div className='mb-8 flex items-center justify-between'>
         <div>
-          <h1 className='text-2xl font-semibold text-gray-900'>Your Lounge</h1>
+          <h1 className='text-2xl font-semibold text-gray-900'>Lounge</h1>
         </div>
 
         {/* Action Buttons */}
@@ -139,8 +139,7 @@ const Dashboard = () => {
         <div>
           <div className='flex items-center justify-between mb-4'>
             <h2 className='text-lg font-semibold text-gray-900 flex items-center'>
-              <Star className='w-5 h-5 mr-2 text-gray-400' />
-              Favourite films
+              Top Ten
             </h2>
             <button
               onClick={() => setIsFavoriteModalOpen(true)}
@@ -149,7 +148,7 @@ const Dashboard = () => {
             </button>
           </div>
 
-          <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-5 gap-2'>
+          <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5  2xl:grid-cols-5 gap-2'>
             {favoriteMovies && favoriteMovies.length > 0 ? (
               favoriteMovies
                 .slice(0, 10)

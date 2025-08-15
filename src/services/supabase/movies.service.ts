@@ -1,4 +1,3 @@
-// AUDITED 01/08/2025
 import { supabase } from '@/lib/supabase';
 import {
   MovieSchema,
@@ -198,13 +197,22 @@ export const movieService = {
 
   // shouldUpdateMovie: Helper to determine if movie data should be updated
   shouldUpdateMovie(movie: Movie): boolean {
+    if (
+      !movie.runtime ||
+      !movie.tagline ||
+      !movie.credits ||
+      !movie.genres ||
+      !movie.backdrop_path
+    ) {
+      return true;
+    }
+
     if (!movie.updated_at) return true;
 
     const lastUpdate = new Date(movie.updated_at);
     const daysSinceUpdate =
       (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
 
-    // Update if older than 7 days
     return daysSinceUpdate > 7;
   },
 

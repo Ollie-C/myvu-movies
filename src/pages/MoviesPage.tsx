@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import MovieCard from '@/components/movie/MovieCard/MovieCard';
+import Loader from '@/components/common/Loader';
 
 // Contexts
 import { useAuth } from '@/context/AuthContext';
@@ -162,12 +163,6 @@ const Movies = () => {
     [user?.id, queryClient, showToast]
   );
 
-  const SkeletonCard = () => (
-    <div className='animate-pulse'>
-      <div className='aspect-[2/3] bg-slate-700 rounded-lg' />
-    </div>
-  );
-
   const EmptyState = () => (
     <Card className='p-12 text-center'>
       <h3 className='text-lg font-semibold mb-2'>
@@ -229,13 +224,7 @@ const Movies = () => {
       </div>
 
       {/* Loading indicator for next page */}
-      {isFetchingNextPage && (
-        <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 mt-4'>
-          {Array.from({ length: 12 }, (_, index) => (
-            <SkeletonCard key={`loading-${index}`} />
-          ))}
-        </div>
-      )}
+      {isFetchingNextPage && <Loader />}
 
       {/* End of results indicator */}
       {!hasNextPage && (
@@ -265,22 +254,18 @@ const Movies = () => {
 
   if (isLoading) {
     return (
-      <div className='space-y-6 animate-fade-in'>
+      <div className='container mx-auto px-4 py-8 animate-fade-in space-y-6'>
         <div className='flex items-center justify-between'>
           <h1 className='text-3xl font-bold text-primary'>Your Movies</h1>
         </div>
-        <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2'>
-          {Array.from({ length: 24 }, (_, index) => (
-            <SkeletonCard key={index} />
-          ))}
-        </div>
+        <Loader />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className='space-y-6 animate-fade-in'>
+      <div className='container mx-auto px-4 py-8 animate-fade-in space-y-6'>
         <h1 className='text-3xl font-bold text-primary'>Your Movies</h1>
         <Card className='p-8 text-center'>
           <p className='text-secondary'>
@@ -293,7 +278,7 @@ const Movies = () => {
   }
 
   return (
-    <div className='space-y-6 animate-fade-in'>
+    <div className='container mx-auto px-4 py-8 animate-fade-in space-y-6'>
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>

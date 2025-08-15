@@ -68,12 +68,12 @@ export const useMovieDetails = (tmdbId: string | undefined) => {
               backdrop_path: cachedMovie.backdrop_path,
               popularity: cachedMovie.popularity || 0,
               vote_average: cachedMovie.vote_average || 0,
-              vote_count: 0, // Not stored in our cache
+              vote_count: cachedMovie.vote_count || 0,
               genre_ids: cachedMovie.genres?.map((g) => g.id) || [],
               genres: cachedMovie.genres || [],
-              runtime: undefined, // Not stored in our cache
-              tagline: undefined, // Not stored in our cache
-              credits: undefined, // Not stored in our cache
+              runtime: cachedMovie.runtime || undefined,
+              tagline: cachedMovie.tagline || undefined,
+              credits: cachedMovie.credits || undefined,
               movieId: cachedMovie.id,
               tmdbId: cachedMovie.tmdb_id,
             };
@@ -124,19 +124,22 @@ export const useUserMovieStatus = (tmdbId: number | undefined) => {
           tmdbId: tmdbId,
         });
 
-        const [watchedMovie, watchlistItem] = await Promise.all([
-          watchedMoviesService.getWatchedMovie(user.id, cachedMovie.id),
+        const [watchedMovieWithMovie, watchlistItem] = await Promise.all([
+          watchedMoviesService.getWatchedMovieWithMovie(
+            user.id,
+            cachedMovie.id
+          ),
           watchlistService.getWatchlistItem(user.id, cachedMovie.id),
         ]);
 
         return {
           movieId: cachedMovie.id,
-          watchedMovie,
+          watchedMovie: watchedMovieWithMovie,
           watchlistItem,
-          isWatched: !!watchedMovie,
+          isWatched: !!watchedMovieWithMovie,
           isInWatchlist: !!watchlistItem,
-          rating: watchedMovie?.rating || null,
-          isFavorite: watchedMovie?.favorite || false,
+          rating: watchedMovieWithMovie?.rating || null,
+          isFavorite: watchedMovieWithMovie?.favorite || false,
         };
       } catch (error) {
         console.error('Error in useUserMovieStatus:', error);

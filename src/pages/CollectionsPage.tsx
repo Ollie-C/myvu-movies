@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Card } from '@/components/common/Card';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 import CollectionCard from '@/components/collections/CollectionCard';
+import Loader from '@/components/common/Loader';
 
 const Collections = () => {
   const { user } = useAuth();
@@ -24,9 +25,7 @@ const Collections = () => {
     data: collections = [],
     isLoading,
     error,
-  } = useCollectionsWithPreviews({
-    limit: 20,
-  });
+  } = useCollectionsWithPreviews(20);
 
   const createCollectionMutation = useCreateCollection();
 
@@ -44,7 +43,7 @@ const Collections = () => {
   }
 
   return (
-    <div className='space-y-8 animate-fade-in'>
+    <div className='container mx-auto px-4 py-8 animate-fade-in'>
       {/* Header */}
       <div className='flex items-center justify-between'>
         <div>
@@ -58,16 +57,7 @@ const Collections = () => {
       </div>
 
       {/* Loading State */}
-      {isLoading && (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className='bg-surface-hover animate-pulse rounded-lg h-20'
-            />
-          ))}
-        </div>
-      )}
+      {isLoading && <Loader />}
 
       {/* Error State */}
       {error && (
@@ -117,7 +107,6 @@ const Collections = () => {
           await createCollectionMutation.mutateAsync(data);
           setIsModalOpen(false);
         }}
-        title='Create New Collection'
       />
     </div>
   );
