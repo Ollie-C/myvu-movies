@@ -7,13 +7,75 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          collection_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          movie_id: number | null
+          ranking_list_id: string | null
+          type: Database["public"]["Enums"]["activity_type_enum"]
+          user_id: string
+        }
+        Insert: {
+          collection_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          movie_id?: number | null
+          ranking_list_id?: string | null
+          type: Database["public"]["Enums"]["activity_type_enum"]
+          user_id: string
+        }
+        Update: {
+          collection_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          movie_id?: number | null
+          ranking_list_id?: string | null
+          type?: Database["public"]["Enums"]["activity_type_enum"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activities_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_ranking_list_id_fkey"
+            columns: ["ranking_list_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collection_items: {
         Row: {
           added_at: string | null
@@ -442,9 +504,9 @@ export type Database = {
     Functions: {
       calculate_elo_battle: {
         Args: {
-          p_winner_rating: number
-          p_loser_rating: number
           p_k_factor?: number
+          p_loser_rating: number
+          p_winner_rating: number
         }
         Returns: Json
       }
@@ -461,54 +523,54 @@ export type Database = {
         Returns: number
       }
       get_user_movie_rating: {
-        Args: { user_uuid: string; movie_id_param: number }
+        Args: { movie_id_param: number; user_uuid: string }
         Returns: number
       }
       get_user_stats: {
         Args: { user_id: string }
         Returns: {
-          total_watched: number
-          total_rated: number
-          total_favorites: number
-          total_collections: number
-          total_ranking_lists: number
-          average_rating: number
           average_elo_score: number
+          average_rating: number
+          total_collections: number
+          total_favorites: number
+          total_ranking_lists: number
+          total_rated: number
+          total_watched: number
         }[]
       }
       has_user_watched_movie: {
-        Args: { user_uuid: string; movie_id_param: number }
+        Args: { movie_id_param: number; user_uuid: string }
         Returns: boolean
       }
       process_enhanced_rating: {
         Args:
           | {
-              movie_id: number
-              rating: number
-              notes?: string
               favorite?: boolean
+              movie_id: number
+              notes?: string
+              rating: number
             }
           | {
-              p_user_id: string
-              p_movie_id: number
               p_initial_rating: number
+              p_movie_id: number
               p_notes?: string
               p_tolerance?: number
+              p_user_id: string
             }
         Returns: undefined
       }
       process_ranking_battle: {
         Args: {
-          p_ranking_list_id: string
-          p_winner_movie_id: number
-          p_loser_movie_id: number
-          p_winner_current_rating?: number
           p_loser_current_rating?: number
+          p_loser_movie_id: number
+          p_ranking_list_id: string
+          p_winner_current_rating?: number
+          p_winner_movie_id: number
         }
         Returns: Json
       }
       process_versus_battle: {
-        Args: { winner_id: number; loser_id: number; ranking_list_id?: string }
+        Args: { loser_id: number; ranking_list_id?: string; winner_id: number }
         Returns: undefined
       }
       rating_to_elo: {
@@ -526,21 +588,37 @@ export type Database = {
       search_local_movies: {
         Args: { search_query: string; user_id_param?: string }
         Returns: {
+          genres: string[]
           id: number
-          title: string
+          is_in_watchlist: boolean
+          is_watched: boolean
           original_title: string
           overview: string
           poster_path: string
           release_date: string
-          vote_average: number
-          genres: string[]
-          is_watched: boolean
-          is_in_watchlist: boolean
           relevance_score: number
+          title: string
+          vote_average: number
         }[]
       }
     }
     Enums: {
+      activity_type_enum:
+        | "watched_added"
+        | "watched_removed"
+        | "rated_movie"
+        | "favorite_added"
+        | "favorite_removed"
+        | "notes_updated"
+        | "watchlist_added"
+        | "watchlist_removed"
+        | "watchlist_priority_updated"
+        | "collection_created"
+        | "collection_updated"
+        | "collection_movie_added"
+        | "collection_movie_removed"
+        | "ranking_battle"
+        | "top_ten_changed"
       ranking_method_enum: "versus" | "tier" | "manual" | "merged"
     }
     CompositeTypes: {
@@ -669,6 +747,23 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_type_enum: [
+        "watched_added",
+        "watched_removed",
+        "rated_movie",
+        "favorite_added",
+        "favorite_removed",
+        "notes_updated",
+        "watchlist_added",
+        "watchlist_removed",
+        "watchlist_priority_updated",
+        "collection_created",
+        "collection_updated",
+        "collection_movie_added",
+        "collection_movie_removed",
+        "ranking_battle",
+        "top_ten_changed",
+      ],
       ranking_method_enum: ["versus", "tier", "manual", "merged"],
     },
   },

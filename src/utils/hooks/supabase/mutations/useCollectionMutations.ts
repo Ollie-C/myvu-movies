@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { collectionKeys } from '../queries/useCollections';
 import type { CollectionInsert } from '@/schemas/collection.schema';
 import { useToast } from '@/context/ToastContext';
+import { activityKeys } from '../queries/useUserActivity';
 
 export const useCreateCollection = () => {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ export const useCreateCollection = () => {
     },
     onSuccess: (newCollection) => {
       queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
       showToast('success', `Collection "${newCollection.name}" created`);
     },
     onError: (error: Error) => {
@@ -44,6 +46,7 @@ export const useUpdateCollection = (collectionId: string) => {
         queryKey: collectionKeys.detail(user?.id || '', collectionId),
       });
       queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -57,6 +60,8 @@ export const useDeleteCollection = (collectionId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionKeys.all });
+      // Deletions may also be logged later; refresh anyway
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -79,6 +84,7 @@ export const useAddMovieToCollection = () => {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.detail(user?.id || '', collectionId),
       });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -110,6 +116,7 @@ export const useRemoveMovieFromCollection = () => {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -135,6 +142,11 @@ export const useToggleMovieInCollection = () => {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.all,
       });
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: activityKeys.recent(user.id),
+        });
+      }
     },
     onError: (error: Error) => {
       showToast('error', error.message);

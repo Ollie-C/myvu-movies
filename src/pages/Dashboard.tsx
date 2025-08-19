@@ -1,7 +1,7 @@
 // Audited: 2025-08-05
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, TrendingUp, BarChart3, Star, Folder } from 'lucide-react';
+import { Plus, TrendingUp, BarChart3, Folder } from 'lucide-react';
 
 // Contexts
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +11,7 @@ import {
   useFavoriteMovies,
   useRecentMovies,
 } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useRecentActivity } from '@/utils/hooks/supabase/queries/useUserActivity';
 import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
 import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
 import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
@@ -36,10 +37,9 @@ const Dashboard = () => {
   const { data: userStats, isLoading: userStatsLoading } = useUserStats();
   const { data: favoriteMovies } = useFavoriteMovies(10);
   const { data: recentMovies } = useRecentMovies(5);
+  const { data: activities = [] } = useRecentActivity(10);
   const { data: collections = [], isLoading: collectionsLoading } =
-    useCollectionsWithPreviews({
-      limit: 3,
-    });
+    useCollectionsWithPreviews(3);
   const { data: watchlistStats } = useWatchlistStats();
 
   console.log('🏠 [Dashboard] Data loaded:', {
@@ -213,42 +213,92 @@ const Dashboard = () => {
               Recent activity
             </h2>
             <Link
-              to='/movies'
+              to='/activity'
               className='text-sm text-gray-500 hover:text-gray-700'>
               View all
             </Link>
           </div>
 
           <div className='bg-white border border-gray-200 rounded-lg divide-y divide-gray-100'>
-            {recentMovies && recentMovies.length > 0 ? (
-              recentMovies.map((item) => (
-                <Link key={item.movie.id} to={`/movies/${item.movie.id}`}>
-                  <div className='p-4 hover:bg-gray-50 transition-colors'>
-                    <div className='flex items-center justify-between'>
-                      <div>
-                        <h3 className='font-medium text-gray-900'>
-                          {item.movie.title}
-                        </h3>
-                        <p className='text-sm text-gray-500 mt-1'>
-                          {formatWatchedDate(item.watched_date)}
-                        </p>
-                      </div>
-                      <div className='text-right'>
-                        <div className='text-lg font-semibold text-gray-900'>
-                          {item.rating ? (item.rating / 2).toFixed(1) : '—'}
+            {activities.length > 0 ? (
+              activities.map((act) => {
+                const link = act.movie_id
+                  ? `/movies/${act.movie_id}`
+                  : act.collection_id
+                  ? `/collections/${act.collection_id}`
+                  : '#';
+                const label = (() => {
+                  switch (act.type) {
+                    case 'watched_added':
+                      return `Marked watched: ${act.movie?.title || ''}`;
+                    case 'watched_removed':
+                      return `Unmarked watched: ${act.movie?.title || ''}`;
+                    case 'rated_movie':
+                      return `Rated ${act.movie?.title || ''} ${
+                        (act.metadata as any)?.rating ?? ''
+                      }/10`;
+                    case 'favorite_added':
+                      return `Added to Top 10: ${act.movie?.title || ''}`;
+                    case 'favorite_removed':
+                      return `Removed from Top 10: ${act.movie?.title || ''}`;
+                    case 'notes_updated':
+                      return `Updated notes for ${
+                        act.movie?.title || 'an item'
+                      }`;
+                    case 'watchlist_added':
+                      return `Added to watchlist: ${act.movie?.title || ''}`;
+                    case 'watchlist_removed':
+                      return `Removed from watchlist: ${
+                        act.movie?.title || ''
+                      }`;
+                    case 'watchlist_priority_updated':
+                      return `Updated watchlist priority: ${
+                        act.movie?.title || ''
+                      }`;
+                    case 'collection_created':
+                      return `Created collection: ${
+                        act.collection?.name || ''
+                      }`;
+                    case 'collection_updated':
+                      return `Updated collection: ${
+                        act.collection?.name || ''
+                      }`;
+                    case 'collection_movie_added':
+                      return `Added ${act.movie?.title || ''} to ${
+                        act.collection?.name || 'collection'
+                      }`;
+                    case 'collection_movie_removed':
+                      return `Removed ${act.movie?.title || ''} from ${
+                        act.collection?.name || 'collection'
+                      }`;
+                    case 'ranking_battle':
+                      return `Completed a Versus battle`;
+                    case 'top_ten_changed':
+                      return `Updated Top 10`;
+                    default:
+                      return 'Activity';
+                  }
+                })();
+
+                return (
+                  <Link key={act.id} to={link}>
+                    <div className='p-4 hover:bg-gray-50 transition-colors'>
+                      <div className='flex items-center justify-between'>
+                        <div>
+                          <h3 className='font-medium text-gray-900'>{label}</h3>
+                          <p className='text-sm text-gray-500 mt-1'>
+                            {formatWatchedDate(act.created_at)}
+                          </p>
                         </div>
-                        <div className='text-xs text-gray-500'>/ 5</div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                );
+              })
             ) : (
               <div className='p-8 text-center text-gray-500'>
-                <p>No recent movies</p>
-                <p className='text-sm mt-1'>
-                  Mark movies as watched to see them here.
-                </p>
+                <p>No recent activity</p>
+                <p className='text-sm mt-1'>Your actions will show up here.</p>
               </div>
             )}
           </div>

@@ -12,6 +12,7 @@ import type { TMDBMovie } from '@/schemas/movie.schema';
 import { userMoviesKeys } from '../queries/useUserMovies';
 import { useMovieStore } from '@/stores/useMovieStore';
 import { userStatsKeys } from '../queries/useUserStats';
+import { activityKeys } from '../queries/useUserActivity';
 
 interface MovieData {
   movieId: number;
@@ -50,6 +51,7 @@ export const useToggleFavorite = () => {
         queryClient.invalidateQueries({
           queryKey: userMoviesKeys.allForUser(user.id),
         });
+        queryClient.invalidateQueries({ queryKey: activityKeys.all });
       }
     },
   });
@@ -104,6 +106,7 @@ export const useToggleWatched = () => {
         queryClient.invalidateQueries({
           queryKey: watchedMoviesKeys.recent(user.id),
         });
+        queryClient.invalidateQueries({ queryKey: activityKeys.all });
       }
     },
   });
@@ -146,6 +149,7 @@ export const useToggleWatchlist = () => {
       queryClient.invalidateQueries({
         queryKey: watchlistKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -180,6 +184,7 @@ export const useUpdateRating = () => {
       queryClient.invalidateQueries({
         queryKey: watchedMoviesKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -210,6 +215,7 @@ export const useUpdateNotes = () => {
       queryClient.invalidateQueries({
         queryKey: movieKeys.userStatus(user?.id || '', movie.tmdbId),
       });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
@@ -237,6 +243,11 @@ export const useUpdateWatchlistPriority = () => {
       queryClient.invalidateQueries({
         queryKey: watchlistKeys.all,
       });
+      if (user?.id) {
+        queryClient.invalidateQueries({
+          queryKey: activityKeys.recent(user.id),
+        });
+      }
     },
   });
 };

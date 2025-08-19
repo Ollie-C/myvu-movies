@@ -33,6 +33,7 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
   const handleToggleFavorite = async (movieId: number) => {
     try {
       await toggleFavoriteMutation.mutateAsync(movieId);
+      // Optional: could log a top_ten_changed aggregate in the future
     } catch (error) {
       console.error('Error toggling favorite:', error);
     }

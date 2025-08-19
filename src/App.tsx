@@ -28,6 +28,7 @@ import Dashboard from './pages/Dashboard';
 import Settings from '@/pages/Settings';
 import { AuthCallback } from '@/pages/auth/AuthCallback';
 import VersusRankingPage from '@/pages/VersusRankingPage';
+import ActivityPage from '@/pages/ActivityPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ function App() {
                             element={<CollectionDetails />}
                           />
                           <Route path='/settings' element={<Settings />} />
+                          <Route path='/activity' element={<ActivityPage />} />
                           <Route
                             path='/versus'
                             element={<VersusRankingPage />}

@@ -2,6 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import type { Tables, TablesInsert } from '@/types/database.types';
 import shuffle from '@/utils/shuffle';
+import { activityService } from '@/services/supabase/activity.service';
 
 // Constants
 const DEFAULT_ELO_RATING = 1200;
@@ -47,6 +48,26 @@ export const rankingService = {
     });
 
     if (error) throw error;
+    try {
+      // Log generic ranking battle; exact user attribution requires fetching list owner
+      const { data: list } = await supabase
+        .from('ranking_lists')
+        .select('user_id')
+        .eq('id', result.rankingListId)
+        .single();
+      const userId = (list as any)?.user_id;
+      if (userId) {
+        await activityService.logActivity({
+          user_id: userId,
+          type: 'ranking_battle',
+          ranking_list_id: result.rankingListId,
+          metadata: {
+            winner_movie_id: result.winnerId,
+            loser_movie_id: result.loserId,
+          },
+        });
+      }
+    } catch (_) {}
     return data;
   },
 

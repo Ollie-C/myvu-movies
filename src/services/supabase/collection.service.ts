@@ -26,6 +26,7 @@ import {
   type CollectionWithItems,
   type CollectionPreview,
 } from '@/schemas/collection-combined.schema';
+import { activityService } from '@/services/supabase/activity.service';
 
 export const collectionService = {
   async getUserCollections(
@@ -178,7 +179,16 @@ export const collectionService = {
       .single();
 
     if (error) throw error;
-    return CollectionSchema.parse(data);
+    const parsed = CollectionSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'collection_created',
+        collection_id: parsed.id,
+        metadata: { name: parsed.name },
+      });
+    } catch (_) {}
+    return parsed;
   },
 
   async updateCollection(
@@ -204,7 +214,15 @@ export const collectionService = {
       .single();
 
     if (error) throw error;
-    return CollectionSchema.parse(data);
+    const parsed = CollectionSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: data?.user_id || '',
+        type: 'collection_updated',
+        collection_id: collectionId,
+      });
+    } catch (_) {}
+    return parsed;
   },
 
   async deleteCollection(collectionId: string): Promise<void> {
@@ -264,7 +282,17 @@ export const collectionService = {
 
     await this.touchCollection(collectionId);
 
-    return CollectionItemWithMovieSchema.parse(data);
+    const parsed = CollectionItemWithMovieSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: collection.user_id!,
+        type: 'collection_movie_added',
+        collection_id: collectionId,
+        movie_id: movieId,
+      });
+    } catch (_) {}
+
+    return parsed;
   },
 
   async addMoviesToCollection(
@@ -319,6 +347,18 @@ export const collectionService = {
     if (error) throw error;
 
     await this.touchCollection(collectionId);
+
+    try {
+      const collection = await this.getCollection(collectionId);
+      if (collection?.user_id) {
+        await activityService.logActivity({
+          user_id: collection.user_id,
+          type: 'collection_movie_removed',
+          collection_id: collectionId,
+          movie_id: movieId,
+        });
+      }
+    } catch (_) {}
   },
 
   async toggleMovieInCollection(

@@ -8,6 +8,7 @@ import {
   type WatchlistWithMovie,
   type WatchlistPriority,
 } from '@/schemas/watchlist.schema';
+import { activityService } from '@/services/supabase/activity.service';
 
 export const watchlistService = {
   async getWatchlist(
@@ -124,20 +125,45 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    return WatchlistSchema.parse(data);
+    const parsed = WatchlistSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'watchlist_added',
+        movie_id: movieId,
+        metadata: { priority },
+      });
+    } catch (_) {}
+    return parsed;
   },
 
   async removeFromWatchlist(userId: string, movieId: number): Promise<void> {
+    // Only log removal if an item existed
+    const { data: existing, error: checkError } = await supabase
+      .from('watchlist')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('movie_id', movieId)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+    if (!existing) return;
+
     const { error } = await supabase
       .from('watchlist')
       .delete()
       .eq('user_id', userId)
       .eq('movie_id', movieId);
 
-    if (error) {
-      if (error.code === 'PGRST116') return;
-      throw error;
-    }
+    if (error) throw error;
+
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'watchlist_removed',
+        movie_id: movieId,
+      });
+    } catch (_) {}
   },
 
   async updatePriority(
@@ -157,7 +183,16 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    return WatchlistSchema.parse(data);
+    const parsed = WatchlistSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'watchlist_priority_updated',
+        movie_id: movieId,
+        metadata: { priority },
+      });
+    } catch (_) {}
+    return parsed;
   },
 
   async updateNotes(
@@ -177,7 +212,15 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    return WatchlistSchema.parse(data);
+    const parsed = WatchlistSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'notes_updated',
+        movie_id: movieId,
+      });
+    } catch (_) {}
+    return parsed;
   },
 
   async setReminder(

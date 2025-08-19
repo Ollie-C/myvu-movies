@@ -8,6 +8,7 @@ import {
   type WatchedMovieWithMovie,
 } from '@/schemas/watched-movie.schema';
 import { dateHelpers } from '@/utils/dateHelpers';
+import { activityService } from '@/services/supabase/activity.service';
 
 const DEFAULT_ELO_SCORE = 1200;
 const ELO_RATING_MULTIPLIER = 200;
@@ -138,7 +139,19 @@ export const watchedMoviesService = {
 
     if (error) throw error;
 
-    return WatchedMovieSchema.parse(data);
+    const parsed = WatchedMovieSchema.parse(data);
+
+    // Log activity
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'watched_added',
+        movie_id: movieId,
+        metadata: { watched_date: parsed.watched_date },
+      });
+    } catch (_) {}
+
+    return parsed;
   },
 
   async removeWatched(userId: string, movieId: number): Promise<void> {
@@ -149,6 +162,14 @@ export const watchedMoviesService = {
       .eq('movie_id', movieId);
 
     if (error) throw error;
+
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'watched_removed',
+        movie_id: movieId,
+      });
+    } catch (_) {}
   },
 
   async updateRating(
@@ -172,7 +193,17 @@ export const watchedMoviesService = {
 
     if (error) throw error;
 
-    return WatchedMovieSchema.parse(data);
+    const parsed = WatchedMovieSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'rated_movie',
+        movie_id: movieId,
+        metadata: { rating, elo_score: eloScore },
+      });
+    } catch (_) {}
+
+    return parsed;
   },
 
   async getUnratedMovies(userId: string): Promise<WatchedMovieWithMovie[]> {
@@ -211,6 +242,14 @@ export const watchedMoviesService = {
 
     if (updateError) throw updateError;
 
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: newFavoriteValue ? 'favorite_added' : 'favorite_removed',
+        movie_id: movieId,
+      });
+    } catch (_) {}
+
     return newFavoriteValue;
   },
 
@@ -231,7 +270,15 @@ export const watchedMoviesService = {
       .single();
 
     if (error) throw error;
-    return WatchedMovieSchema.parse(data);
+    const parsed = WatchedMovieSchema.parse(data);
+    try {
+      await activityService.logActivity({
+        user_id: userId,
+        type: 'notes_updated',
+        movie_id: movieId,
+      });
+    } catch (_) {}
+    return parsed;
   },
 
   async getFavoriteMovies(
