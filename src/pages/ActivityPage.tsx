@@ -47,45 +47,106 @@ export default function ActivityPage() {
     t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   const renderLabel = (act: any) => {
+    const title = act.movie?.title || 'Movie';
+    const collectionName = act.collection?.name || 'collection';
     switch (act.type as ActivityType) {
       case 'watched_added':
-        return `Marked watched: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            <strong className='font-semibold'>{title}</strong> was marked as
+            watched
+          </>
+        );
       case 'watched_removed':
-        return `Unmarked watched: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            <strong className='font-semibold'>{title}</strong> was unmarked as
+            watched
+          </>
+        );
       case 'rated_movie':
-        return `Rated ${act.movie?.title || 'movie'} ${
-          act.metadata?.rating ?? ''
-        }/10`;
+        return (
+          <>
+            You rated <strong className='font-semibold'>{title}</strong>{' '}
+            {act.metadata?.rating ?? ''}/10
+          </>
+        );
       case 'favorite_added':
-        return `Added to Top 10: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            You added <strong className='font-semibold'>{title}</strong> to your
+            Top 10
+          </>
+        );
       case 'favorite_removed':
-        return `Removed from Top 10: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            You removed <strong className='font-semibold'>{title}</strong> from
+            your Top 10
+          </>
+        );
       case 'notes_updated':
-        return `Updated notes for ${act.movie?.title || 'an item'}`;
+        return (
+          <>
+            You updated notes for{' '}
+            <strong className='font-semibold'>{title}</strong>
+          </>
+        );
       case 'watchlist_added':
-        return `Added to watchlist: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            <strong className='font-semibold'>{title}</strong> was added to your
+            watchlist
+          </>
+        );
       case 'watchlist_removed':
-        return `Removed from watchlist: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            <strong className='font-semibold'>{title}</strong> was removed from
+            your watchlist
+          </>
+        );
       case 'watchlist_priority_updated':
-        return `Updated watchlist priority: ${act.movie?.title || 'movie'}`;
+        return (
+          <>
+            You updated watchlist priority for{' '}
+            <strong className='font-semibold'>{title}</strong>
+          </>
+        );
       case 'collection_created':
-        return `Created collection: ${act.collection?.name || 'collection'}`;
+        return (
+          <>
+            You created a collection: '
+            <span className='font-semibold'>{collectionName}</span>'
+          </>
+        );
       case 'collection_updated':
-        return `Updated collection: ${act.collection?.name || 'collection'}`;
+        return (
+          <>
+            You updated the collection: '
+            <span className='font-semibold'>{collectionName}</span>'
+          </>
+        );
       case 'collection_movie_added':
-        return `Added ${act.movie?.title || 'movie'} to ${
-          act.collection?.name || 'collection'
-        }`;
+        return (
+          <>
+            You added <strong className='font-semibold'>{title}</strong> to '
+            <span className='font-semibold'>{collectionName}</span>'
+          </>
+        );
       case 'collection_movie_removed':
-        return `Removed ${act.movie?.title || 'movie'} from ${
-          act.collection?.name || 'collection'
-        }`;
+        return (
+          <>
+            You removed <strong className='font-semibold'>{title}</strong> from
+            '<span className='font-semibold'>{collectionName}</span>'
+          </>
+        );
       case 'ranking_battle':
-        return `Completed a Versus battle`;
+        return <>You completed a Versus battle</>;
       case 'top_ten_changed':
-        return `Updated Top 10`;
+        return <>You updated your Top 10</>;
       default:
-        return 'Activity';
+        return <>Activity</>;
     }
   };
 
@@ -119,7 +180,7 @@ export default function ActivityPage() {
       <div className='bg-white border border-gray-200 rounded-lg overflow-hidden'>
         <div className='grid grid-cols-12 text-xs text-gray-500 border-b border-gray-100 px-4 py-2'>
           <div className='col-span-3'>Date</div>
-          <div className='col-span-3'>Type</div>
+          <div className='col-span-3'>Activity</div>
           <div className='col-span-6'>Details</div>
         </div>
         {isLoading ? (

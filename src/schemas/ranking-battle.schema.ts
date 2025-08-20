@@ -11,10 +11,10 @@ type RankingBattleRow = Database['public']['Tables']['versus_battles']['Row'];
 
 // Create Zod schema matching the database
 export const RankingBattleSchema = z.object({
-  id: z.string(),
-  ranking_list_id: z.string().nullable(),
-  winner_movie_id: z.number().nullable(),
-  loser_movie_id: z.number().nullable(),
+  id: z.uuid(),
+  ranking_list_id: z.uuid(),
+  winner_movie_id: z.uuid().nullable(),
+  loser_movie_id: z.uuid().nullable(),
   winner_elo_before: z.number().nullable(),
   winner_elo_after: z.number().nullable(),
   loser_elo_before: z.number().nullable(),

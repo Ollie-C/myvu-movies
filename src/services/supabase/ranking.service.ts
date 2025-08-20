@@ -38,10 +38,137 @@ export interface BattleProcessResult {
 }
 
 export const rankingService = {
+  async getUserRankingLists(
+    userId: string,
+    options?: {
+      onlyActive?: boolean;
+      limit?: number;
+      sortBy?: 'updated_at' | 'created_at' | 'name';
+      sortOrder?: 'asc' | 'desc';
+    }
+  ): Promise<
+    Array<
+      Tables<'ranking_lists'> & {
+        _count: { ranking_list_items: number };
+      }
+    >
+  > {
+    const {
+      onlyActive = false,
+      limit,
+      sortBy = 'updated_at',
+      sortOrder = 'desc',
+    } = options || {};
+
+    let query = supabase
+      .from('ranking_lists')
+      .select('*, ranking_list_items(count)')
+      .eq('user_id', userId)
+      .order(sortBy, { ascending: sortOrder === 'asc' });
+
+    if (onlyActive) {
+      query = query.eq('status', 'active' as any);
+    }
+
+    if (limit) query = query.limit(limit);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Normalize counts
+    const lists = (data || []).map((row: any) => ({
+      ...row,
+      _count: { ranking_list_items: row.ranking_list_items?.[0]?.count || 0 },
+    }));
+    return lists;
+  },
+
+  async getOrCreateDefaultVersusList(
+    userId: string
+  ): Promise<Tables<'ranking_lists'>> {
+    // Always create a new versus list with a unique name
+    const now = new Date();
+    const timestamp = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const time = now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const uniqueId = now.getTime(); // milliseconds for uniqueness
+
+    const { data: created, error: createError } = await supabase
+      .from('ranking_lists')
+      .insert({
+        user_id: userId,
+        name: `Versus Ranking - ${timestamp} ${time} #${uniqueId
+          .toString()
+          .slice(-4)}`,
+        description: 'Head-to-head ranking session',
+        ranking_method: 'versus' as any,
+        status: 'active',
+      })
+      .select('*')
+      .single();
+
+    if (createError) throw createError;
+    return created as Tables<'ranking_lists'>;
+  },
+
+  async updateRankingListName(
+    rankingListId: string,
+    newName: string
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('ranking_lists')
+      .update({ name: newName, updated_at: new Date().toISOString() })
+      .eq('id', rankingListId);
+
+    if (error) throw error;
+  },
+
+  async updateRankingListStatus(
+    rankingListId: string,
+    status: string
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('ranking_lists')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', rankingListId);
+    if (error) throw error;
+  },
+
+  async getBattleHistory(movieAId: string, movieBId: string) {
+    const { data, error } = await supabase
+      .from('versus_battles')
+      .select('*')
+      // .eq('ranking_list_id', rankingListId)
+      .in('winner_movie_id', [movieAId, movieBId])
+      .in('loser_movie_id', [movieAId, movieBId])
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    console.log('here', data);
+    return (data || []) as Tables<'versus_battles'>[];
+  },
+
+  async getBattlesSince(
+    rankingListId: string,
+    sinceIso: string
+  ): Promise<Tables<'versus_battles'>[]> {
+    const { data, error } = await supabase
+      .from('versus_battles')
+      .select('*')
+      .eq('ranking_list_id', rankingListId)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []) as Tables<'versus_battles'>[];
+  },
   async processRankingBattle(
     result: RankingBattleResult
   ): Promise<BattleProcessResult> {
-    const { data, error } = await supabase.rpc('process_versus_battle', {
+    const { data, error } = await supabase.rpc('process_ranking_battle', {
       p_ranking_list_id: result.rankingListId,
       p_winner_movie_id: result.winnerId,
       p_loser_movie_id: result.loserId,

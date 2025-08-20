@@ -20,7 +20,7 @@ export type Database = {
           created_at: string
           id: string
           metadata: Json
-          movie_id: number | null
+          movie_id: string | null
           ranking_list_id: string | null
           type: Database["public"]["Enums"]["activity_type_enum"]
           user_id: string
@@ -30,7 +30,7 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json
-          movie_id?: number | null
+          movie_id?: string | null
           ranking_list_id?: string | null
           type: Database["public"]["Enums"]["activity_type_enum"]
           user_id: string
@@ -40,7 +40,7 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json
-          movie_id?: number | null
+          movie_id?: string | null
           ranking_list_id?: string | null
           type?: Database["public"]["Enums"]["activity_type_enum"]
           user_id?: string
@@ -81,7 +81,7 @@ export type Database = {
           added_at: string | null
           collection_id: string
           id: string
-          movie_id: number
+          movie_id: string | null
           notes: string | null
           position: number | null
         }
@@ -89,7 +89,7 @@ export type Database = {
           added_at?: string | null
           collection_id: string
           id?: string
-          movie_id: number
+          movie_id?: string | null
           notes?: string | null
           position?: number | null
         }
@@ -97,7 +97,7 @@ export type Database = {
           added_at?: string | null
           collection_id?: string
           id?: string
-          movie_id?: number
+          movie_id?: string | null
           notes?: string | null
           position?: number | null
         }
@@ -160,7 +160,7 @@ export type Database = {
           created_at: string | null
           credits: Json | null
           genres: Json | null
-          id: number
+          id: string
           original_language: string | null
           original_title: string | null
           overview: string | null
@@ -181,7 +181,7 @@ export type Database = {
           created_at?: string | null
           credits?: Json | null
           genres?: Json | null
-          id?: number
+          id?: string
           original_language?: string | null
           original_title?: string | null
           overview?: string | null
@@ -202,7 +202,7 @@ export type Database = {
           created_at?: string | null
           credits?: Json | null
           genres?: Json | null
-          id?: number
+          id?: string
           original_language?: string | null
           original_title?: string | null
           overview?: string | null
@@ -249,7 +249,7 @@ export type Database = {
           created_at: string | null
           elo_score: number | null
           id: string
-          movie_id: number | null
+          movie_id: string | null
           notes: string | null
           position: number | null
           ranking_list_id: string | null
@@ -260,7 +260,7 @@ export type Database = {
           created_at?: string | null
           elo_score?: number | null
           id?: string
-          movie_id?: number | null
+          movie_id?: string | null
           notes?: string | null
           position?: number | null
           ranking_list_id?: string | null
@@ -271,7 +271,7 @@ export type Database = {
           created_at?: string | null
           elo_score?: number | null
           id?: string
-          movie_id?: number | null
+          movie_id?: string | null
           notes?: string | null
           position?: number | null
           ranking_list_id?: string | null
@@ -280,17 +280,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ranking_items_movie_id_fkey"
-            columns: ["movie_id"]
-            isOneToOne: false
-            referencedRelation: "movies"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ranking_items_ranking_list_id_fkey"
             columns: ["ranking_list_id"]
             isOneToOne: false
             referencedRelation: "ranking_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_list_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
             referencedColumns: ["id"]
           },
         ]
@@ -340,42 +340,35 @@ export type Database = {
           id: string
           loser_elo_after: number | null
           loser_elo_before: number | null
-          loser_movie_id: number | null
+          loser_movie_id: string | null
           ranking_list_id: string | null
           winner_elo_after: number | null
           winner_elo_before: number | null
-          winner_movie_id: number | null
+          winner_movie_id: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
           loser_elo_after?: number | null
           loser_elo_before?: number | null
-          loser_movie_id?: number | null
+          loser_movie_id?: string | null
           ranking_list_id?: string | null
           winner_elo_after?: number | null
           winner_elo_before?: number | null
-          winner_movie_id?: number | null
+          winner_movie_id?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
           loser_elo_after?: number | null
           loser_elo_before?: number | null
-          loser_movie_id?: number | null
+          loser_movie_id?: string | null
           ranking_list_id?: string | null
           winner_elo_after?: number | null
           winner_elo_before?: number | null
-          winner_movie_id?: number | null
+          winner_movie_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "ranking_battles_loser_movie_id_fkey"
-            columns: ["loser_movie_id"]
-            isOneToOne: false
-            referencedRelation: "movies"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "ranking_battles_ranking_list_id_fkey"
             columns: ["ranking_list_id"]
@@ -384,7 +377,14 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ranking_battles_winner_movie_id_fkey"
+            foreignKeyName: "versus_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "versus_battles_winner_movie_id_fkey"
             columns: ["winner_movie_id"]
             isOneToOne: false
             referencedRelation: "movies"
@@ -398,7 +398,7 @@ export type Database = {
           elo_score: number | null
           favorite: boolean | null
           id: string
-          movie_id: number | null
+          movie_id: string | null
           notes: string | null
           rating: number | null
           updated_at: string | null
@@ -410,7 +410,7 @@ export type Database = {
           elo_score?: number | null
           favorite?: boolean | null
           id?: string
-          movie_id?: number | null
+          movie_id?: string | null
           notes?: string | null
           rating?: number | null
           updated_at?: string | null
@@ -422,7 +422,7 @@ export type Database = {
           elo_score?: number | null
           favorite?: boolean | null
           id?: string
-          movie_id?: number | null
+          movie_id?: string | null
           notes?: string | null
           rating?: number | null
           updated_at?: string | null
@@ -451,7 +451,7 @@ export type Database = {
           added_date: string | null
           created_at: string | null
           id: string
-          movie_id: number | null
+          movie_id: string | null
           notes: string | null
           priority: string | null
           reminder_date: string | null
@@ -462,7 +462,7 @@ export type Database = {
           added_date?: string | null
           created_at?: string | null
           id?: string
-          movie_id?: number | null
+          movie_id?: string | null
           notes?: string | null
           priority?: string | null
           reminder_date?: string | null
@@ -473,7 +473,7 @@ export type Database = {
           added_date?: string | null
           created_at?: string | null
           id?: string
-          movie_id?: number | null
+          movie_id?: string | null
           notes?: string | null
           priority?: string | null
           reminder_date?: string | null
@@ -542,6 +542,14 @@ export type Database = {
         Args: { movie_id_param: number; user_uuid: string }
         Returns: boolean
       }
+      process_battle: {
+        Args: {
+          p_loser_id: string
+          p_ranking_list_id: string
+          p_winner_id: string
+        }
+        Returns: Json
+      }
       process_enhanced_rating: {
         Args:
           | {
@@ -570,8 +578,12 @@ export type Database = {
         Returns: Json
       }
       process_versus_battle: {
-        Args: { loser_id: number; ranking_list_id?: string; winner_id: number }
-        Returns: undefined
+        Args: {
+          p_loser_id: string
+          p_ranking_list_id: string
+          p_winner_id: string
+        }
+        Returns: Json
       }
       rating_to_elo: {
         Args: { rating: number }

@@ -230,51 +230,141 @@ const Dashboard = () => {
                 const label = (() => {
                   switch (act.type) {
                     case 'watched_added':
-                      return `Marked watched: ${act.movie?.title || ''}`;
+                      return (
+                        <>
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'Movie'}
+                          </strong>{' '}
+                          was marked as watched
+                        </>
+                      );
                     case 'watched_removed':
-                      return `Unmarked watched: ${act.movie?.title || ''}`;
+                      return (
+                        <>
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'Movie'}
+                          </strong>{' '}
+                          was unmarked as watched
+                        </>
+                      );
                     case 'rated_movie':
-                      return `Rated ${act.movie?.title || ''} ${
-                        (act.metadata as any)?.rating ?? ''
-                      }/10`;
+                      return (
+                        <>
+                          You rated{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'movie'}
+                          </strong>{' '}
+                          {String((act.metadata as any)?.rating ?? '')}/10
+                        </>
+                      );
                     case 'favorite_added':
-                      return `Added to Top 10: ${act.movie?.title || ''}`;
+                      return (
+                        <>
+                          You added{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'movie'}
+                          </strong>{' '}
+                          to your Top 10
+                        </>
+                      );
                     case 'favorite_removed':
-                      return `Removed from Top 10: ${act.movie?.title || ''}`;
+                      return (
+                        <>
+                          You removed{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'movie'}
+                          </strong>{' '}
+                          from your Top 10
+                        </>
+                      );
                     case 'notes_updated':
-                      return `Updated notes for ${
-                        act.movie?.title || 'an item'
-                      }`;
+                      return (
+                        <>
+                          You updated notes for{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'an item'}
+                          </strong>
+                        </>
+                      );
                     case 'watchlist_added':
-                      return `Added to watchlist: ${act.movie?.title || ''}`;
+                      return (
+                        <>
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'Movie'}
+                          </strong>{' '}
+                          was added to your watchlist
+                        </>
+                      );
                     case 'watchlist_removed':
-                      return `Removed from watchlist: ${
-                        act.movie?.title || ''
-                      }`;
+                      return (
+                        <>
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'Movie'}
+                          </strong>{' '}
+                          was removed from your watchlist
+                        </>
+                      );
                     case 'watchlist_priority_updated':
-                      return `Updated watchlist priority: ${
-                        act.movie?.title || ''
-                      }`;
+                      return (
+                        <>
+                          You updated watchlist priority for{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'movie'}
+                          </strong>
+                        </>
+                      );
                     case 'collection_created':
-                      return `Created collection: ${
-                        act.collection?.name || ''
-                      }`;
+                      return (
+                        <>
+                          You created a collection: '
+                          <span className='font-semibold'>
+                            {act.collection?.name || 'collection'}
+                          </span>
+                          '
+                        </>
+                      );
                     case 'collection_updated':
-                      return `Updated collection: ${
-                        act.collection?.name || ''
-                      }`;
+                      return (
+                        <>
+                          You updated the collection: '
+                          <span className='font-semibold'>
+                            {act.collection?.name || 'collection'}
+                          </span>
+                          '
+                        </>
+                      );
                     case 'collection_movie_added':
-                      return `Added ${act.movie?.title || ''} to ${
-                        act.collection?.name || 'collection'
-                      }`;
+                      return (
+                        <>
+                          You added{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'movie'}
+                          </strong>{' '}
+                          to '
+                          <span className='font-semibold'>
+                            {act.collection?.name || 'collection'}
+                          </span>
+                          '
+                        </>
+                      );
                     case 'collection_movie_removed':
-                      return `Removed ${act.movie?.title || ''} from ${
-                        act.collection?.name || 'collection'
-                      }`;
+                      return (
+                        <>
+                          You removed{' '}
+                          <strong className='font-semibold'>
+                            {act.movie?.title || 'movie'}
+                          </strong>{' '}
+                          from '
+                          <span className='font-semibold'>
+                            {act.collection?.name || 'collection'}
+                          </span>
+                          '
+                        </>
+                      );
                     case 'ranking_battle':
-                      return `Completed a Versus battle`;
+                      return <>You completed a Versus battle</>;
                     case 'top_ten_changed':
-                      return `Updated Top 10`;
+                      return <>You updated your Top 10</>;
                     default:
                       return 'Activity';
                   }

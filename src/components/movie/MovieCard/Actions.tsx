@@ -7,9 +7,9 @@ import type { Movie } from '@/schemas/movie.schema';
 interface MovieCardActionsProps {
   movie: Movie;
   isWatchlistView: boolean;
-  onRemoveFromWatched?: (movieId: number) => void;
-  onRemoveFromWatchlist?: (movieId: number) => void;
-  onMarkAsWatched?: (movieId: number) => void;
+  onRemoveFromWatched?: (movieId: string) => void;
+  onRemoveFromWatchlist?: (movieId: string) => void;
+  onMarkAsWatched?: (movieId: string) => void;
   onAddToListClick: (e: React.MouseEvent) => void;
   plusButtonRef: React.RefObject<HTMLButtonElement | null>;
 }

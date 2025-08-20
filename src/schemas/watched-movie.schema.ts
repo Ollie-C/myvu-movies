@@ -8,7 +8,7 @@ type WatchedMovieRow = Database['public']['Tables']['watched_movies']['Row'];
 export const WatchedMovieSchema = z.object({
   id: z.string(),
   user_id: z.string().nullable(),
-  movie_id: z.number().nullable(),
+  movie_id: z.uuid().nullable(),
   watched_date: z.string(),
   rating: z.number().min(0).max(10).nullable(),
   notes: z.string().nullable(),

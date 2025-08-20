@@ -8,8 +8,8 @@ type CollectionItemRow =
 
 export const CollectionItemSchema = z.object({
   id: z.uuid(),
-  collection_id: z.uuid().nullable(),
-  movie_id: z.number().nullable(),
+  collection_id: z.uuid(),
+  movie_id: z.uuid().nullable(),
   position: z.number().min(0).nullable(),
   notes: z.string().max(1000).nullable(),
   added_at: z.string().nullable(),
@@ -24,7 +24,7 @@ export const CollectionItemInsertSchema = CollectionItemSchema.omit({
   added_at: true,
 }).extend({
   collection_id: z.uuid(),
-  movie_id: z.number(),
+  movie_id: z.uuid(),
   position: z.number().min(0).optional(),
   added_at: z.string().default(() => new Date().toISOString()),
 });

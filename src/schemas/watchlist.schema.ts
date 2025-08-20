@@ -10,9 +10,9 @@ export const WatchlistPriorityEnum = z.enum(['high', 'medium', 'low']);
 export type WatchlistPriority = z.infer<typeof WatchlistPriorityEnum>;
 
 export const WatchlistSchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid().nullable(),
-  movie_id: z.number().nullable(),
+  id: z.uuid(),
+  user_id: z.uuid().nullable(),
+  movie_id: z.uuid().nullable(),
   added_date: z.string().nullable(),
   priority: WatchlistPriorityEnum.nullable(),
   notes: z.string().nullable(),
@@ -32,8 +32,8 @@ export const WatchlistInsertSchema = WatchlistSchema.omit({
   created_at: true,
   updated_at: true,
 }).extend({
-  user_id: z.string().uuid(),
-  movie_id: z.number(),
+  user_id: z.uuid(),
+  movie_id: z.uuid(),
   added_date: z.string().default(() => new Date().toISOString().split('T')[0]),
   priority: WatchlistPriorityEnum.default('medium'),
 });

@@ -24,12 +24,12 @@ export const ActivityTypeEnum = z.enum([
 ]);
 
 export const ActivitySchema = z.object({
-  id: z.string().uuid(),
-  user_id: z.string().uuid(),
+  id: z.uuid(),
+  user_id: z.uuid(),
   type: ActivityTypeEnum,
-  movie_id: z.number().nullable(),
-  collection_id: z.string().uuid().nullable(),
-  ranking_list_id: z.string().uuid().nullable(),
+  movie_id: z.uuid().nullable(),
+  collection_id: z.uuid().nullable(),
+  ranking_list_id: z.uuid().nullable(),
   metadata: ((): z.ZodType<Json> => {
     const JsonSchema: z.ZodType<Json> = z.lazy(() =>
       z.union([

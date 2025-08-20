@@ -11,9 +11,9 @@ import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
 
 interface MovieCardProps {
   userMovie: WatchedMovieWithMovie | WatchlistWithMovie;
-  onRemoveFromWatched?: (movieId: number) => void;
-  onRemoveFromWatchlist?: (movieId: number) => void;
-  onMarkAsWatched?: (movieId: number) => void;
+  onRemoveFromWatched?: (movieId: string) => void;
+  onRemoveFromWatchlist?: (movieId: string) => void;
+  onMarkAsWatched?: (movieId: string) => void;
   isWatchlistView?: boolean;
   index?: number;
   isWatchedList?: boolean;

@@ -83,7 +83,7 @@ export const watchlistService = {
 
   async getWatchlistItem(
     userId: string,
-    movieId: number
+    movieId: string
   ): Promise<Watchlist | null> {
     const { data, error } = await supabase
       .from('watchlist')
@@ -102,7 +102,7 @@ export const watchlistService = {
 
   async addToWatchlist(
     userId: string,
-    movieId: number,
+    movieId: string,
     priority: WatchlistPriority = 'medium',
     notes?: string
   ): Promise<Watchlist> {
@@ -137,7 +137,7 @@ export const watchlistService = {
     return parsed;
   },
 
-  async removeFromWatchlist(userId: string, movieId: number): Promise<void> {
+  async removeFromWatchlist(userId: string, movieId: string): Promise<void> {
     // Only log removal if an item existed
     const { data: existing, error: checkError } = await supabase
       .from('watchlist')
@@ -168,7 +168,7 @@ export const watchlistService = {
 
   async updatePriority(
     userId: string,
-    movieId: number,
+    movieId: string,
     priority: WatchlistPriority
   ): Promise<Watchlist> {
     const { data, error } = await supabase
@@ -197,7 +197,7 @@ export const watchlistService = {
 
   async updateNotes(
     userId: string,
-    movieId: number,
+    movieId: string,
     notes: string
   ): Promise<Watchlist> {
     const { data, error } = await supabase
@@ -225,7 +225,7 @@ export const watchlistService = {
 
   async setReminder(
     userId: string,
-    movieId: number,
+    movieId: string,
     reminderDate: string | null
   ): Promise<Watchlist> {
     const { data, error } = await supabase

@@ -73,6 +73,24 @@ export const useRankedMovies = (userId?: string) => {
   });
 };
 
+export const useUserRankingLists = (options?: {
+  onlyActive?: boolean;
+  limit?: number;
+  sortBy?: 'updated_at' | 'created_at' | 'name';
+  sortOrder?: 'asc' | 'desc';
+}) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['ranking-lists', user?.id || '', options],
+    queryFn: () => {
+      if (!user?.id) throw new Error('User not authenticated');
+      return rankingService.getUserRankingLists(user.id, options);
+    },
+    enabled: !!user?.id,
+    staleTime: 30 * 1000,
+  });
+};
+
 export const useReorderRankingItems = (rankingListId: string) => {
   const queryClient = useQueryClient();
 
@@ -144,7 +162,8 @@ export const useVersusRanking = (userId?: string) => {
 
 // Hook for managing versus ranking pairs and battles
 export const useVersusRankingPairs = (
-  watchedMovies: WatchedMovieWithMovie[]
+  watchedMovies: WatchedMovieWithMovie[],
+  rankingListId?: string
 ) => {
   const [currentPairIndex, setCurrentPairIndex] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -173,16 +192,35 @@ export const useVersusRankingPairs = (
   };
 
   const processBattle = async (
-    winnerId: number,
-    loserId: number,
+    winnerId: string,
+    loserId: string,
     userId: string
   ) => {
     setIsProcessing(true);
     try {
-      await versusRankingService.processVersusBattle(winnerId, loserId, userId);
-      nextPair(); // Move to next pair after battle
+      // Use real ranking RPC to persist battle and get ELO results
+      const battleResult = await versusRankingService.processVersusBattle(
+        winnerId,
+        loserId,
+        userId,
+        rankingListId
+      );
+
+      const normalized = {
+        winnerNewRating: battleResult.winner_elo_after,
+        loserNewRating: battleResult.loser_elo_after,
+        ...battleResult,
+      };
+
+      if (currentPairIndex >= moviePairs.length - 1) {
+        // No more pairs
+        return { done: true, eloResult: normalized } as any;
+      }
+      nextPair();
+      return { done: false, eloResult: normalized } as any;
     } catch (error) {
       console.error('Failed to process battle:', error);
+      throw error;
     } finally {
       setIsProcessing(false);
     }

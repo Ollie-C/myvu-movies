@@ -81,7 +81,7 @@ export const watchedMoviesService = {
 
   async getWatchedMovie(
     userId: string,
-    movieId: number,
+    movieId: string,
     includeMovie = false
   ): Promise<WatchedMovie | null> {
     const { data, error } = await supabase
@@ -99,7 +99,7 @@ export const watchedMoviesService = {
 
   async getWatchedMovieWithMovie(
     userId: string,
-    movieId: number
+    movieId: string
   ): Promise<WatchedMovieWithMovie | null> {
     const { data, error } = await supabase
       .from('watched_movies')
@@ -117,7 +117,7 @@ export const watchedMoviesService = {
 
   async markAsWatched(
     userId: string,
-    movieId: number,
+    movieId: string,
     watchedDate?: string
   ): Promise<WatchedMovie> {
     const { data, error } = await supabase
@@ -154,7 +154,7 @@ export const watchedMoviesService = {
     return parsed;
   },
 
-  async removeWatched(userId: string, movieId: number): Promise<void> {
+  async removeWatched(userId: string, movieId: string): Promise<void> {
     const { error } = await supabase
       .from('watched_movies')
       .delete()
@@ -174,7 +174,7 @@ export const watchedMoviesService = {
 
   async updateRating(
     userId: string,
-    movieId: number,
+    movieId: string,
     rating: number
   ): Promise<WatchedMovie> {
     const eloScore = Math.round(rating * ELO_RATING_MULTIPLIER);
@@ -218,7 +218,7 @@ export const watchedMoviesService = {
     return z.array(WatchedMovieWithMovieSchema).parse(data || []);
   },
 
-  async toggleFavorite(userId: string, movieId: number): Promise<boolean> {
+  async toggleFavorite(userId: string, movieId: string): Promise<boolean> {
     const { data: current, error: fetchError } = await supabase
       .from('watched_movies')
       .select('favorite')
@@ -255,7 +255,7 @@ export const watchedMoviesService = {
 
   async updateNotes(
     userId: string,
-    movieId: number,
+    movieId: string,
     notes: string
   ): Promise<WatchedMovie> {
     const { data, error } = await supabase

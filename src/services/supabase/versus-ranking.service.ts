@@ -44,18 +44,28 @@ export const versusRankingService = {
   async processVersusBattle(
     winnerId: number,
     loserId: number,
-    userId: string
-  ): Promise<void> {
-    // For now, we'll just log the battle result
-    // In the future, this will call the ELO calculation RPC function
-    console.log('Versus Battle Result:', {
-      winnerId,
-      loserId,
-      userId,
+    userId: string,
+    rankingListId?: string
+  ): Promise<any> {
+    if (!rankingListId) {
+      throw new Error('Ranking list ID is required for versus battles');
+    }
+
+    console.log(winnerId, loserId, rankingListId);
+
+    const { data, error } = await supabase.rpc('process_versus_battle', {
+      p_winner_id: winnerId,
+      p_loser_id: loserId,
+      p_ranking_list_id: rankingListId,
     });
 
-    // TODO: Implement ELO calculation and update
-    // This should call the ranking service's processRankingBattle method
-    // or a new versus-specific ELO update function
+    if (error) {
+      console.error('Failed to process versus battle:', error);
+      throw error;
+    }
+
+    console.log('ELO result', data);
+
+    return data;
   },
 };

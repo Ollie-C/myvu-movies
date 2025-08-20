@@ -12,7 +12,7 @@ const GenreSchema = z.object({
 
 // Movie Schema
 export const MovieSchema = z.object({
-  id: z.number(),
+  id: z.uuid(),
   tmdb_id: z.number(),
   title: z.string().min(1, 'Title is required'),
   original_title: z.string().nullable(),

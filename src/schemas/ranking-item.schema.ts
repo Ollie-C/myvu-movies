@@ -10,9 +10,9 @@ import { MovieSchema } from './movie.schema';
 type RankingItemRow = Database['public']['Tables']['ranking_list_items']['Row'];
 
 export const RankingItemSchema = z.object({
-  id: z.string(),
-  ranking_list_id: z.string().nullable(),
-  movie_id: z.number().nullable(),
+  id: z.uuid(),
+  ranking_list_id: z.uuid(),
+  movie_id: z.uuid().nullable(),
   position: z.number().nullable(),
   tier: z.string().nullable(),
   elo_score: z.number().nullable(),

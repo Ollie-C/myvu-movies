@@ -51,7 +51,7 @@ const Movies = () => {
 
   // Queries
   const watchedQuery = useWatchedMoviesInfinite({
-    sortBy: sortOption,
+    sortBy: sortOption as 'title' | 'rating' | 'watched_date',
     sortOrder: 'desc',
     limit: 24,
   });
@@ -83,9 +83,9 @@ const Movies = () => {
 
   const moviePositions = useMemo(() => {
     if (sortOption !== 'ranked' || showWatchlist)
-      return new Map<number, number>();
+      return new Map<string, number>();
 
-    const positions = new Map<number, number>();
+    const positions = new Map<string, number>();
     userMovies.forEach((movie, index) => {
       positions.set(movie.movie.id, index + 1);
     });
@@ -110,7 +110,7 @@ const Movies = () => {
   );
 
   const handleRemoveFromWatched = useCallback(
-    async (movieId: number) => {
+    async (movieId: string) => {
       if (!user?.id) return;
 
       try {
@@ -127,7 +127,7 @@ const Movies = () => {
   );
 
   const handleRemoveFromWatchlist = useCallback(
-    async (movieId: number) => {
+    async (movieId: string) => {
       if (!user?.id) return;
 
       try {
@@ -144,7 +144,7 @@ const Movies = () => {
   );
 
   const handleMarkAsWatched = useCallback(
-    async (movieId: number) => {
+    async (movieId: string) => {
       if (!user?.id) return;
 
       try {
@@ -197,7 +197,7 @@ const Movies = () => {
                 userMovie.rating && (
                   <div className='text-[6px] text-gray-500 flex justify-between mb-1 px-1'>
                     <span>Rating: {userMovie.rating.toFixed(1)}</span>
-                    <span>ELO: {Math.round(userMovie.rating * 200)}</span>
+                    <span>ELO: {userMovie.elo_score}</span>
                   </div>
                 )}
 

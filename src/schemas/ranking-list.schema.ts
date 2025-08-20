@@ -11,8 +11,8 @@ type RankingListRow = Database['public']['Tables']['ranking_lists']['Row'];
 export const RankingMethodEnum = z.enum(['versus', 'tier', 'manual', 'merged']);
 
 export const RankingListSchema = z.object({
-  id: z.string(),
-  user_id: z.string().nullable(),
+  id: z.uuid(),
+  user_id: z.uuid(),
   name: z.string(),
   description: z.string().nullable(),
   ranking_method: RankingMethodEnum,
@@ -20,6 +20,7 @@ export const RankingListSchema = z.object({
   slug: z.string().nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  status: z.string(),
 }) satisfies z.ZodType<RankingListRow>;
 
 // For collaborative rankings, you might need an additional schema

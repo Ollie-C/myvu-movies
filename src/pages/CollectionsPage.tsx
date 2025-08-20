@@ -1,5 +1,5 @@
 // AUDITED 06/08/2025
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Icons
@@ -12,6 +12,8 @@ import { useAuth } from '@/context/AuthContext';
 
 // Components
 import { Card } from '@/components/common/Card';
+import { Input } from '@/components/common/Input';
+import { Button } from '@/components/common/Button';
 import { CollectionModal } from '@/components/collections/CollectionModal';
 import CollectionCard from '@/components/collections/CollectionCard';
 import Loader from '@/components/common/Loader';
@@ -20,6 +22,10 @@ const Collections = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'updated_at' | 'created_at' | 'name'>(
+    'updated_at'
+  );
 
   const {
     data: collections = [],
@@ -42,18 +48,64 @@ const Collections = () => {
     );
   }
 
+  const filteredCollections = useMemo(() => {
+    const list = [...collections];
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list.splice(
+        0,
+        list.length,
+        ...list.filter((c) => c.name.toLowerCase().includes(q))
+      );
+    }
+    list.sort((a, b) => {
+      if (sortBy === 'name') return a.name.localeCompare(b.name);
+      const aVal = a[sortBy] || '';
+      const bVal = b[sortBy] || '';
+      return String(bVal).localeCompare(String(aVal));
+    });
+    return list;
+  }, [collections, searchQuery, sortBy]);
+
   return (
     <div className='container mx-auto px-4 py-8 animate-fade-in'>
-      {/* Header */}
-      <div className='flex items-center justify-between'>
-        <div>
-          <h1 className='text-3xl font-bold text-primary'>Collections</h1>
+      {/* Hero / Header */}
+      <div className='mb-6'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <h1 className='text-2xl font-semibold text-gray-900'>
+              Collections
+            </h1>
+            <p className='text-sm text-gray-600 mt-1'>
+              Organize movies into shareable sets
+            </p>
+          </div>
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className='inline-flex items-center gap-2'>
+            <Plus className='w-4 h-4' /> New collection
+          </Button>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className='p-3 bg-primary/10 hover:bg-primary/20 rounded-lg transition-colors'>
-          <Plus className='w-5 h-5 text-primary' />
-        </button>
+        <div className='mt-4 flex flex-col sm:flex-row gap-3'>
+          <div className='flex-1'>
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder='Search collections...'
+              className='h-10'
+            />
+          </div>
+          <div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className='h-10 px-3 border border-gray-300 rounded-lg bg-white text-sm inline-flex items-center'>
+              <option value='updated_at'>Recently updated</option>
+              <option value='created_at'>Recently created</option>
+              <option value='name'>Name</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Loading State */}
@@ -86,17 +138,23 @@ const Collections = () => {
       )}
 
       {/* All Collections */}
-      {!isLoading && collections.length > 0 && (
-        <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>
-          {collections.map((collection) => (
-            <CollectionCard
-              key={collection.id}
-              collection={collection}
-              onNavigate={(id) => navigate(`/collections/${id}`)}
-              previewSize='medium'
-            />
-          ))}
-        </div>
+      {!isLoading && filteredCollections.length > 0 && (
+        <>
+          <div className='text-sm text-gray-500 mb-3'>
+            {filteredCollections.length} collection
+            {filteredCollections.length === 1 ? '' : 's'}
+          </div>
+          <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6'>
+            {filteredCollections.map((collection) => (
+              <CollectionCard
+                key={collection.id}
+                collection={collection}
+                onNavigate={(id) => navigate(`/collections/${id}`)}
+                previewSize='medium'
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Collection Creation Modal */}
@@ -104,7 +162,10 @@ const Collections = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={async (data) => {
-          await createCollectionMutation.mutateAsync(data);
+          // Ensure correct shape for create
+          await createCollectionMutation.mutateAsync(
+            'user_id' in (data as any) ? (data as any) : (data as any)
+          );
           setIsModalOpen(false);
         }}
       />
