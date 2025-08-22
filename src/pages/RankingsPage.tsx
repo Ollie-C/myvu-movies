@@ -2,7 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Icons
-import { Star, BarChart3, Trophy, Brain, Edit3, Check, X } from 'lucide-react';
+import {
+  Star,
+  BarChart3,
+  Trophy,
+  Brain,
+  Edit3,
+  Check,
+  X,
+  Trash2,
+} from 'lucide-react';
 
 // Components
 import { Card } from '@/components/common/Card';
@@ -13,9 +22,13 @@ import AdvancedRatingModal from '@/components/movie/AdvancedRatingModal';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 
-// Services
-import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
-import { rankingService } from '@/services/supabase/ranking.service';
+// Mutation hooks
+import {
+  useUpdateRankingListName,
+  useDeleteRankingList,
+  useConvertRankingToCollection,
+} from '@/utils/hooks/supabase/mutations/useRankingMutations';
+import { useUpdateWatchedMovieNotes } from '@/utils/hooks/supabase/mutations/useWatchedMovieMutations';
 
 // Updated hooks
 import {
@@ -42,6 +55,7 @@ const Rankings = () => {
   );
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [deletingListId, setDeletingListId] = useState<string | null>(null);
 
   // Get unrated movies (watched but not rated)
   const { data: watchedMoviesData, isLoading: watchedLoading } =
@@ -74,6 +88,8 @@ const Rankings = () => {
   const completedRankings = allRankingLists.filter(
     (list: any) => list.status === 'completed'
   );
+
+  console.log(completedRankings);
 
   // Calculate stats from the data we have
   const ratingStats = watchedMoviesData?.data
@@ -148,6 +164,10 @@ const Rankings = () => {
   };
 
   const updateRatingMutation = useUpdateRating();
+  const updateWatchedMovieNotesMutation = useUpdateWatchedMovieNotes();
+  const updateRankingListNameMutation = useUpdateRankingListName();
+  const deleteRankingListMutation = useDeleteRankingList();
+  const convertRankingToCollectionMutation = useConvertRankingToCollection();
   const { setMovieState } = useMovieStore();
 
   const handleRateMovie = async (
@@ -173,7 +193,10 @@ const Rankings = () => {
 
       // Update notes if provided
       if (notes) {
-        await watchedMoviesService.updateNotes(user.id, movieId, notes);
+        await updateWatchedMovieNotesMutation.mutateAsync({
+          movieId,
+          notes,
+        });
       }
 
       showToast('success', 'Movie rated successfully!');
@@ -219,7 +242,10 @@ const Rankings = () => {
     if (!editingName.trim()) return;
 
     try {
-      await rankingService.updateRankingListName(listId, editingName.trim());
+      await updateRankingListNameMutation.mutateAsync({
+        listId,
+        name: editingName.trim(),
+      });
       await refetchRankingLists();
       showToast('success', 'Ranking name updated successfully!');
       setEditingListId(null);
@@ -232,6 +258,40 @@ const Rankings = () => {
   const handleCancelEdit = () => {
     setEditingListId(null);
     setEditingName('');
+  };
+
+  const handleConvertToCollection = async (rankingListId: string) => {
+    try {
+      const { newCollectionId } =
+        await convertRankingToCollectionMutation.mutateAsync(rankingListId);
+
+      showToast('success', 'Ranking converted into a collection!');
+      navigate(`/collections/${newCollectionId}`);
+    } catch (error) {
+      console.error(error);
+      showToast('error', 'Failed to convert ranking into collection.');
+    }
+  };
+
+  const handleDeleteRanking = async (listId: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to delete this ranking? This action cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    setDeletingListId(listId);
+    try {
+      await deleteRankingListMutation.mutateAsync(listId);
+      await refetchRankingLists();
+      showToast('success', 'Ranking deleted successfully!');
+    } catch (error) {
+      showToast('error', 'Failed to delete ranking');
+    } finally {
+      setDeletingListId(null);
+    }
   };
 
   const isLoading = watchedLoading || rankedLoading;
@@ -573,6 +633,12 @@ const Rankings = () => {
                               className='text-gray-400 hover:text-gray-600'>
                               <Edit3 className='w-4 h-4' />
                             </button>
+                            <button
+                              onClick={() => handleDeleteRanking(list.id)}
+                              disabled={deletingListId === list.id}
+                              className='text-gray-400 hover:text-red-600 disabled:opacity-50'>
+                              <Trash2 className='w-4 h-4' />
+                            </button>
                           </div>
                         )}
                       </div>
@@ -613,6 +679,7 @@ const Rankings = () => {
                           completed
                         </div>
                       </div>
+
                       <div className='flex items-center gap-2 mt-1'>
                         {editingListId === list.id ? (
                           <div className='flex items-center gap-2 flex-1'>
@@ -663,6 +730,24 @@ const Rankings = () => {
                       variant='secondary'>
                       View Results
                     </Button>
+                    <div className='mt-3 flex items-center gap-2'>
+                      {0 !== list.collections?.length ? (
+                        <Button
+                          onClick={() =>
+                            navigate(`/collections/${list.collections[0].id}`)
+                          }
+                          className='h-9 px-3 text-sm'
+                          variant='secondary'>
+                          View Collection
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleConvertToCollection(list.id)}
+                          className='h-9 px-3 text-sm'>
+                          Convert to Collection
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

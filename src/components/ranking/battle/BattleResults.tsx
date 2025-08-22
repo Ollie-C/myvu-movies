@@ -63,25 +63,17 @@ export default function BattleResults({
       .sort((a, b) => b.elo - a.elo);
   }, [sessionBattles, movieIdToTitle]);
 
-  // Fetch head-to-head totals for all unique pairs
   useEffect(() => {
     const loadHeadToHeads = async () => {
       const results: Record<string, { aWins: number; bWins: number }> = {};
       for (const b of sessionBattles) {
         if (!b.elo) continue;
         const key = [b.winnerId, b.loserId].sort().join('_');
-        if (results[key]) continue; // skip if already loaded
-        const battles = await rankingService.getBattleHistory(
+        if (results[key]) continue;
+        results[key] = await rankingService.getBattleHistory(
           b.winnerId,
           b.loserId
         );
-        let aWins = 0;
-        let bWins = 0;
-        battles.forEach((battle) => {
-          if (battle.winner_movie_id === b.winnerId) aWins++;
-          if (battle.winner_movie_id === b.loserId) bWins++;
-        });
-        results[key] = { aWins, bWins };
       }
       setHeadToHeads(results);
     };
@@ -147,8 +139,9 @@ export default function BattleResults({
               const head = headToHeads[key];
 
               return (
-                <div key={index} className='grid grid-cols-2 gap-4 text-sm p-4'>
-                  {/* Left: Winner */}
+                <div
+                  key={index}
+                  className='grid grid-cols-2 gap-4 text-sm p-4 border-b'>
                   <div>
                     <strong>{movieA}</strong>
                     <div className='text-gray-700 text-xs'>
@@ -170,7 +163,6 @@ export default function BattleResults({
                     )}
                   </div>
 
-                  {/* Right: Loser */}
                   <div>
                     {movieB}
                     <div className='text-gray-700 text-xs'>

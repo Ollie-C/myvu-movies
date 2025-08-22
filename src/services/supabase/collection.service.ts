@@ -1,4 +1,3 @@
-// AUDITED 11/08/2025
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 
@@ -166,6 +165,19 @@ export const collectionService = {
       collectionData.slug ||
       collectionHelpers.generateSlug(collectionData.name);
 
+    if (collectionData.ranking_list_id) {
+      const { data: existing, error: checkError } = await supabase
+        .from('collections')
+        .select('*')
+        .eq('ranking_list_id', collectionData.ranking_list_id)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      if (existing) {
+        throw new Error('A collection already exists for this ranking list.');
+      }
+    }
+
     const insertData = CollectionInsertSchema.parse({
       ...collectionData,
       user_id: userId,
@@ -236,10 +248,9 @@ export const collectionService = {
 
   async addMovieToCollection(
     collectionId: string,
-    movieId: number,
+    movieId: string,
     notes?: string
   ): Promise<CollectionItemWithMovie> {
-    // Check if movie already exists
     const { data: existingItem, error: checkError } = await supabase
       .from('collection_items')
       .select('id')
@@ -297,7 +308,7 @@ export const collectionService = {
 
   async addMoviesToCollection(
     collectionId: string,
-    movieIds: number[]
+    movieIds: string[]
   ): Promise<CollectionItemWithMovie[]> {
     if (movieIds.length === 0) return [];
 
@@ -336,7 +347,7 @@ export const collectionService = {
 
   async removeMovieFromCollection(
     collectionId: string,
-    movieId: number
+    movieId: string
   ): Promise<void> {
     const { error } = await supabase
       .from('collection_items')
@@ -363,7 +374,7 @@ export const collectionService = {
 
   async toggleMovieInCollection(
     collectionId: string,
-    movieId: number
+    movieId: string
   ): Promise<void> {
     // Use the working query approach instead of the problematic isMovieInCollection
     const { data: existingItem, error } = await supabase
@@ -418,7 +429,7 @@ export const collectionService = {
 
   async getCollectionsWithMovie(
     userId: string,
-    movieId: number
+    movieId: string
   ): Promise<
     Array<{ collection: CollectionWithCount; inCollection: boolean }>
   > {
@@ -493,7 +504,7 @@ export const collectionService = {
 
   async updateItemNotes(
     collectionId: string,
-    movieId: number,
+    movieId: string,
     notes: string | null
   ): Promise<void> {
     const { error } = await supabase

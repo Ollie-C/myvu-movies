@@ -89,13 +89,7 @@ export function VersusRanking({
         currentPair.movie1.movie_id,
         currentPair.movie2.movie_id
       );
-      let aWins = 0;
-      let bWins = 0;
-      battles.forEach((b) => {
-        if (b.winner_movie_id === currentPair.movie1.movie_id) aWins++;
-        if (b.winner_movie_id === currentPair.movie2.movie_id) bWins++;
-      });
-      setHistory({ aWins, bWins });
+      setHistory(battles);
     };
     loadHistory();
   }, [rankingListId, currentPair]);
@@ -132,7 +126,7 @@ export function VersusRanking({
     if (!user?.id) return;
 
     try {
-      const result = await processBattle(winnerId, loserId, user.id);
+      const result = await processBattle(winnerId, loserId);
       setBattleCount((prev) => prev + 1);
 
       // Debug: Log the actual result structure

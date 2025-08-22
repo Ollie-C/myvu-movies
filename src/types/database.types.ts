@@ -126,6 +126,7 @@ export type Database = {
           is_public: boolean | null
           is_ranked: boolean
           name: string
+          ranking_list_id: string | null
           slug: string | null
           updated_at: string | null
           user_id: string | null
@@ -137,6 +138,7 @@ export type Database = {
           is_public?: boolean | null
           is_ranked?: boolean
           name: string
+          ranking_list_id?: string | null
           slug?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -148,11 +150,20 @@ export type Database = {
           is_public?: boolean | null
           is_ranked?: boolean
           name?: string
+          ranking_list_id?: string | null
           slug?: string | null
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "collections_ranking_list_id_fkey"
+            columns: ["ranking_list_id"]
+            isOneToOne: false
+            referencedRelation: "ranking_lists"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       movies: {
         Row: {

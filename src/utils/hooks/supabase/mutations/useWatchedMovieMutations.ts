@@ -220,6 +220,30 @@ export const useUpdateNotes = () => {
   });
 };
 
+export const useUpdateWatchedMovieNotes = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      movieId,
+      notes,
+    }: {
+      movieId: number;
+      notes: string;
+    }) => {
+      if (!user?.id) throw new Error('User not authenticated');
+      await watchedMoviesService.updateNotes(user.id, String(movieId), notes);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: watchedMoviesKeys.all,
+      });
+      queryClient.invalidateQueries({ queryKey: activityKeys.all });
+    },
+  });
+};
+
 export const useUpdateWatchlistPriority = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();

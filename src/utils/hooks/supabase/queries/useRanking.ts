@@ -7,6 +7,16 @@ import { watchedMoviesService } from '@/services/supabase/watched-movies.service
 import { versusRankingService } from '@/services/supabase/versus-ranking.service';
 import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
 
+// Query keys
+export const rankingKeys = {
+  all: ['rankings'] as const,
+  userLists: (userId: string) =>
+    [...rankingKeys.all, 'user-lists', userId] as const,
+  items: (listId: string) => [...rankingKeys.all, 'items', listId] as const,
+  rankedMovies: (userId: string) =>
+    [...rankingKeys.all, 'ranked-movies', userId] as const,
+};
+
 // Hooks
 export const useRankingItems = (rankingListId?: string) => {
   return useQuery({
@@ -191,18 +201,13 @@ export const useVersusRankingPairs = (
     setCurrentPairIndex(0);
   };
 
-  const processBattle = async (
-    winnerId: string,
-    loserId: string,
-    userId: string
-  ) => {
+  const processBattle = async (winnerId: string, loserId: string) => {
     setIsProcessing(true);
     try {
       // Use real ranking RPC to persist battle and get ELO results
       const battleResult = await versusRankingService.processVersusBattle(
         winnerId,
         loserId,
-        userId,
         rankingListId
       );
 

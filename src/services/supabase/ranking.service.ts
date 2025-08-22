@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import type { Tables, TablesInsert } from '@/types/database.types';
 import shuffle from '@/utils/shuffle';
 import { activityService } from '@/services/supabase/activity.service';
+import { collectionService } from './collection.service';
 
 // Constants
 const DEFAULT_ELO_RATING = 1200;
@@ -62,7 +63,7 @@ export const rankingService = {
 
     let query = supabase
       .from('ranking_lists')
-      .select('*, ranking_list_items(count)')
+      .select('*, ranking_list_items(count), collections(id)')
       .eq('user_id', userId)
       .order(sortBy, { ascending: sortOrder === 'asc' });
 
@@ -137,19 +138,36 @@ export const rankingService = {
     if (error) throw error;
   },
 
+  async deleteRankingList(rankingListId: string): Promise<void> {
+    const { error } = await supabase
+      .from('ranking_lists')
+      .delete()
+      .eq('id', rankingListId);
+
+    if (error) throw error;
+  },
+
   async getBattleHistory(movieAId: string, movieBId: string) {
     const { data, error } = await supabase
       .from('versus_battles')
-      .select('*')
-      // .eq('ranking_list_id', rankingListId)
+      .select('winner_movie_id, loser_movie_id')
       .in('winner_movie_id', [movieAId, movieBId])
-      .in('loser_movie_id', [movieAId, movieBId])
-      .order('created_at', { ascending: false });
+      .in('loser_movie_id', [movieAId, movieBId]);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Failed to fetch battle history:', error);
+      throw error;
+    }
 
-    console.log('here', data);
-    return (data || []) as Tables<'versus_battles'>[];
+    let aWins = 0;
+    let bWins = 0;
+
+    (data || []).forEach((battle) => {
+      if (battle.winner_movie_id === movieAId) aWins++;
+      if (battle.winner_movie_id === movieBId) bWins++;
+    });
+
+    return { aWins, bWins };
   },
 
   async getBattlesSince(
@@ -354,6 +372,56 @@ export const rankingService = {
 
     if (error) throw error;
     return data;
+  },
+
+  async convertRankingListToCollection(
+    rankingListId: string
+  ): Promise<{ newCollectionId: string }> {
+    const { data: rankingList, error: listError } = await supabase
+      .from('ranking_lists')
+      .select('*')
+      .eq('id', rankingListId)
+      .single();
+
+    if (listError || !rankingList) throw listError;
+
+    const { data: rankingItems, error: itemsError } = await supabase
+      .from('ranking_list_items')
+      .select('*')
+      .eq('ranking_list_id', rankingListId)
+      .order('position', { ascending: true });
+
+    if (itemsError) throw itemsError;
+
+    const newCollection = await collectionService.createCollection(
+      rankingList.user_id,
+      {
+        name: rankingList.name,
+        description: rankingList.description,
+        is_public: rankingList.is_public || false,
+        is_ranked: true,
+        slug: rankingList.slug,
+        ranking_list_id: rankingListId,
+      }
+    );
+
+    if (rankingItems && rankingItems.length > 0) {
+      const batch = rankingItems.map((item, idx) => ({
+        collection_id: newCollection.id,
+        movie_id: item.movie_id,
+        position: item.position ?? idx, // fallback to index if null
+        notes: item.notes,
+        added_at: new Date().toISOString(),
+      }));
+
+      const { error: insertError } = await supabase
+        .from('collection_items')
+        .insert(batch);
+
+      if (insertError) throw insertError;
+    }
+
+    return { newCollectionId: newCollection.id };
   },
 };
 

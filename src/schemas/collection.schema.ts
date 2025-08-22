@@ -17,6 +17,7 @@ export const CollectionSchema = z.object({
     .nullable(),
   created_at: z.string().nullable(),
   updated_at: z.string().nullable(),
+  ranking_list_id: z.string().nullable(),
 }) satisfies z.ZodType<CollectionRow>;
 
 export const CollectionWithCountSchema = CollectionSchema.extend({
@@ -36,6 +37,7 @@ export const CollectionInsertSchema = CollectionSchema.omit({
   name: z.string().min(1).max(100),
   is_public: z.boolean().default(false),
   is_ranked: z.boolean().default(false),
+  ranking_list_id: z.string().nullable(),
 });
 
 export const CollectionUpdateSchema = CollectionSchema.pick({
