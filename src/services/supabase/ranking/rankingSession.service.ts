@@ -235,4 +235,26 @@ export const rankingSessionService = {
       .eq('id', sessionId);
     if (error) throw error;
   },
+
+  async pause(sessionId: string) {
+    const { data, error } = await supabase
+      .from('ranking_lists')
+      .update({ status: 'paused', updated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return RankingListSchema.parse(data);
+  },
+
+  async resume(sessionId: string) {
+    const { data, error } = await supabase
+      .from('ranking_lists')
+      .update({ status: 'active', updated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return RankingListSchema.parse(data);
+  },
 };

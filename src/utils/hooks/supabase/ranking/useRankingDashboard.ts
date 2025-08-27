@@ -12,16 +12,18 @@ export function useRankingDashboard(userId: string) {
   });
 
   const activeSessions =
-    sessions.data?.filter(
-      (s) => s.status === 'active' || s.status === 'paused'
-    ) ?? [];
+    sessions.data?.filter((s) => s.status === 'active') ?? [];
 
   const completedSessions =
     sessions.data?.filter((s) => s.status === 'completed') ?? [];
+
+  const pausedSessions =
+    sessions.data?.filter((s) => s.status === 'paused') || [];
 
   return {
     sessions,
     activeSessions,
     completedSessions,
+    pausedSessions,
   };
 }

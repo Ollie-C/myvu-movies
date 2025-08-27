@@ -6,10 +6,9 @@ export default function VersusSessionPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { session, nextPair, battle, progress, movies, completedPairs } =
+  const { session, nextPair, battle, progress, movies, completedPairs, pause } =
     useVersusSession(id!);
 
-  // ✅ Only queries (session, progress, movies, completedPairs) have isLoading
   if (
     session.isLoading ||
     progress.isLoading ||
@@ -29,13 +28,11 @@ export default function VersusSessionPage() {
 
   return (
     <div className='container mx-auto px-4 py-8'>
-      {/* Header */}
       <h1 className='text-2xl font-bold mb-2'>{name}</h1>
       <p className='text-sm text-gray-600 mb-6'>
         Mode: {elo_handling === 'global' ? 'Global Elo' : 'Local Elo'}
       </p>
 
-      {/* Progress Bar */}
       {progress.data && (
         <div className='mb-6'>
           <p className='text-sm text-gray-500 mb-1'>
@@ -52,6 +49,13 @@ export default function VersusSessionPage() {
           </div>
         </div>
       )}
+      <Button
+        variant='secondary'
+        onClick={() =>
+          pause.mutate(undefined, { onSuccess: () => navigate('/rankings') })
+        }>
+        Pause & Exit
+      </Button>
 
       {nextPair ? (
         <div className='flex gap-6 justify-center items-center'>

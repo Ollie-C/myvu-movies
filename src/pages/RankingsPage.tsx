@@ -34,9 +34,8 @@ const RankingsPage = () => {
   const unratedMovies = watchedMoviesData?.data?.filter((m) => !m.rating) || [];
   const ratedMovies = watchedMoviesData?.data?.filter((m) => m.rating) || [];
 
-  const { sessions, activeSessions, completedSessions } = useRankingDashboard(
-    user?.id ?? ''
-  );
+  const { sessions, activeSessions, completedSessions, pausedSessions } =
+    useRankingDashboard(user?.id ?? '');
 
   const { create: createSession } = useRankingSession('');
 
@@ -184,7 +183,15 @@ const RankingsPage = () => {
             {activeSessions.length === 0 && <p>No active sessions</p>}
             <div className='space-y-2'>
               {activeSessions.map((s) => (
-                <SessionCard key={s.id} session={s} variant='active' />
+                <SessionCard key={s.id} session={s} />
+              ))}
+            </div>
+
+            <h3 className='font-medium mt-6 mb-2'>Paused</h3>
+            {pausedSessions.length === 0 && <p>No paused sessions</p>}
+            <div className='space-y-2'>
+              {pausedSessions.map((s) => (
+                <SessionCard key={s.id} session={s} />
               ))}
             </div>
 
@@ -192,7 +199,7 @@ const RankingsPage = () => {
             {completedSessions.length === 0 && <p>No completed sessions</p>}
             <div className='space-y-2'>
               {completedSessions.map((s) => (
-                <SessionCard key={s.id} session={s} variant='completed' />
+                <SessionCard key={s.id} session={s} />
               ))}
             </div>
           </>

@@ -24,7 +24,6 @@ export function useVersusSession(sessionId: string) {
     { movie1: RankingItemWithMovie; movie2: RankingItemWithMovie }[]
   >([]);
 
-  // Session config
   const session = useQuery<RankingList>({
     queryKey: ['rankingSession', sessionId],
     queryFn: () => rankingSessionService.get(sessionId),
@@ -49,23 +48,8 @@ export function useVersusSession(sessionId: string) {
     enabled: !!sessionId,
   });
 
-  // Calculate pairs once whenever movies or completedPairs change
-  useEffect(() => {
-    if (movies.data && completedPairs.data) {
-      const pairs = versusService.generatePairs(
-        movies.data,
-        completedPairs.data
-      );
-      console.log('Generated Pairs:', pairs); // ✅ debug
-
-      setQueue(pairs);
-    }
-  }, [movies.data, completedPairs.data]);
-
-  // expose current pair
   const nextPair = queue.length > 0 ? queue[0] : null;
 
-  // Submit a battle, then consume current pair
   const battle = useMutation({
     mutationFn: (opts: { winnerId: string; loserId: string }) =>
       versusService.processBattle(
@@ -75,8 +59,7 @@ export function useVersusSession(sessionId: string) {
         session.data?.elo_handling === 'global'
       ),
     onSuccess: () => {
-      setQueue((prev) => prev.slice(1)); // ✅ drop current pair
-      // Refresh progress + leaderboard + battles
+      setQueue((prev) => prev.slice(1));
       queryClient.invalidateQueries({
         queryKey: ['rankingSessionProgress', sessionId],
       });
@@ -84,9 +67,9 @@ export function useVersusSession(sessionId: string) {
         queryKey: ['rankingSessionLeaderboard', sessionId],
       });
       queryClient.invalidateQueries({ queryKey: ['versusBattles', sessionId] });
-      queryClient.invalidateQueries({
-        queryKey: ['versusCompletedPairs', sessionId],
-      });
+      // queryClient.invalidateQueries({
+      //   queryKey: ['versusCompletedPairs', sessionId],
+      // });
     },
   });
 
@@ -96,7 +79,23 @@ export function useVersusSession(sessionId: string) {
     enabled: !!sessionId,
   });
 
-  // Auto-complete session if progress done
+  const pause = useMutation({
+    mutationFn: () => rankingSessionService.pause(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+    },
+  });
+
+  useEffect(() => {
+    if (movies.data && completedPairs.data && queue.length === 0) {
+      const pairs = versusService.generatePairs(
+        movies.data,
+        completedPairs.data
+      );
+      setQueue(pairs);
+    }
+  }, [movies.data, completedPairs.data, queue.length]);
+
   useEffect(() => {
     if (progress.data?.isCompleted && session.data?.status !== 'completed') {
       (async () => {
@@ -110,10 +109,11 @@ export function useVersusSession(sessionId: string) {
     session,
     movies,
     completedPairs,
-    nextPair, // ✅ stable pair per round
-    battle, // ✅ auto-dequeues after success
+    nextPair,
+    battle,
     battlesHistory,
     progress,
-    queue, // 👉 exposed if you want to show "remaining battles"
+    queue,
+    pause,
   };
 }

@@ -30,7 +30,6 @@ export const useRankingSession = (sessionId: string) => {
     enabled: !!sessionId,
   });
 
-  // No ID (used when creating)
   const create = useMutation({
     mutationFn: (args: Parameters<typeof rankingSessionService.create>[1]) =>
       rankingSessionService.create(user?.id ?? '', args),
@@ -60,6 +59,20 @@ export const useRankingSession = (sessionId: string) => {
     },
   });
 
+  const pause = useMutation({
+    mutationFn: () => rankingSessionService.pause(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+    },
+  });
+
+  const resume = useMutation({
+    mutationFn: () => rankingSessionService.resume(sessionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+    },
+  });
+
   return {
     session,
     movies,
@@ -68,5 +81,7 @@ export const useRankingSession = (sessionId: string) => {
     create,
     convertToCollection,
     softDelete,
+    pause,
+    resume,
   };
 };
