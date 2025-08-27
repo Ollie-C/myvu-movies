@@ -61,6 +61,11 @@ export const watchedMoviesService = {
         .not('rating', 'is', null)
         .order('rating', { ascending: false })
         .order('elo_score', { ascending: false });
+    } else if (sortBy === 'title') {
+      query = query.order('title', {
+        ascending: sortOrder === 'asc',
+        foreignTable: 'movie',
+      });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }

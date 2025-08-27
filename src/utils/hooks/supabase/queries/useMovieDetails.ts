@@ -118,11 +118,11 @@ export const useUserMovieStatus = (tmdbId: number | undefined) => {
         const cachedMovie = await movieService.getMovieByTmdbId(tmdbId);
         if (!cachedMovie) return null;
 
-        console.log('Fetching user status for movie:', {
-          userId: user.id,
-          movieId: cachedMovie.id,
-          tmdbId: tmdbId,
-        });
+        // console.log('Fetching user status for movie:', {
+        //   userId: user.id,
+        //   movieId: cachedMovie.id,
+        //   tmdbId: tmdbId,
+        // });
 
         const [watchedMovieWithMovie, watchlistItem] = await Promise.all([
           watchedMoviesService.getWatchedMovieWithMovie(

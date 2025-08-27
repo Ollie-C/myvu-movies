@@ -44,14 +44,14 @@ const MovieDetails = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
 
   // Log movie details page access
-  useEffect(() => {
-    console.log('🎬 [MovieDetails] Page loaded:', {
-      movieId: id,
-      userId: user?.id,
-      email: user?.email,
-      pathname: window.location.pathname,
-    });
-  }, [id, user]);
+  // useEffect(() => {
+  //   console.log('🎬 [MovieDetails] Page loaded:', {
+  //     movieId: id,
+  //     userId: user?.id,
+  //     email: user?.email,
+  //     pathname: window.location.pathname,
+  //   });
+  // }, [id, user]);
 
   // Fetch movie details and user status
   const { data: movie, isLoading } = useMovieDetails(id);

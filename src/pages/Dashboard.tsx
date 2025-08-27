@@ -26,13 +26,13 @@ const Dashboard = () => {
   const [isFavoriteModalOpen, setIsFavoriteModalOpen] = useState(false);
 
   // Log dashboard access
-  useEffect(() => {
-    console.log('🏠 [Dashboard] Page loaded:', {
-      userId: user?.id,
-      email: user?.email,
-      pathname: window.location.pathname,
-    });
-  }, [user]);
+  // useEffect(() => {
+  //   console.log('🏠 [Dashboard] Page loaded:', {
+  //     userId: user?.id,
+  //     email: user?.email,
+  //     pathname: window.location.pathname,
+  //   });
+  // }, [user]);
 
   const { data: userStats, isLoading: userStatsLoading } = useUserStats();
   const { data: favoriteMovies } = useFavoriteMovies(10);
@@ -42,12 +42,12 @@ const Dashboard = () => {
     useCollectionsWithPreviews(3);
   const { data: watchlistStats } = useWatchlistStats();
 
-  console.log('🏠 [Dashboard] Data loaded:', {
-    userStats,
-    favoriteMoviesCount: favoriteMovies?.length,
-    recentMoviesCount: recentMovies?.length,
-    collectionsCount: collections?.length,
-  });
+  // console.log('🏠 [Dashboard] Data loaded:', {
+  //   userStats,
+  //   favoriteMoviesCount: favoriteMovies?.length,
+  //   recentMoviesCount: recentMovies?.length,
+  //   collectionsCount: collections?.length,
+  // });
 
   const formatWatchedDate = (dateString: string) => {
     const date = new Date(dateString);

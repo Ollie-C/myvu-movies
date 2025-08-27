@@ -59,11 +59,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null);
           setLoading(false);
 
-          console.log('🔐 [AuthContext] Initial auth state:', {
-            isAuthenticated: !!session?.user,
-            userId: session?.user?.id,
-            email: session?.user?.email,
-          });
+          // console.log('🔐 [AuthContext] Initial auth state:', {
+          //   isAuthenticated: !!session?.user,
+          //   userId: session?.user?.id,
+          //   email: session?.user?.email,
+          // });
         }
       } catch (err) {
         if (isMounted) {
@@ -87,12 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setError(null); // Clear any previous errors
 
-      console.log('🔐 [AuthContext] Auth state changed:', {
-        event,
-        isAuthenticated: !!session?.user,
-        userId: session?.user?.id,
-        email: session?.user?.email,
-      });
+      // console.log('🔐 [AuthContext] Auth state changed:', {
+      //   event,
+      //   isAuthenticated: !!session?.user,
+      //   userId: session?.user?.id,
+      //   email: session?.user?.email,
+      // });
 
       // Handle navigation
       const currentPath = window.location.pathname;

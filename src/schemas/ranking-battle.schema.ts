@@ -1,34 +1,23 @@
-// Individual battle history for ELO calculations
-// Versus mode
-// Audit trail and analytics
-// AUDITED 05/08/2025
-
 import { z } from 'zod';
-import type { Database } from '@/types/database.types';
 
-// Get the type from Supabase
-type RankingBattleRow = Database['public']['Tables']['versus_battles']['Row'];
-
-// Create Zod schema matching the database
 export const RankingBattleSchema = z.object({
   id: z.uuid(),
   ranking_list_id: z.uuid(),
-  winner_movie_id: z.uuid().nullable(),
-  loser_movie_id: z.uuid().nullable(),
+  winner_movie_id: z.uuid(),
+  loser_movie_id: z.uuid(),
   winner_elo_before: z.number().nullable(),
   winner_elo_after: z.number().nullable(),
   loser_elo_before: z.number().nullable(),
   loser_elo_after: z.number().nullable(),
   created_at: z.string().nullable(),
-}) satisfies z.ZodType<RankingBattleRow>;
+});
 
-// Create insert schema (id is auto-generated)
-export const RankingBattleInsertSchema = RankingBattleSchema.omit({ id: true });
+export const RankingBattleWithTitlesSchema = RankingBattleSchema.extend({
+  winner: z.object({ id: z.string().uuid(), title: z.string() }).nullable(),
+  loser: z.object({ id: z.string().uuid(), title: z.string() }).nullable(),
+});
 
-// Create update schema (all fields optional)
-export const RankingBattleUpdateSchema = RankingBattleSchema.partial();
-
-// Export types
 export type RankingBattle = z.infer<typeof RankingBattleSchema>;
-export type RankingBattleInsert = z.infer<typeof RankingBattleInsertSchema>;
-export type RankingBattleUpdate = z.infer<typeof RankingBattleUpdateSchema>;
+export type RankingBattleWithTitles = z.infer<
+  typeof RankingBattleWithTitlesSchema
+>;

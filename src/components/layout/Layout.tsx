@@ -1,19 +1,15 @@
-// Audited: 05/08/2025
+import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-const Layout = ({ children }: LayoutProps) => {
+const Layout = () => {
   return (
     <div className='flex h-screen bg-background'>
       <Sidebar />
       <div className='pl-8 flex flex-col flex-1'>
         <Header />
         <main className='flex-1 overflow-auto'>
-          <div className='px-12 py-4'>{children}</div>
+          <Outlet />
         </main>
       </div>
     </div>

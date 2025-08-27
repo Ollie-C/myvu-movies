@@ -177,7 +177,7 @@ export const useUpdateRating = () => {
       await watchedMoviesService.updateRating(user.id, movie.movieId, rating);
     },
     onSuccess: (_, { movie }) => {
-      console.log('onSuccess', movie);
+      // console.log('onSuccess', movie);
       queryClient.invalidateQueries({
         queryKey: movieKeys.userStatus(user?.id || '', movie.tmdbId),
       });

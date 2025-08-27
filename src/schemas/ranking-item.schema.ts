@@ -1,8 +1,3 @@
-// Current state of movies in each ranking list
-// Multiple ranking methods
-// Position field for D&D
-// AUDITED 05/08/2025
-
 import { z } from 'zod';
 import type { Database } from '@/types/database.types';
 import { MovieSchema } from './movie.schema';
@@ -21,15 +16,9 @@ export const RankingItemSchema = z.object({
   updated_at: z.string().nullable(),
 }) satisfies z.ZodType<RankingItemRow>;
 
-// Schema for ranking items that include movie data
 export const RankingItemWithMovieSchema = RankingItemSchema.extend({
-  movie: MovieSchema,
+  movie: MovieSchema.optional(),
 });
-
-export const RankingItemInsertSchema = RankingItemSchema.omit({ id: true });
-export const RankingItemUpdateSchema = RankingItemSchema.partial();
 
 export type RankingItem = z.infer<typeof RankingItemSchema>;
 export type RankingItemWithMovie = z.infer<typeof RankingItemWithMovieSchema>;
-export type RankingItemInsert = z.infer<typeof RankingItemInsertSchema>;
-export type RankingItemUpdate = z.infer<typeof RankingItemUpdateSchema>;

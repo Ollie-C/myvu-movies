@@ -159,7 +159,7 @@ export type Database = {
           {
             foreignKeyName: "collections_ranking_list_id_fkey"
             columns: ["ranking_list_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "ranking_lists"
             referencedColumns: ["id"]
           },
@@ -308,8 +308,12 @@ export type Database = {
       }
       ranking_lists: {
         Row: {
+          battle_limit: number | null
+          battle_limit_type: string | null
           created_at: string | null
+          deleted_at: string | null
           description: string | null
+          elo_handling: string | null
           id: string
           is_public: boolean | null
           name: string
@@ -320,8 +324,12 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          battle_limit?: number | null
+          battle_limit_type?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           description?: string | null
+          elo_handling?: string | null
           id?: string
           is_public?: boolean | null
           name: string
@@ -332,8 +340,12 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          battle_limit?: number | null
+          battle_limit_type?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           description?: string | null
+          elo_handling?: string | null
           id?: string
           is_public?: boolean | null
           name?: string
@@ -557,6 +569,15 @@ export type Database = {
         Args: {
           p_loser_id: string
           p_ranking_list_id: string
+          p_winner_id: string
+        }
+        Returns: Json
+      }
+      process_custom_versus_battle: {
+        Args: {
+          p_loser_id: string
+          p_ranking_list_id: string
+          p_use_global_elo?: boolean
           p_winner_id: string
         }
         Returns: Json

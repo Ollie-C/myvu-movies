@@ -27,7 +27,7 @@ export const watchedMoviesKeys = {
     [...watchedMoviesKeys.lists(), userId, filters] as const,
   infinite: (userId: string, filters?: WatchedMoviesFilters) =>
     [...watchedMoviesKeys.all, 'infinite', userId, filters] as const,
-  detail: (userId: string, movieId: number) =>
+  detail: (userId: string, movieId: string) =>
     [...watchedMoviesKeys.all, 'detail', userId, movieId] as const,
   favorites: (userId: string, limit?: number) =>
     [...watchedMoviesKeys.all, 'favorites', userId, limit] as const,
@@ -109,7 +109,7 @@ export const useRecentMovies = (limit = 10) => {
   });
 };
 
-export const useWatchedMovie = (movieId: number) => {
+export const useWatchedMovie = (movieId: string) => {
   const { user } = useAuth();
 
   return useQuery<WatchedMovie | null, Error>({
@@ -127,7 +127,7 @@ export const usePrefetchWatchedMovie = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  return (movieId: number) => {
+  return (movieId: string) => {
     if (!user?.id || !movieId) return;
 
     queryClient.prefetchQuery<WatchedMovie | null, Error>({
