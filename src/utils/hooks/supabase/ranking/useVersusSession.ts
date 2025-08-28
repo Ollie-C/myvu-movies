@@ -10,10 +10,10 @@ import type { RankingBattleWithTitles } from '@/schemas/ranking-battle.schema';
 
 export interface RankingProgress {
   totalMovies: number;
-  targetBattles: number;
+  targetBattles: number | null;
   completedBattles: number;
   isCompleted: boolean;
-  completionPercent: number;
+  completionPercent: number | null;
 }
 
 export function useVersusSession(sessionId: string) {
@@ -67,9 +67,6 @@ export function useVersusSession(sessionId: string) {
         queryKey: ['rankingSessionLeaderboard', sessionId],
       });
       queryClient.invalidateQueries({ queryKey: ['versusBattles', sessionId] });
-      // queryClient.invalidateQueries({
-      //   queryKey: ['versusCompletedPairs', sessionId],
-      // });
     },
   });
 
@@ -86,15 +83,40 @@ export function useVersusSession(sessionId: string) {
     },
   });
 
+  const skipBattle = useMutation({
+    mutationFn: () =>
+      versusService.skipBattle(
+        sessionId,
+        nextPair?.movie1.movie_id!,
+        nextPair?.movie2.movie_id!
+      ),
+    onSuccess: () => {
+      setQueue((prev) => prev.slice(1));
+      queryClient.invalidateQueries({
+        queryKey: ['rankingSessionProgress', sessionId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['versusCompletedPairs', sessionId],
+      });
+    },
+  });
+
   useEffect(() => {
-    if (movies.data && completedPairs.data && queue.length === 0) {
+    if (
+      movies.data &&
+      completedPairs.data &&
+      session.data &&
+      queue.length === 0
+    ) {
       const pairs = versusService.generatePairs(
         movies.data,
-        completedPairs.data
+        completedPairs.data,
+        session.data.battle_limit_type as any,
+        session.data.battle_limit || 10
       );
       setQueue(pairs);
     }
-  }, [movies.data, completedPairs.data, queue.length]);
+  }, [movies.data, completedPairs.data, session.data, queue.length]);
 
   useEffect(() => {
     if (progress.data?.isCompleted && session.data?.status !== 'completed') {
@@ -115,5 +137,6 @@ export function useVersusSession(sessionId: string) {
     progress,
     queue,
     pause,
+    skipBattle,
   };
 }

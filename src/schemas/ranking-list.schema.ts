@@ -17,8 +17,11 @@ export const RankingListSchema = z.object({
   updated_at: z.string().nullable(),
   status: z.enum(['active', 'paused', 'completed']),
   elo_handling: z.enum(['local', 'global']).nullable(),
-  battle_limit_type: z.enum(['complete', 'fixed', 'per-movie']).nullable(),
+  battle_limit_type: z
+    .enum(['complete', 'fixed', 'per-movie', 'infinite'])
+    .nullable(),
   battle_limit: z.number().nullable(),
+  deleted_at: z.string().nullable(),
 }) satisfies z.ZodType<RankingListRow>;
 
 export type RankingList = z.infer<typeof RankingListSchema>;

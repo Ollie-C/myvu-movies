@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rankingSessionService } from '@/services/supabase/ranking/rankingSession.service';
 import { useAuth } from '@/context/AuthContext';
+import type { RankingList } from '@/schemas/ranking-list.schema';
 
 export const useRankingSession = (sessionId: string) => {
   const queryClient = useQueryClient();
@@ -73,6 +74,17 @@ export const useRankingSession = (sessionId: string) => {
     },
   });
 
+  const update = useMutation({
+    mutationFn: (updates: Partial<RankingList>) =>
+      rankingSessionService.update(sessionId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['rankingSession', sessionId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+    },
+  });
+
   return {
     session,
     movies,
@@ -83,5 +95,6 @@ export const useRankingSession = (sessionId: string) => {
     softDelete,
     pause,
     resume,
+    update,
   };
 };

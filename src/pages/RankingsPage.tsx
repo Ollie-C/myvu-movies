@@ -1,5 +1,3 @@
-// RankingsPage.tsx
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, BarChart3, Trophy, Brain } from 'lucide-react';
@@ -7,6 +5,7 @@ import { Star, BarChart3, Trophy, Brain } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import VersusConfigModal from '@/components/ranking/versus/VersusConfigModal';
+import { SessionCard } from '@/components/ranking/SessionCard';
 
 import { useAuth } from '@/context/AuthContext';
 import { useWatchedMovies } from '@/utils/hooks/supabase/queries/useWatchedMovies';
@@ -14,7 +13,6 @@ import { useRankingDashboard } from '@/utils/hooks/supabase/ranking/useRankingDa
 import { useRankingSession } from '@/utils/hooks/supabase/ranking/useRankingSession';
 
 import type { VersusSessionConfig } from '@/schemas/versus-session-config.schema';
-import { SessionCard } from '@/components/ranking/SessionCard';
 
 type RankingMethod = 'standard' | 'versus' | 'tiers' | 'smart';
 

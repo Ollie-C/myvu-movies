@@ -30,7 +30,7 @@ export const collectionKeys = {
     [...collectionKeys.all, 'preview', userId, id] as const,
   withPreviews: (userId: string, limit?: number) =>
     [...collectionKeys.all, 'withPreviews', userId, limit] as const,
-  withMovie: (userId: string, movieId: number) =>
+  withMovie: (userId: string, movieId: string) =>
     [...collectionKeys.all, 'withMovie', userId, movieId] as const,
   stats: (userId: string) => [...collectionKeys.all, 'stats', userId] as const,
 };
@@ -97,11 +97,11 @@ export const useCollectionPreview = (collectionId?: string) => {
 };
 
 // Collections with movie status
-export const useCollectionsWithMovie = (movieId?: number) => {
+export const useCollectionsWithMovie = (movieId?: string) => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: collectionKeys.withMovie(user?.id || '', movieId || 0),
+    queryKey: collectionKeys.withMovie(user?.id || '', movieId || ''),
     queryFn: () => {
       if (!user?.id || !movieId) throw new Error('Missing required data');
       return collectionService.getCollectionsWithMovie(user.id, movieId);
@@ -127,7 +127,7 @@ export const useCollectionStats = () => {
 };
 
 // Check if movie is in any collections (simplified)
-export const useIsMovieInCollections = (movieId?: number) => {
+export const useIsMovieInCollections = (movieId?: string) => {
   const { data: collectionsWithMovie } = useCollectionsWithMovie(movieId);
 
   return {

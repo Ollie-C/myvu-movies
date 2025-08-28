@@ -22,7 +22,7 @@ export default function VersusConfigModal({
     'all'
   );
   const [battleLimitType, setBattleLimitType] = useState<
-    'complete' | 'fixed' | 'per-movie'
+    'complete' | 'fixed' | 'per-movie' | 'infinite'
   >('complete');
   const [battleLimit, setBattleLimit] = useState<number | undefined>();
   const [selectedMovieIds, setSelectedMovieIds] = useState<string[]>([]);
@@ -136,6 +136,7 @@ export default function VersusConfigModal({
             <option value='complete'>Complete (all pairs)</option>
             <option value='fixed'>Fixed number</option>
             <option value='per-movie'>Per movie</option>
+            <option value='infinite'>Infinite</option>
           </select>
           {(battleLimitType === 'fixed' || battleLimitType === 'per-movie') && (
             <input

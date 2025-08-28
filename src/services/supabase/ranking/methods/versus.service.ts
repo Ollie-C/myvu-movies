@@ -3,7 +3,6 @@ import { RankingBattleWithTitlesSchema } from '@/schemas/ranking-battle.schema';
 import { type RankingItemWithMovie } from '@/schemas/ranking-item.schema';
 
 export const versusService = {
-  /** Get completed pairs as unique keys */
   async getCompletedPairs(sessionId: string): Promise<Set<string>> {
     const { data, error } = await supabase
       .from('versus_battles')
@@ -20,37 +19,55 @@ export const versusService = {
     return completed;
   },
 
-  generatePairs(movies: RankingItemWithMovie[], completed: Set<string>) {
+  generatePairs(
+    movies: RankingItemWithMovie[],
+    completed: Set<string>,
+    battleLimitType:
+      | 'complete'
+      | 'fixed'
+      | 'per-movie'
+      | 'infinite' = 'complete',
+    limit: number = 10
+  ) {
+    const validMovies = movies.filter((m) => m.movie_id !== null);
+
+    if (battleLimitType === 'infinite') {
+      const randPair = pickRandomPair(validMovies);
+      return randPair ? [randPair] : [];
+    }
+
     const pairs: Array<{
       movie1: RankingItemWithMovie;
       movie2: RankingItemWithMovie;
     }> = [];
-
-    // Filter out null movie_ids
-    const validMovies = movies.filter((m) => m.movie_id !== null);
-
     for (let i = 0; i < validMovies.length; i++) {
       for (let j = i + 1; j < validMovies.length; j++) {
         const id1 = validMovies[i].movie_id!;
         const id2 = validMovies[j].movie_id!;
         const key = [id1, id2].sort().join('-');
-
         if (!completed.has(key)) {
           pairs.push({ movie1: validMovies[i], movie2: validMovies[j] });
         }
       }
     }
 
-    // Shuffle
     for (let i = pairs.length - 1; i > 0; i--) {
       const rand = Math.floor(Math.random() * (i + 1));
       [pairs[i], pairs[rand]] = [pairs[rand], pairs[i]];
     }
 
+    if (battleLimitType === 'fixed') {
+      return pairs.slice(0, limit);
+    }
+
+    if (battleLimitType === 'per-movie') {
+      const targetCount = validMovies.length * limit;
+      return pairs.slice(0, targetCount);
+    }
+
     return pairs;
   },
 
-  /** Process a versus battle using Supabase RPC */
   async processBattle(
     sessionId: string,
     winnerId: string,
@@ -67,7 +84,6 @@ export const versusService = {
     return data;
   },
 
-  /** Get battle history */
   async getBattles(sessionId: string) {
     const { data, error } = await supabase
       .from('versus_battles')
@@ -82,4 +98,22 @@ export const versusService = {
       RankingBattleWithTitlesSchema.parse(battle)
     );
   },
+
+  async skipBattle(rankingListId: string, movie1: string, movie2: string) {
+    const { error } = await supabase.from('versus_battles').insert({
+      ranking_list_id: rankingListId,
+      winner_movie_id: movie1,
+      loser_movie_id: movie2,
+      skipped: true,
+    });
+    if (error) throw error;
+  },
 };
+
+function pickRandomPair(movies: RankingItemWithMovie[]) {
+  if (movies.length < 2) return null;
+  const i = Math.floor(Math.random() * movies.length);
+  let j = i;
+  while (j === i) j = Math.floor(Math.random() * movies.length);
+  return { movie1: movies[i], movie2: movies[j] };
+}

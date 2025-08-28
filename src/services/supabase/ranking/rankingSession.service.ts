@@ -134,7 +134,7 @@ export const rankingSessionService = {
       .eq('ranking_list_id', sessionId);
 
     const totalMovies = items?.length ?? 0;
-    let targetBattles = 0;
+    let targetBattles: number | null = null;
 
     switch (rankingList.battle_limit_type) {
       case 'complete':
@@ -143,12 +143,19 @@ export const rankingSessionService = {
             ? Math.floor((totalMovies * (totalMovies - 1)) / 2)
             : 0;
         break;
+
       case 'per-movie':
         targetBattles = totalMovies * (rankingList.battle_limit || 10);
         break;
+
       case 'fixed':
         targetBattles = rankingList.battle_limit || 50;
         break;
+
+      case 'infinite':
+        targetBattles = null;
+        break;
+
       default:
         targetBattles =
           totalMovies > 1
@@ -156,21 +163,29 @@ export const rankingSessionService = {
             : 0;
     }
 
-    const { count: totalBattles } = await supabase
+    const { count: totalBattles, error: countError } = await supabase
       .from('versus_battles')
-      .select('*', { count: 'exact' })
+      .select('*', { count: 'exact', head: true })
       .eq('ranking_list_id', sessionId);
 
-    const done = (totalBattles || 0) >= targetBattles;
+    if (countError) throw countError;
+
+    const completed = totalBattles || 0;
 
     return {
       totalMovies,
       targetBattles,
-      completedBattles: totalBattles || 0,
-      isCompleted: done,
-      completionPercent: targetBattles
-        ? ((totalBattles || 0) / targetBattles) * 100
-        : 0,
+      completedBattles: completed,
+      isCompleted:
+        rankingList.battle_limit_type === 'infinite'
+          ? false
+          : targetBattles !== null && completed >= targetBattles,
+      completionPercent:
+        rankingList.battle_limit_type === 'infinite' || !targetBattles
+          ? null
+          : targetBattles > 0
+          ? (completed / targetBattles) * 100
+          : 0,
     };
   },
 
@@ -193,39 +208,10 @@ export const rankingSessionService = {
 
     if (!rankingList) throw new Error('Ranking list not found');
 
-    const { data: items } = await supabase
-      .from('ranking_list_items')
-      .select('*')
-      .eq('ranking_list_id', sessionId);
-
-    const collection = await collectionService.createCollection(
+    return collectionService.createFromRankingList(
       rankingList.user_id,
-      {
-        name: rankingList.name,
-        description: rankingList.description,
-        is_public: rankingList.is_public || false,
-        is_ranked: true,
-        slug: rankingList.slug,
-        ranking_list_id: rankingList.id,
-      }
+      rankingList
     );
-
-    if (items && items.length > 0) {
-      const batch = items.map((item, idx) => ({
-        collection_id: collection.id,
-        movie_id: item.movie_id,
-        position: item.position ?? idx,
-        notes: item.notes,
-        added_at: new Date().toISOString(),
-      }));
-
-      const { error: insertError } = await supabase
-        .from('collection_items')
-        .insert(batch);
-      if (insertError) throw insertError;
-    }
-
-    return collection;
   },
 
   async softDelete(sessionId: string) {

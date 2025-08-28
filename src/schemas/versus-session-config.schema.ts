@@ -5,7 +5,7 @@ export const VersusSessionConfigSchema = z.object({
   elo_handling: z.enum(['local', 'global']),
   movieSelection: z.enum(['all', 'selection']),
   movieIds: z.array(z.uuid()).optional(),
-  battle_limit_type: z.enum(['complete', 'fixed', 'per-movie']),
+  battle_limit_type: z.enum(['complete', 'fixed', 'per-movie', 'infinite']),
   battle_limit: z.number().positive().optional(),
 });
 

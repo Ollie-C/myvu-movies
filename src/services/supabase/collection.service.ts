@@ -552,4 +552,49 @@ export const collectionService = {
 
     return stats;
   },
+
+  async createFromRankingList(
+    userId: string,
+    rankingList: {
+      id: string;
+      name: string;
+      description?: string | null;
+      is_public?: boolean | null;
+      slug?: string | null;
+    }
+  ) {
+    const collection = await this.createCollection(userId, {
+      name: rankingList.name,
+      description: rankingList.description || null,
+      is_public: rankingList.is_public ?? false,
+      is_ranked: true,
+      slug: rankingList.slug || null,
+      ranking_list_id: rankingList.id,
+    });
+
+    const { data: items, error } = await supabase
+      .from('ranking_list_items')
+      .select('*')
+      .eq('ranking_list_id', rankingList.id);
+
+    if (error) throw error;
+
+    if (items && items.length > 0) {
+      const batch = items.map((item, idx) => ({
+        collection_id: collection.id,
+        movie_id: item.movie_id,
+        position: item.position ?? idx,
+        notes: item.notes,
+        added_at: new Date().toISOString(),
+      }));
+
+      const { error: insertError } = await supabase
+        .from('collection_items')
+        .insert(batch);
+
+      if (insertError) throw insertError;
+    }
+
+    return collection;
+  },
 };
