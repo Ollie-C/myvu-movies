@@ -22,6 +22,7 @@ export const RankingListSchema = z.object({
     .nullable(),
   battle_limit: z.number().nullable(),
   deleted_at: z.string().nullable(),
+  config: z.any().nullable(),
 }) satisfies z.ZodType<RankingListRow>;
 
 export type RankingList = z.infer<typeof RankingListSchema>;

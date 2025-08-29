@@ -1,11 +1,10 @@
-// AUDITED 05/08/2025
 import { z } from 'zod';
-import { MovieSchema } from './movie.schema';
 import type { Database } from '@/types/database.types';
 
 type WatchlistRow = Database['public']['Tables']['watchlist']['Row'];
+type WatchlistWithDetailsRow =
+  Database['public']['Views']['watchlist_with_details']['Row'];
 
-// Define priority enum
 export const WatchlistPriorityEnum = z.enum(['high', 'medium', 'low']);
 export type WatchlistPriority = z.infer<typeof WatchlistPriorityEnum>;
 
@@ -21,12 +20,37 @@ export const WatchlistSchema = z.object({
   updated_at: z.string().nullable(),
 }) satisfies z.ZodType<WatchlistRow>;
 
-// Schema for when we join with movie data
-export const WatchlistWithMovieSchema = WatchlistSchema.extend({
-  movie: MovieSchema,
-});
+export const WatchlistWithDetailsSchema = z.object({
+  watchlist_id: z.uuid(),
+  user_id: z.uuid().nullable(),
+  movie_id: z.uuid().nullable(),
+  priority: WatchlistPriorityEnum.nullable(),
+  notes: z.string().nullable(),
+  reminder_date: z.string().nullable(),
+  added_date: z.string().nullable(),
+  watchlist_updated_at: z.string().nullable(),
 
-// Schema for creating new watchlist items
+  movie_uuid: z.uuid().nullable(),
+  tmdb_id: z.number().nullable(),
+  title: z.string().nullable(),
+  original_title: z.string().nullable(),
+  original_language: z.string().nullable(),
+  release_date: z.string().nullable(),
+  poster_path: z.string().nullable(),
+  runtime: z.number().nullable(),
+  tagline: z.string().nullable(),
+  popularity: z.number().nullable(),
+  vote_average: z.number().nullable(),
+  vote_count: z.number().nullable(),
+  backdrop_path: z.string().nullable(),
+  overview: z.string().nullable(),
+
+  genre_ids: z.array(z.string()).nullable(),
+  genre_names: z.array(z.string()).nullable(),
+  director_ids: z.array(z.string()).nullable(),
+  director_names: z.array(z.string()).nullable(),
+}) satisfies z.ZodType<WatchlistWithDetailsRow>;
+
 export const WatchlistInsertSchema = WatchlistSchema.omit({
   id: true,
   created_at: true,
@@ -38,7 +62,6 @@ export const WatchlistInsertSchema = WatchlistSchema.omit({
   priority: WatchlistPriorityEnum.default('medium'),
 });
 
-// Schema for updating watchlist items
 export const WatchlistUpdateSchema = WatchlistSchema.partial().omit({
   id: true,
   user_id: true,
@@ -46,8 +69,8 @@ export const WatchlistUpdateSchema = WatchlistSchema.partial().omit({
   created_at: true,
 });
 
-// Export types
+// --- Export types ---
 export type Watchlist = z.infer<typeof WatchlistSchema>;
-export type WatchlistWithMovie = z.infer<typeof WatchlistWithMovieSchema>;
+export type WatchlistWithDetails = z.infer<typeof WatchlistWithDetailsSchema>;
 export type WatchlistInsert = z.infer<typeof WatchlistInsertSchema>;
 export type WatchlistUpdate = z.infer<typeof WatchlistUpdateSchema>;

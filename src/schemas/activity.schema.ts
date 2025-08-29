@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Database, Json } from '@/types/database.types';
-import { MovieSchema } from '@/schemas/movie.schema';
 import { CollectionSchema } from '@/schemas/collection.schema';
+import type { BaseMovieDetails } from '@/types/userMovie';
 
 type ActivityRow = Database['public']['Tables']['activities']['Row'];
 
@@ -64,7 +64,7 @@ export type Activity = z.infer<typeof ActivitySchema>;
 export type ActivityInsert = z.infer<typeof ActivityInsertSchema>;
 
 export const ActivityWithEntitiesSchema = ActivitySchema.extend({
-  movie: MovieSchema.nullable().optional(),
+  movie: z.custom<BaseMovieDetails>().nullable().optional(),
   collection: CollectionSchema.nullable().optional(),
 });
 export type ActivityWithEntities = z.infer<typeof ActivityWithEntitiesSchema>;

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Star } from 'lucide-react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/utils/helpers/cn';
 
 interface RatingDisplayProps {
   tmdbRating?: number | null;

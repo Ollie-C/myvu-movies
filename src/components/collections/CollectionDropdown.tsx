@@ -1,4 +1,3 @@
-// AUDITED 12/08/2025
 import { useState, useEffect, useRef } from 'react';
 import { Check, Folder, FolderPlus, AlertCircle } from 'lucide-react';
 import { CollectionModal } from './CollectionModal';
@@ -6,18 +5,18 @@ import { CollectionModal } from './CollectionModal';
 import {
   useCollections,
   useCollectionsWithMovie,
-} from '@/utils/hooks/supabase/queries/useCollections';
+} from '@/utils/hooks/supabase/useCollections';
 import {
   useCreateCollection,
   useToggleMovieInCollection,
 } from '@/utils/hooks/supabase/mutations/useCollectionMutations';
 import type { CollectionInsert } from '@/schemas/collection.schema';
-import type { Movie } from '@/schemas/movie.schema';
+import type { OverlayMovie } from '@/components/movie/MovieCard/Overlay';
 
 interface CollectionDropdownProps {
   isOpen: boolean;
   onClose: () => void;
-  movie: Movie;
+  movie: OverlayMovie;
 }
 
 export function CollectionDropdown({
@@ -41,31 +40,26 @@ export function CollectionDropdown({
     sortOrder: 'asc',
   });
 
-  // Ensure movie.id is a valid number before calling the hook
-  const movieId =
-    typeof movie.id === 'number' && !isNaN(movie.id) && movie.id > 0
-      ? movie.id
-      : undefined;
+  const movieUuid = movie.movie_id ?? undefined;
 
   const {
     data: movieCollections = [],
     isLoading: movieCollectionsLoading,
     error: movieCollectionsError,
-  } = useCollectionsWithMovie(movieId);
+  } = useCollectionsWithMovie(movieUuid);
 
   const createCollectionMutation = useCreateCollection();
-
   const toggleMovieInCollection = useToggleMovieInCollection();
 
   const handleToggleCollection = async (
     collectionId: string,
-    movieId: number
+    movieUuid: string
   ) => {
     try {
       setLoadingCollectionId(collectionId);
       await toggleMovieInCollection.mutateAsync({
         collectionId,
-        movieId,
+        movieId: movieUuid,
       });
     } catch (error) {
       console.error('Error toggling collection:', error);
@@ -101,16 +95,14 @@ export function CollectionDropdown({
     };
   }, [isOpen, onClose]);
 
-  const isMovieInCollection = (collectionId: string) => {
-    return (
-      movieCollections.find((mc) => mc.collection.id === collectionId)
-        ?.inCollection || false
-    );
-  };
+  const isMovieInCollection = (collectionId: string) =>
+    movieCollections.find((mc) => mc.collection.id === collectionId)
+      ?.inCollection || false;
 
   if (!isOpen) return null;
 
   const hasError = collectionsError || movieCollectionsError;
+  console.log('hasError', hasError);
   const isLoading = collectionsLoading || movieCollectionsLoading;
 
   return (
@@ -126,7 +118,9 @@ export function CollectionDropdown({
           <h3 id='dropdown-title' className='font-medium text-primary text-sm'>
             Add to Collection
           </h3>
-          <p className='text-xs text-secondary truncate' title={movie.title}>
+          <p
+            className='text-xs text-secondary truncate'
+            title={movie.title || ''}>
             {movie.title}
           </p>
         </div>
@@ -160,9 +154,10 @@ export function CollectionDropdown({
                   <button
                     key={collection.id}
                     onClick={() =>
-                      handleToggleCollection(collection.id, movie.id)
+                      movieUuid &&
+                      handleToggleCollection(collection.id, movieUuid)
                     }
-                    disabled={isCollectionLoading}
+                    disabled={isCollectionLoading || !movieUuid}
                     className='w-full px-4 py-2 text-left hover:bg-surface-hover transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed'
                     aria-pressed={inCollection}>
                     <div className='flex-shrink-0'>

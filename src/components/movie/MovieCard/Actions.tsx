@@ -1,11 +1,9 @@
-// Audited: 11/08/2025
-
 import React from 'react';
 import { X, Plus, Eye } from 'lucide-react';
-import type { Movie } from '@/schemas/movie.schema';
+import type { OverlayMovie } from './Overlay';
 
 interface MovieCardActionsProps {
-  movie: Movie;
+  movie: OverlayMovie;
   isWatchlistView: boolean;
   onRemoveFromWatched?: (movieId: string) => void;
   onRemoveFromWatchlist?: (movieId: string) => void;
@@ -36,7 +34,12 @@ export const MovieCardActions = ({
           <>
             <button
               onClick={(e) =>
-                handleActionClick(e, () => onRemoveFromWatchlist?.(movie.id))
+                handleActionClick(
+                  e,
+                  () =>
+                    movie?.tmdb_id &&
+                    onRemoveFromWatchlist?.(movie.tmdb_id.toString())
+                )
               }
               className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center'
               title='Remove from Watchlist'>
@@ -44,7 +47,12 @@ export const MovieCardActions = ({
             </button>
             <button
               onClick={(e) =>
-                handleActionClick(e, () => onMarkAsWatched?.(movie.id))
+                handleActionClick(
+                  e,
+                  () =>
+                    movie?.tmdb_id &&
+                    onMarkAsWatched?.(movie.tmdb_id.toString())
+                )
               }
               className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center'
               title='Mark as Watched'>
@@ -54,7 +62,12 @@ export const MovieCardActions = ({
         ) : (
           <button
             onClick={(e) =>
-              handleActionClick(e, () => onRemoveFromWatched?.(movie.id))
+              handleActionClick(
+                e,
+                () =>
+                  movie?.tmdb_id &&
+                  onRemoveFromWatched?.(movie.tmdb_id.toString())
+              )
             }
             className='bg-white text-black w-8 h-8 border border-black hover:bg-gray-100 cursor-pointer flex items-center justify-center'
             title='Remove from Watched'>

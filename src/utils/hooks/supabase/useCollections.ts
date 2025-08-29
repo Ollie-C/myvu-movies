@@ -51,6 +51,21 @@ export const useCollections = (options?: CollectionFilters) => {
   });
 };
 
+// Collections with movie status
+export const useCollectionsWithMovie = (movieId?: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: collectionKeys.withMovie(user?.id || '', movieId || ''),
+    queryFn: () => {
+      if (!user?.id || !movieId) throw new Error('Missing required data');
+      return collectionService.getCollectionsWithMovie(user.id, movieId);
+    },
+    enabled: !!user?.id && !!movieId,
+    staleTime: 30 * 1000,
+  });
+};
+
 export const useCollectionsWithPreviews = (limit?: number) => {
   const { user } = useAuth();
 
@@ -93,21 +108,6 @@ export const useCollectionPreview = (collectionId?: string) => {
     },
     enabled: !!user?.id && !!collectionId,
     staleTime: 5 * 60 * 1000,
-  });
-};
-
-// Collections with movie status
-export const useCollectionsWithMovie = (movieId?: string) => {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: collectionKeys.withMovie(user?.id || '', movieId || ''),
-    queryFn: () => {
-      if (!user?.id || !movieId) throw new Error('Missing required data');
-      return collectionService.getCollectionsWithMovie(user.id, movieId);
-    },
-    enabled: !!user?.id && !!movieId,
-    staleTime: 30 * 1000,
   });
 };
 

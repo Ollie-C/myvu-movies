@@ -1,5 +1,4 @@
-// AUDITED 01/08/2025
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 // Icons
@@ -23,13 +22,13 @@ import { RatingDisplay } from '@/components/movie/RatingDisplay';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
 import SimpleRatingModal from '@/components/movie/SimpleRatingModal';
 import MovieHero from '@/components/movie/MovieHero';
-import MovieCast from '@/components/movie/MovieCast';
+// import MovieCast from '@/components/movie/MovieCast';
 
 // Hooks
 import {
   useMovieDetails,
   useUserMovieStatus,
-} from '@/utils/hooks/supabase/queries/useMovieDetails';
+} from '@/utils/hooks/supabase/useMovieDetails';
 import {
   useToggleWatched,
   useToggleWatchlist,
@@ -40,21 +39,13 @@ const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
 
-  // Log movie details page access
-  // useEffect(() => {
-  //   console.log('🎬 [MovieDetails] Page loaded:', {
-  //     movieId: id,
-  //     userId: user?.id,
-  //     email: user?.email,
-  //     pathname: window.location.pathname,
-  //   });
-  // }, [id, user]);
-
-  // Fetch movie details and user status
+  // Fetch movie details (from TMDB / cached movies table)
   const { data: movie, isLoading } = useMovieDetails(id);
+  // Fetch user-specific status (watched / watchlist / rating)
   const { data: userStatus } = useUserMovieStatus(movie?.tmdbId);
 
   // Mutations
@@ -69,30 +60,60 @@ const MovieDetails = () => {
 
   const handleToggleWatched = () => {
     if (!movie) return;
-    toggleWatched.mutate({ movie, isWatched });
+    toggleWatched.mutate({
+      movie_id: movie.movieId,
+      tmdb_id: movie.tmdbId,
+      isWatched,
+    });
   };
 
   const handleToggleWatchlist = () => {
     if (!movie) return;
-    toggleWatchlist.mutate({ movie, isInWatchlist });
+    toggleWatchlist.mutate({
+      movie_id: movie.movieId,
+      tmdb_id: movie.tmdbId,
+      isInWatchlist,
+    });
   };
 
-  const handleRateMovie = async (rating: number, notes?: string) => {
+  const handleRateMovie = async (rating: number) => {
     if (!movie) return;
-    updateRating.mutate({ movie, rating, isWatched });
+    updateRating.mutate({
+      movie_id: movie.movieId,
+      tmdb_id: movie.tmdbId,
+      rating,
+      isWatched,
+    });
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className='space-y-6 animate-fade-in'>
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   if (!movie) {
-    return <div>Movie not found</div>;
+    return (
+      <div className='space-y-6 animate-fade-in'>
+        <Button
+          variant='ghost'
+          size='sm'
+          onClick={() => navigate('/movies')}
+          className='flex items-center gap-2'>
+          <ArrowLeft className='w-4 h-4' />
+          Back to Movies
+        </Button>
+        <Card className='p-8 text-center'>
+          <h2 className='text-xl font-bold mb-2'>Movie Not Found</h2>
+          <p className='text-secondary mb-6'>
+            This movie doesn’t exist or couldn’t be loaded.
+          </p>
+        </Card>
+      </div>
+    );
   }
-
-  const director = movie.credits?.crew?.find(
-    (person: { job: string }) => person.job === 'Director'
-  );
 
   return (
     <div className='space-y-8 animate-fade-in'>
@@ -113,11 +134,11 @@ const MovieDetails = () => {
           backdrop_path: movie.backdrop_path,
           release_date: movie.release_date || '',
           runtime: movie.runtime,
-          genres: movie.genres || [],
+          genres: [],
           vote_average: movie.vote_average || 0,
           overview: movie.overview || '',
         }}
-        director={director}
+        director={undefined}
       />
 
       {/* Ratings Display */}
@@ -127,7 +148,7 @@ const MovieDetails = () => {
           <RatingDisplay
             tmdbRating={movie.vote_average}
             userRating={userRating}
-            showLabels={true}
+            showLabels
             size='lg'
           />
         </Card>
@@ -137,6 +158,7 @@ const MovieDetails = () => {
       {user && (
         <div className='space-y-6'>
           <div className='flex flex-wrap gap-3'>
+            {/* Watched */}
             <Button
               variant={isWatched ? 'primary' : 'secondary'}
               onClick={handleToggleWatched}
@@ -150,6 +172,7 @@ const MovieDetails = () => {
               {isWatched ? 'Watched' : 'Mark as Watched'}
             </Button>
 
+            {/* Watchlist */}
             {!isWatched && (
               <Button
                 variant={isInWatchlist ? 'primary' : 'secondary'}
@@ -165,6 +188,7 @@ const MovieDetails = () => {
               </Button>
             )}
 
+            {/* Add to collection */}
             <Button
               variant='secondary'
               onClick={() => setShowCollectionDropdown(true)}
@@ -173,6 +197,7 @@ const MovieDetails = () => {
               Add to Collection
             </Button>
 
+            {/* Rating */}
             <Button
               onClick={() => setShowRatingModal(true)}
               className='flex items-center gap-2'
@@ -184,16 +209,14 @@ const MovieDetails = () => {
         </div>
       )}
 
-      {/* Simple Rating Modal */}
-      {movie && (
-        <SimpleRatingModal
-          isOpen={showRatingModal}
-          onClose={() => setShowRatingModal(false)}
-          movie={movie}
-          currentRating={userRating}
-          onRateMovie={handleRateMovie}
-        />
-      )}
+      {/* Rating Modal */}
+      <SimpleRatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        movie={movie}
+        currentRating={userRating}
+        onRateMovie={handleRateMovie}
+      />
 
       {/* Overview */}
       <Card className='p-6'>
@@ -202,40 +225,28 @@ const MovieDetails = () => {
       </Card>
 
       {/* Cast */}
-      {movie.credits?.cast && (
+      {/* {movie.credits?.cast && (
         <MovieCast
-          cast={movie.credits.cast.map((member, index) => ({
+          cast={movie.credits.cast.map((member: any, index: number) => ({
             ...member,
             order: index,
           }))}
         />
-      )}
+      )} */}
 
-      {/* Collection Dropdown */}
-      {showCollectionDropdown && movie && (
+      {/* Collections Dropdown */}
+      {showCollectionDropdown && (
         <CollectionDropdown
           isOpen={showCollectionDropdown}
           onClose={() => setShowCollectionDropdown(false)}
           movie={{
-            id: movie.movieId,
+            movie_id: movie.movieId,
             tmdb_id: movie.tmdbId,
             title: movie.title,
-            original_title: movie.original_title,
-            original_language: movie.original_language,
-            overview: movie.overview,
-            release_date: movie.release_date,
             poster_path: movie.poster_path,
-            backdrop_path: movie.backdrop_path,
-            popularity: movie.popularity || 0,
-            vote_average: movie.vote_average || 0,
-            vote_count: movie.vote_count || 0,
-            genres: movie.genres || [],
-            runtime: movie.runtime || null,
-            tagline: movie.tagline || null,
-            credits: movie.credits || null,
-            created_at: null,
-            updated_at: null,
-            search_vector: null,
+            release_date: movie.release_date,
+            genre_names: movie.genres?.map((g: any) => g.name) || [],
+            director_names: [],
           }}
         />
       )}

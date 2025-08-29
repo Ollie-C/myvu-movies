@@ -1,4 +1,3 @@
-// AUDITED 07/08/2025
 import {
   useQuery,
   useInfiniteQuery,
@@ -6,18 +5,18 @@ import {
 } from '@tanstack/react-query';
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { useAuth } from '@/context/AuthContext';
-import type {
-  WatchedMovie,
-  WatchedMovieWithMovie,
-} from '@/schemas/watched-movie.schema';
+import type { WatchedMovieWithDetails } from '@/schemas/watched-movies-with-details.schema';
 
 type WatchedMoviesFilters = {
-  sortBy?: 'watched_date' | 'rating' | 'title';
+  sortBy?: 'watched_date' | 'rating' | 'title' | 'ranked';
   sortOrder?: 'asc' | 'desc';
   onlyFavorites?: boolean;
   onlyRated?: boolean;
   page?: number;
   limit?: number;
+  genreIds?: string[];
+  directorIds?: string[];
+  languages?: string[];
 };
 
 export const watchedMoviesKeys = {
@@ -39,13 +38,12 @@ export const useWatchedMoviesInfinite = (options?: WatchedMoviesFilters) => {
   const { user } = useAuth();
 
   return useInfiniteQuery<
-    { data: WatchedMovieWithMovie[]; count: number | null },
+    { data: WatchedMovieWithDetails[]; count: number | null },
     Error
   >({
     queryKey: watchedMoviesKeys.infinite(user?.id || '', options),
     queryFn: ({ pageParam = 1 }) => {
       if (!user?.id) throw new Error('User not authenticated');
-
       return watchedMoviesService.getWatchedMovies(user.id, {
         ...options,
         page: pageParam as number,
@@ -68,13 +66,12 @@ export const useWatchedMovies = (options?: WatchedMoviesFilters) => {
   const { user } = useAuth();
 
   return useQuery<
-    { data: WatchedMovieWithMovie[]; count: number | null },
+    { data: WatchedMovieWithDetails[]; count: number | null },
     Error
   >({
     queryKey: watchedMoviesKeys.list(user?.id || '', options),
     queryFn: () => {
       if (!user?.id) throw new Error('User not authenticated');
-
       return watchedMoviesService.getWatchedMovies(user.id, options);
     },
     enabled: !!user?.id,
@@ -84,11 +81,10 @@ export const useWatchedMovies = (options?: WatchedMoviesFilters) => {
 export const useFavoriteMovies = (limit = 10) => {
   const { user } = useAuth();
 
-  return useQuery<WatchedMovieWithMovie[], Error>({
+  return useQuery<WatchedMovieWithDetails[], Error>({
     queryKey: watchedMoviesKeys.favorites(user?.id || '', limit),
     queryFn: () => {
       if (!user?.id) throw new Error('User not authenticated');
-
       return watchedMoviesService.getFavoriteMovies(user.id, limit);
     },
     enabled: !!user?.id,
@@ -98,11 +94,10 @@ export const useFavoriteMovies = (limit = 10) => {
 export const useRecentMovies = (limit = 10) => {
   const { user } = useAuth();
 
-  return useQuery<WatchedMovieWithMovie[], Error>({
+  return useQuery<WatchedMovieWithDetails[], Error>({
     queryKey: watchedMoviesKeys.recent(user?.id || '', limit),
     queryFn: () => {
       if (!user?.id) throw new Error('User not authenticated');
-
       return watchedMoviesService.getRecentMovies(user.id, limit);
     },
     enabled: !!user?.id,
@@ -112,11 +107,10 @@ export const useRecentMovies = (limit = 10) => {
 export const useWatchedMovie = (movieId: string) => {
   const { user } = useAuth();
 
-  return useQuery<WatchedMovie | null, Error>({
+  return useQuery<WatchedMovieWithDetails | null, Error>({
     queryKey: watchedMoviesKeys.detail(user?.id || '', movieId),
     queryFn: () => {
       if (!user?.id) throw new Error('User not authenticated');
-
       return watchedMoviesService.getWatchedMovie(user.id, movieId);
     },
     enabled: !!user?.id && !!movieId,
@@ -130,7 +124,7 @@ export const usePrefetchWatchedMovie = () => {
   return (movieId: string) => {
     if (!user?.id || !movieId) return;
 
-    queryClient.prefetchQuery<WatchedMovie | null, Error>({
+    queryClient.prefetchQuery<WatchedMovieWithDetails | null, Error>({
       queryKey: watchedMoviesKeys.detail(user.id, movieId),
       queryFn: () => watchedMoviesService.getWatchedMovie(user.id, movieId),
     });

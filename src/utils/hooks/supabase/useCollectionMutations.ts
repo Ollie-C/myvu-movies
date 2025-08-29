@@ -1,17 +1,16 @@
-// AUDITED 12/08/2025
-
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { collectionService } from '@/services/supabase/collection.service';
 import { useAuth } from '@/context/AuthContext';
-import { collectionKeys } from '../queries/useCollections';
+import { collectionKeys } from '@/utils/hooks/supabase/useCollections';
 import type { CollectionInsert } from '@/schemas/collection.schema';
 import { useToast } from '@/context/ToastContext';
-import { activityKeys } from '../queries/useUserActivity';
+import { activityKeys } from '@/utils/hooks/supabase/useUserActivity';
 
 export const useCreateCollection = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+
   return useMutation({
     mutationFn: async (data: CollectionInsert) => {
       if (!user?.id) throw new Error('User not authenticated');
@@ -60,12 +59,12 @@ export const useDeleteCollection = (collectionId: string) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collectionKeys.all });
-      // Deletions may also be logged later; refresh anyway
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
 };
 
+// 🔄 UPDATED — movieId → movie_uuid
 export const useAddMovieToCollection = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -73,12 +72,12 @@ export const useAddMovieToCollection = () => {
   return useMutation({
     mutationFn: async ({
       collectionId,
-      movieId,
+      movie_uuid,
     }: {
       collectionId: string;
-      movieId: number;
+      movie_uuid: string;
     }) => {
-      return collectionService.addMovieToCollection(collectionId, movieId);
+      return collectionService.addMovieToCollection(collectionId, movie_uuid);
     },
     onSuccess: (_, { collectionId }) => {
       queryClient.invalidateQueries({
@@ -96,26 +95,24 @@ export const useRemoveMovieFromCollection = () => {
   return useMutation({
     mutationFn: async ({
       collectionId,
-      movieId,
+      movie_uuid,
     }: {
       collectionId: string;
-      movieId: number;
+      movie_uuid: string;
     }) => {
-      return collectionService.removeMovieFromCollection(collectionId, movieId);
+      return collectionService.removeMovieFromCollection(
+        collectionId,
+        movie_uuid
+      );
     },
     onSuccess: (_, { collectionId }) => {
-      // Invalidate the specific collection detail
       queryClient.invalidateQueries({
         queryKey: collectionKeys.detail(user?.id || '', collectionId),
       });
-      // Invalidate collections list to update movie counts
       queryClient.invalidateQueries({
         queryKey: collectionKeys.withPreviews(user?.id || ''),
       });
-      // Invalidate all collections for broader updates
-      queryClient.invalidateQueries({
-        queryKey: collectionKeys.all,
-      });
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -125,23 +122,25 @@ export const useToggleMovieInCollection = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { showToast } = useToast();
+
   return useMutation({
     mutationFn: async ({
       collectionId,
-      movieId,
+      movie_uuid,
     }: {
       collectionId: string;
-      movieId: number;
+      movie_uuid: string;
     }) => {
-      return collectionService.toggleMovieInCollection(collectionId, movieId);
+      return collectionService.toggleMovieInCollection(
+        collectionId,
+        movie_uuid
+      );
     },
     onSuccess: (_, { collectionId }) => {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.detail(user?.id || '', collectionId),
       });
-      queryClient.invalidateQueries({
-        queryKey: collectionKeys.all,
-      });
+      queryClient.invalidateQueries({ queryKey: collectionKeys.all });
       if (user?.id) {
         queryClient.invalidateQueries({
           queryKey: activityKeys.recent(user.id),

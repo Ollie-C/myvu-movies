@@ -1,12 +1,9 @@
-// AUDITED 06/08/2025
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 import {
-  WatchlistSchema,
-  WatchlistWithMovieSchema,
-  type Watchlist,
-  type WatchlistWithMovie,
   type WatchlistPriority,
+  type WatchlistWithDetails,
+  WatchlistWithDetailsSchema,
 } from '@/schemas/watchlist.schema';
 import { activityService } from '@/services/supabase/activity.service';
 
@@ -20,7 +17,7 @@ export const watchlistService = {
       limit?: number;
       priority?: WatchlistPriority;
     }
-  ): Promise<{ data: WatchlistWithMovie[]; count: number | null }> {
+  ): Promise<{ data: WatchlistWithDetails[]; count: number | null }> {
     const {
       sortBy = 'priority',
       sortOrder = 'asc',
@@ -30,14 +27,8 @@ export const watchlistService = {
     } = options || {};
 
     let query = supabase
-      .from('watchlist')
-      .select(
-        `
-        *,
-        movie:movies (*)
-      `,
-        { count: 'exact' }
-      )
+      .from('watchlist_with_details')
+      .select('*', { count: 'exact' })
       .eq('user_id', userId);
 
     if (priority) {
@@ -45,7 +36,7 @@ export const watchlistService = {
     }
 
     if (sortBy === 'title') {
-      query = query.order('movies.title', { ascending: sortOrder === 'asc' });
+      query = query.order('title', { ascending: sortOrder === 'asc' });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
@@ -57,17 +48,7 @@ export const watchlistService = {
     const { data, error, count } = await query;
     if (error) throw error;
 
-    let validatedData = z.array(WatchlistWithMovieSchema).parse(data || []);
-
-    if (sortBy === 'title' && validatedData.length > 0) {
-      validatedData.sort((a, b) => {
-        const titleA = a.movie?.title || '';
-        const titleB = b.movie?.title || '';
-        return sortOrder === 'asc'
-          ? titleA.localeCompare(titleB)
-          : titleB.localeCompare(titleA);
-      });
-    }
+    const validatedData = z.array(WatchlistWithDetailsSchema).parse(data || []);
 
     if (sortBy === 'priority') {
       const priorityOrder = { high: 1, medium: 2, low: 3 };
@@ -84,9 +65,9 @@ export const watchlistService = {
   async getWatchlistItem(
     userId: string,
     movieId: string
-  ): Promise<Watchlist | null> {
+  ): Promise<WatchlistWithDetails | null> {
     const { data, error } = await supabase
-      .from('watchlist')
+      .from('watchlist_with_details')
       .select('*')
       .eq('user_id', userId)
       .eq('movie_id', movieId)
@@ -97,7 +78,7 @@ export const watchlistService = {
       throw error;
     }
 
-    return data ? WatchlistSchema.parse(data) : null;
+    return data ? WatchlistWithDetailsSchema.parse(data) : null;
   },
 
   async addToWatchlist(
@@ -105,7 +86,7 @@ export const watchlistService = {
     movieId: string,
     priority: WatchlistPriority = 'medium',
     notes?: string
-  ): Promise<Watchlist> {
+  ): Promise<WatchlistWithDetails> {
     const { data, error } = await supabase
       .from('watchlist')
       .upsert(
@@ -125,7 +106,7 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    const parsed = WatchlistSchema.parse(data);
+    const parsed = WatchlistWithDetailsSchema.parse(data);
     try {
       await activityService.logActivity({
         user_id: userId,
@@ -138,7 +119,6 @@ export const watchlistService = {
   },
 
   async removeFromWatchlist(userId: string, movieId: string): Promise<void> {
-    // Only log removal if an item existed
     const { data: existing, error: checkError } = await supabase
       .from('watchlist')
       .select('id')
@@ -170,7 +150,7 @@ export const watchlistService = {
     userId: string,
     movieId: string,
     priority: WatchlistPriority
-  ): Promise<Watchlist> {
+  ): Promise<WatchlistWithDetails> {
     const { data, error } = await supabase
       .from('watchlist')
       .update({
@@ -183,7 +163,7 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    const parsed = WatchlistSchema.parse(data);
+    const parsed = WatchlistWithDetailsSchema.parse(data);
     try {
       await activityService.logActivity({
         user_id: userId,
@@ -199,7 +179,7 @@ export const watchlistService = {
     userId: string,
     movieId: string,
     notes: string
-  ): Promise<Watchlist> {
+  ): Promise<WatchlistWithDetails> {
     const { data, error } = await supabase
       .from('watchlist')
       .update({
@@ -212,7 +192,7 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    const parsed = WatchlistSchema.parse(data);
+    const parsed = WatchlistWithDetailsSchema.parse(data);
     try {
       await activityService.logActivity({
         user_id: userId,
@@ -227,7 +207,7 @@ export const watchlistService = {
     userId: string,
     movieId: string,
     reminderDate: string | null
-  ): Promise<Watchlist> {
+  ): Promise<WatchlistWithDetails> {
     const { data, error } = await supabase
       .from('watchlist')
       .update({
@@ -240,7 +220,7 @@ export const watchlistService = {
       .single();
 
     if (error) throw error;
-    return WatchlistSchema.parse(data);
+    return WatchlistWithDetailsSchema.parse(data);
   },
 
   async getWatchlistStats(userId: string): Promise<{
@@ -277,23 +257,18 @@ export const watchlistService = {
     return stats;
   },
 
-  async getDueReminders(userId: string): Promise<WatchlistWithMovie[]> {
+  async getDueReminders(userId: string): Promise<WatchlistWithDetails[]> {
     const today = new Date().toISOString().split('T')[0];
 
     const { data, error } = await supabase
-      .from('watchlist')
-      .select(
-        `
-        *,
-        movie:movies (*)
-      `
-      )
+      .from('watchlist_with_details')
+      .select('*')
       .eq('user_id', userId)
       .lte('reminder_date', today)
       .not('reminder_date', 'is', null);
 
     if (error) throw error;
 
-    return z.array(WatchlistWithMovieSchema).parse(data || []);
+    return z.array(WatchlistWithDetailsSchema).parse(data || []);
   },
 };

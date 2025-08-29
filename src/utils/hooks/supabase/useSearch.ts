@@ -1,4 +1,3 @@
-// Audited: 11/08/2025
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/utils/hooks/useDebounce';
@@ -39,7 +38,7 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
   const { user } = useAuth();
   const hydrateFromSearchResults = useMovieStore(
     (state) => state.hydrateFromSearchResults
-  ); // Add this
+  );
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -47,22 +46,26 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
 
   const debouncedQuery = useDebounce(searchQuery, debounceMs);
 
-  const { data: searchResults, isLoading } = useQuery({
-    queryKey: ['hybrid-search', debouncedQuery, user?.id],
-    queryFn: () => movieSearchService.searchMovies(debouncedQuery, user?.id),
+  const { data: searchResults, isLoading } = useQuery<
+    MovieSearchResult[],
+    Error
+  >({
+    queryKey: searchKeys.search(debouncedQuery, user?.id),
+    queryFn: () => {
+      if (!debouncedQuery) return Promise.resolve([]);
+      return movieSearchService.searchMovies(debouncedQuery, user?.id);
+    },
     enabled: enabled && debouncedQuery.length > minQueryLength,
     staleTime: 30 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
-  // Hydrate the store when search results change
   useEffect(() => {
     if (searchResults && searchResults.length > 0) {
       hydrateFromSearchResults(searchResults);
     }
   }, [searchResults, hydrateFromSearchResults]);
 
-  // Handle click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -72,12 +75,10 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
         setIsSearchFocused(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle ESC key
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -85,7 +86,6 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
         setSearchQuery('');
       }
     };
-
     document.addEventListener('keydown', handleEsc);
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);

@@ -1,12 +1,11 @@
-// NOT AUDITED
-
 import { useState, useCallback, useEffect } from 'react';
-import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
+import type { WatchedMovie } from '@/types/userMovie';
 
 interface UseBatchRatingProps {
-  movies: WatchedMovieWithMovie[];
+  movies: WatchedMovie[];
   onRateMovie: (
-    movieId: number,
+    movie_uuid: string,
+    tmdb_id: number,
     rating: number,
     notes?: string
   ) => Promise<void>;
@@ -18,7 +17,7 @@ export const useBatchRating = ({
   onRateMovie,
   onComplete,
 }: UseBatchRatingProps) => {
-  const [localMovies, setLocalMovies] = useState<WatchedMovieWithMovie[]>([]);
+  const [localMovies, setLocalMovies] = useState<WatchedMovie[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [rating, setRating] = useState<number | null>(null);
   const [notes, setNotes] = useState('');
@@ -28,7 +27,6 @@ export const useBatchRating = ({
   const isLastMovie = currentIndex === localMovies.length - 1;
   const isFirstMovie = currentIndex === 0;
 
-  // Initialize local movies when movies prop changes
   useEffect(() => {
     if (movies.length > 0) {
       setLocalMovies([...movies]);
@@ -38,30 +36,33 @@ export const useBatchRating = ({
     }
   }, [movies]);
 
-  // Handle next movie
   const handleNext = useCallback(async () => {
     if (!rating || !currentMovie) return;
 
     setIsSubmitting(true);
     try {
-      await onRateMovie(currentMovie.movie_id!, rating, notes);
+      if (!currentMovie.movie_uuid || !currentMovie.tmdb_id) {
+        throw new Error('Invalid movie, missing IDs');
+      }
 
-      // Remove the rated movie from local list
+      await onRateMovie(
+        currentMovie.movie_uuid,
+        currentMovie.tmdb_id,
+        rating,
+        notes
+      );
+
       const updatedMovies = localMovies.filter(
-        (movie) => movie.movie_id !== currentMovie.movie_id
+        (m) => m.movie_uuid !== currentMovie.movie_uuid
       );
       setLocalMovies(updatedMovies);
 
       if (updatedMovies.length === 0) {
-        // All movies rated
         onComplete?.();
       } else if (currentIndex >= updatedMovies.length) {
-        // We were at the last movie, go to the new last movie
         setCurrentIndex(updatedMovies.length - 1);
       }
-      // Otherwise stay at the same index
 
-      // Reset rating and notes for next movie
       setRating(null);
       setNotes('');
     } catch (error) {
@@ -79,7 +80,6 @@ export const useBatchRating = ({
     onComplete,
   ]);
 
-  // Handle previous movie
   const handlePrevious = useCallback(() => {
     if (!isFirstMovie) {
       setCurrentIndex((prev) => prev - 1);
@@ -88,7 +88,6 @@ export const useBatchRating = ({
     }
   }, [isFirstMovie]);
 
-  // Handle skip
   const handleSkip = useCallback(() => {
     if (isLastMovie) {
       onComplete?.();
@@ -99,37 +98,32 @@ export const useBatchRating = ({
     }
   }, [isLastMovie, onComplete]);
 
-  // Handle star click
   const handleStarClick = useCallback((starRating: number) => {
     setRating(starRating);
   }, []);
 
-  // Handle input change
   const handleInputChange = useCallback((value: string) => {
     if (value === '') {
       setRating(null);
       return;
     }
-
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue >= 0 && numValue <= 10) {
       setRating(numValue);
     }
   }, []);
 
-  // Handle input blur
   const handleInputBlur = useCallback((value: string) => {
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
-      const roundedValue = Math.round(numValue * 10) / 10;
-      if (roundedValue >= 0 && roundedValue <= 10) {
-        setRating(roundedValue);
+      const rounded = Math.round(numValue * 10) / 10;
+      if (rounded >= 0 && rounded <= 10) {
+        setRating(rounded);
       }
     }
   }, []);
 
   return {
-    // State
     currentMovie,
     currentIndex,
     rating,
@@ -140,7 +134,6 @@ export const useBatchRating = ({
     totalMovies: localMovies.length,
     remainingMovies: localMovies.length,
 
-    // Actions
     setRating,
     setNotes,
     handleNext,

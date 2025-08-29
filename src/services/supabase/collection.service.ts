@@ -12,12 +12,14 @@ import {
   type CollectionInsert,
   type CollectionUpdate,
 } from '@/schemas/collection.schema';
+
 import {
-  CollectionItemWithMovieSchema,
   CollectionItemInsertSchema,
   CollectionItemReorderSchema,
-  type CollectionItemWithMovie,
+  CollectionItemWithDetailsSchema,
+  type CollectionItemWithDetails,
 } from '@/schemas/collection-item.schema';
+
 import {
   CollectionWithItemsSchema,
   CollectionPreviewSchema,
@@ -25,6 +27,7 @@ import {
   type CollectionWithItems,
   type CollectionPreview,
 } from '@/schemas/collection-combined.schema';
+
 import { activityService } from '@/services/supabase/activity.service';
 
 export const collectionService = {
@@ -82,6 +85,7 @@ export const collectionService = {
         user_id: collection.user_id,
         is_public: collection.is_public,
         is_ranked: collection.is_ranked,
+        ranking_list_id: collection.ranking_list_id ?? null,
         slug: collection.slug,
         created_at: collection.created_at,
         updated_at: collection.updated_at,
@@ -101,10 +105,7 @@ export const collectionService = {
       .select(
         `
         *,
-        collection_items(
-          *,
-          movie:movies(*)
-        )
+        collection_items:collection_items_with_details(*)
       `
       )
       .eq('id', collectionId)
@@ -132,10 +133,7 @@ export const collectionService = {
       .select(
         `
         *,
-        collection_items(
-          *,
-          movie:movies(*)
-        )
+        collection_items:collection_items_with_details(*)
       `
       )
       .eq('id', collectionId)
@@ -226,15 +224,7 @@ export const collectionService = {
       .single();
 
     if (error) throw error;
-    const parsed = CollectionSchema.parse(data);
-    try {
-      await activityService.logActivity({
-        user_id: data?.user_id || '',
-        type: 'collection_updated',
-        collection_id: collectionId,
-      });
-    } catch (_) {}
-    return parsed;
+    return CollectionSchema.parse(data);
   },
 
   async deleteCollection(collectionId: string): Promise<void> {
@@ -250,7 +240,7 @@ export const collectionService = {
     collectionId: string,
     movieId: string,
     notes?: string
-  ): Promise<CollectionItemWithMovie> {
+  ): Promise<CollectionItemWithDetails> {
     const { data: existingItem, error: checkError } = await supabase
       .from('collection_items')
       .select('id')
@@ -258,15 +248,11 @@ export const collectionService = {
       .eq('movie_id', movieId)
       .maybeSingle();
 
-    if (checkError) {
-      throw checkError;
-    }
-
-    if (existingItem) {
+    if (checkError) throw checkError;
+    if (existingItem)
       throw new Error('Movie already exists in this collection');
-    }
 
-    const collection = await this.getCollection(collectionId);
+    const collection = await collectionService.getCollection(collectionId);
     if (!collection) throw new Error('Collection not found');
 
     const nextPosition = collectionItemHelpers.getNextPosition(collection);
@@ -278,48 +264,41 @@ export const collectionService = {
       notes: notes || null,
     });
 
+    // Insert and immediately reselect from the new view
     const { data, error } = await supabase
       .from('collection_items')
       .insert(insertData)
-      .select(
-        `
-        *,
-        movie:movies(*)
-      `
-      )
+      .select(`id`)
       .single();
 
     if (error) throw error;
+    await collectionService.touchCollection(collectionId);
 
-    await this.touchCollection(collectionId);
+    // Reselect flattened details
+    const { data: detailRow, error: detailError } = await supabase
+      .from('collection_items_with_details')
+      .select('*')
+      .eq('collection_item_id', data.id)
+      .single();
 
-    const parsed = CollectionItemWithMovieSchema.parse(data);
-    try {
-      await activityService.logActivity({
-        user_id: collection.user_id!,
-        type: 'collection_movie_added',
-        collection_id: collectionId,
-        movie_id: movieId,
-      });
-    } catch (_) {}
+    if (detailError) throw detailError;
 
-    return parsed;
+    return CollectionItemWithDetailsSchema.parse(detailRow);
   },
 
   async addMoviesToCollection(
     collectionId: string,
     movieIds: string[]
-  ): Promise<CollectionItemWithMovie[]> {
+  ): Promise<CollectionItemWithDetails[]> {
     if (movieIds.length === 0) return [];
 
-    const collection = await this.getCollection(collectionId);
+    const collection = await collectionService.getCollection(collectionId);
     if (!collection) throw new Error('Collection not found');
 
     const existingMovieIds = new Set(
       collection.collection_items.map((item) => item.movie_id)
     );
     const newMovieIds = movieIds.filter((id) => !existingMovieIds.has(id));
-
     if (newMovieIds.length === 0) return [];
 
     let nextPosition = collectionItemHelpers.getNextPosition(collection);
@@ -332,23 +311,26 @@ export const collectionService = {
 
     const { data, error } = await supabase
       .from('collection_items')
-      .upsert(insertData, {
-        onConflict: 'collection_id,movie_id',
-        ignoreDuplicates: true,
-      })
-      .select(`*, movie:movies(*)`);
+      .insert(insertData)
+      .select('id');
 
     if (error) throw error;
+    await collectionService.touchCollection(collectionId);
 
-    await this.touchCollection(collectionId);
+    // Reselect from view
+    const { data: detailRows, error: detailErr } = await supabase
+      .from('collection_items_with_details')
+      .select('*')
+      .in(
+        'collection_item_id',
+        (data || []).map((d) => d.id)
+      );
 
-    return z.array(CollectionItemWithMovieSchema).parse(data || []);
+    if (detailErr) throw detailErr;
+    return z.array(CollectionItemWithDetailsSchema).parse(detailRows || []);
   },
 
-  async removeMovieFromCollection(
-    collectionId: string,
-    movieId: string
-  ): Promise<void> {
+  async removeMovieFromCollection(collectionId: string, movieId: string) {
     const { error } = await supabase
       .from('collection_items')
       .delete()
@@ -357,109 +339,54 @@ export const collectionService = {
 
     if (error) throw error;
 
-    await this.touchCollection(collectionId);
-
-    try {
-      const collection = await this.getCollection(collectionId);
-      if (collection?.user_id) {
-        await activityService.logActivity({
-          user_id: collection.user_id,
-          type: 'collection_movie_removed',
-          collection_id: collectionId,
-          movie_id: movieId,
-        });
-      }
-    } catch (_) {}
+    await collectionService.touchCollection(collectionId);
   },
 
-  async toggleMovieInCollection(
-    collectionId: string,
-    movieId: string
-  ): Promise<void> {
-    // Use the working query approach instead of the problematic isMovieInCollection
-    const { data: existingItem, error } = await supabase
+  async toggleMovieInCollection(collectionId: string, movieId: string) {
+    const { data: existingItem } = await supabase
       .from('collection_items')
       .select('id')
       .eq('collection_id', collectionId)
       .eq('movie_id', movieId)
-      .maybeSingle(); // Use maybeSingle instead of single to avoid PGRST116
+      .maybeSingle();
 
-    if (error) {
-      console.error('Error checking collection membership:', {
-        collectionId,
-        movieId,
-        error: {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        },
-      });
-      throw error;
-    }
-
-    const exists = !!existingItem;
-
-    if (exists) {
-      await this.removeMovieFromCollection(collectionId, movieId);
+    if (existingItem) {
+      await collectionService.removeMovieFromCollection(collectionId, movieId);
     } else {
-      await this.addMovieToCollection(collectionId, movieId);
+      await collectionService.addMovieToCollection(collectionId, movieId);
     }
   },
 
   async reorderCollectionItems(
     collectionId: string,
     items: Array<{ id: string; position: number }>
-  ): Promise<void> {
-    const validatedItems = CollectionItemReorderSchema.parse(items);
-
-    const promises = validatedItems.map((item) =>
-      supabase
-        .from('collection_items')
-        .update({ position: item.position })
-        .eq('id', item.id)
+  ) {
+    const validated = CollectionItemReorderSchema.parse(items);
+    await Promise.all(
+      validated.map((item) =>
+        supabase
+          .from('collection_items')
+          .update({ position: item.position })
+          .eq('id', item.id)
+      )
     );
-
-    const results = await Promise.all(promises);
-    const hasError = results.some((result) => result.error);
-    if (hasError) throw new Error('Failed to reorder items');
-
-    await this.touchCollection(collectionId);
+    await collectionService.touchCollection(collectionId);
   },
 
-  async getCollectionsWithMovie(
-    userId: string,
-    movieId: string
-  ): Promise<
-    Array<{ collection: CollectionWithCount; inCollection: boolean }>
-  > {
-    const collections = await this.getUserCollections(userId);
+  async getCollectionsWithMovie(userId: string, movieId: string) {
+    const collections = await collectionService.getUserCollections(userId);
 
-    const { data: movieCollectionItems, error } = await supabase
+    const { data, error } = await supabase
       .from('collection_items')
       .select('collection_id')
       .eq('movie_id', movieId);
 
-    if (error) {
-      console.error('Error querying collection_items:', {
-        movieId,
-        error: {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint,
-        },
-      });
-      throw error;
-    }
+    if (error) throw error;
 
-    const collectionsWithMovieSet = new Set(
-      movieCollectionItems?.map((item) => item.collection_id) || []
-    );
-
-    return collections.map((collection) => ({
-      collection,
-      inCollection: collectionsWithMovieSet.has(collection.id),
+    const inSet = new Set(data?.map((d) => d.collection_id));
+    return collections.map((c) => ({
+      collection: c,
+      inCollection: inSet.has(c.id),
     }));
   },
 
@@ -478,10 +405,7 @@ export const collectionService = {
       .select(
         `
         *,
-        collection_items(
-          *,
-          movie:movies(*)
-        )
+        collection_items:collection_items_with_details(*)
       `
       )
       .eq('user_id', userId)
@@ -490,13 +414,11 @@ export const collectionService = {
 
     if (error) throw error;
 
-    return (data || []).map((collection) => {
+    return (data || []).map((c) => {
       const preview = {
-        ...collection,
-        collection_items: collection.collection_items?.slice(0, 6) || [],
-        _count: {
-          collection_items: collection.collection_items?.length || 0,
-        },
+        ...c,
+        collection_items: c.collection_items?.slice(0, 6) || [],
+        _count: { collection_items: c.collection_items?.length || 0 },
       };
       return CollectionPreviewSchema.parse(preview);
     });
@@ -506,7 +428,7 @@ export const collectionService = {
     collectionId: string,
     movieId: string,
     notes: string | null
-  ): Promise<void> {
+  ) {
     const { error } = await supabase
       .from('collection_items')
       .update({ notes })
@@ -514,33 +436,24 @@ export const collectionService = {
       .eq('movie_id', movieId);
 
     if (error) throw error;
-    await this.touchCollection(collectionId);
+    await collectionService.touchCollection(collectionId);
   },
 
-  async touchCollection(collectionId: string): Promise<void> {
+  async touchCollection(collectionId: string) {
     await supabase
       .from('collections')
       .update({ updated_at: new Date().toISOString() })
       .eq('id', collectionId);
   },
 
-  async getCollectionStats(userId: string): Promise<{
-    totalCollections: number;
-    rankedCollections: number;
-    publicCollections: number;
-    totalMovies: number;
-  }> {
-    const collections = await this.getUserCollections(userId);
-
-    const stats = collections.reduce(
-      (acc, collection) => ({
+  async getCollectionStats(userId: string) {
+    const collections = await collectionService.getUserCollections(userId);
+    return collections.reduce(
+      (acc, c) => ({
         totalCollections: acc.totalCollections + 1,
-        rankedCollections:
-          acc.rankedCollections + (collection.is_ranked ? 1 : 0),
-        publicCollections:
-          acc.publicCollections + (collection.is_public ? 1 : 0),
-        totalMovies:
-          acc.totalMovies + (collection._count?.collection_items || 0),
+        rankedCollections: acc.rankedCollections + (c.is_ranked ? 1 : 0),
+        publicCollections: acc.publicCollections + (c.is_public ? 1 : 0),
+        totalMovies: acc.totalMovies + (c._count?.collection_items || 0),
       }),
       {
         totalCollections: 0,
@@ -549,52 +462,5 @@ export const collectionService = {
         totalMovies: 0,
       }
     );
-
-    return stats;
-  },
-
-  async createFromRankingList(
-    userId: string,
-    rankingList: {
-      id: string;
-      name: string;
-      description?: string | null;
-      is_public?: boolean | null;
-      slug?: string | null;
-    }
-  ) {
-    const collection = await this.createCollection(userId, {
-      name: rankingList.name,
-      description: rankingList.description || null,
-      is_public: rankingList.is_public ?? false,
-      is_ranked: true,
-      slug: rankingList.slug || null,
-      ranking_list_id: rankingList.id,
-    });
-
-    const { data: items, error } = await supabase
-      .from('ranking_list_items')
-      .select('*')
-      .eq('ranking_list_id', rankingList.id);
-
-    if (error) throw error;
-
-    if (items && items.length > 0) {
-      const batch = items.map((item, idx) => ({
-        collection_id: collection.id,
-        movie_id: item.movie_id,
-        position: item.position ?? idx,
-        notes: item.notes,
-        added_at: new Date().toISOString(),
-      }));
-
-      const { error: insertError } = await supabase
-        .from('collection_items')
-        .insert(batch);
-
-      if (insertError) throw insertError;
-    }
-
-    return collection;
   },
 };

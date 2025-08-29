@@ -57,8 +57,43 @@ export type Database = {
             foreignKeyName: "activities_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "activities_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activities_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "activities_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "activities_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "activities_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
           },
           {
             foreignKeyName: "activities_ranking_list_id_fkey"
@@ -113,8 +148,43 @@ export type Database = {
             foreignKeyName: "collection_items_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
           },
         ]
       }
@@ -165,12 +235,161 @@ export type Database = {
           },
         ]
       }
+      genres: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          tmdb_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          tmdb_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          tmdb_id?: number | null
+        }
+        Relationships: []
+      }
+      movie_directors: {
+        Row: {
+          movie_id: string
+          person_id: string
+        }
+        Insert: {
+          movie_id: string
+          person_id: string
+        }
+        Update: {
+          movie_id?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_directors_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_directors_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_directors_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "movie_directors_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_directors_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_directors_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_directors_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      movie_genres: {
+        Row: {
+          genre_id: string
+          movie_id: string
+        }
+        Insert: {
+          genre_id: string
+          movie_id: string
+        }
+        Update: {
+          genre_id?: string
+          movie_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movie_genres_genre_id_fkey"
+            columns: ["genre_id"]
+            isOneToOne: false
+            referencedRelation: "genres"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "movie_genres_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+        ]
+      }
       movies: {
         Row: {
           backdrop_path: string | null
           created_at: string | null
-          credits: Json | null
-          genres: Json | null
           id: string
           original_language: string | null
           original_title: string | null
@@ -190,8 +409,6 @@ export type Database = {
         Insert: {
           backdrop_path?: string | null
           created_at?: string | null
-          credits?: Json | null
-          genres?: Json | null
           id?: string
           original_language?: string | null
           original_title?: string | null
@@ -211,8 +428,6 @@ export type Database = {
         Update: {
           backdrop_path?: string | null
           created_at?: string | null
-          credits?: Json | null
-          genres?: Json | null
           id?: string
           original_language?: string | null
           original_title?: string | null
@@ -228,6 +443,30 @@ export type Database = {
           updated_at?: string | null
           vote_average?: number | null
           vote_count?: number | null
+        }
+        Relationships: []
+      }
+      people: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          profile_path: string | null
+          tmdb_id: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          profile_path?: string | null
+          tmdb_id?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          profile_path?: string | null
+          tmdb_id?: number | null
         }
         Relationships: []
       }
@@ -301,8 +540,43 @@ export type Database = {
             foreignKeyName: "ranking_list_items_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "ranking_list_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ranking_list_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "ranking_list_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "ranking_list_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "ranking_list_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
           },
         ]
       }
@@ -310,6 +584,7 @@ export type Database = {
         Row: {
           battle_limit: number | null
           battle_limit_type: string | null
+          config: Json | null
           created_at: string | null
           deleted_at: string | null
           description: string | null
@@ -326,6 +601,7 @@ export type Database = {
         Insert: {
           battle_limit?: number | null
           battle_limit_type?: string | null
+          config?: Json | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
@@ -342,6 +618,7 @@ export type Database = {
         Update: {
           battle_limit?: number | null
           battle_limit_type?: string | null
+          config?: Json | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
@@ -365,6 +642,7 @@ export type Database = {
           loser_elo_before: number | null
           loser_movie_id: string | null
           ranking_list_id: string | null
+          skipped: boolean | null
           winner_elo_after: number | null
           winner_elo_before: number | null
           winner_movie_id: string | null
@@ -376,6 +654,7 @@ export type Database = {
           loser_elo_before?: number | null
           loser_movie_id?: string | null
           ranking_list_id?: string | null
+          skipped?: boolean | null
           winner_elo_after?: number | null
           winner_elo_before?: number | null
           winner_movie_id?: string | null
@@ -387,6 +666,7 @@ export type Database = {
           loser_elo_before?: number | null
           loser_movie_id?: string | null
           ranking_list_id?: string | null
+          skipped?: boolean | null
           winner_elo_after?: number | null
           winner_elo_before?: number | null
           winner_movie_id?: string | null
@@ -403,8 +683,50 @@ export type Database = {
             foreignKeyName: "versus_battles_loser_movie_id_fkey"
             columns: ["loser_movie_id"]
             isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "versus_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "versus_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "versus_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "versus_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "versus_battles_loser_movie_id_fkey"
+            columns: ["loser_movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "versus_battles_winner_movie_id_fkey"
+            columns: ["winner_movie_id"]
+            isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
           },
           {
             foreignKeyName: "versus_battles_winner_movie_id_fkey"
@@ -412,6 +734,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "versus_battles_winner_movie_id_fkey"
+            columns: ["winner_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "versus_battles_winner_movie_id_fkey"
+            columns: ["winner_movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "versus_battles_winner_movie_id_fkey"
+            columns: ["winner_movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "versus_battles_winner_movie_id_fkey"
+            columns: ["winner_movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
           },
         ]
       }
@@ -457,8 +807,43 @@ export type Database = {
             foreignKeyName: "watched_movies_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
           },
           {
             foreignKeyName: "watched_movies_user_id_fkey"
@@ -508,8 +893,43 @@ export type Database = {
             foreignKeyName: "watchlist_movie_id_fkey"
             columns: ["movie_id"]
             isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
             referencedRelation: "movies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
           },
           {
             foreignKeyName: "watchlist_user_id_fkey"
@@ -522,7 +942,271 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      collection_items_with_details: {
+        Row: {
+          added_at: string | null
+          backdrop_path: string | null
+          collection_id: string | null
+          collection_item_id: string | null
+          director_ids: string[] | null
+          director_names: string[] | null
+          genre_ids: string[] | null
+          genre_names: string[] | null
+          movie_id: string | null
+          movie_uuid: string | null
+          notes: string | null
+          original_language: string | null
+          original_title: string | null
+          popularity: number | null
+          position: number | null
+          poster_path: string | null
+          release_date: string | null
+          runtime: number | null
+          tagline: string | null
+          title: string | null
+          tmdb_id: number | null
+          vote_average: number | null
+          vote_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_items_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "collection_items_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+        ]
+      }
+      movies_with_details: {
+        Row: {
+          backdrop_path: string | null
+          director_ids: string[] | null
+          director_names: string[] | null
+          genre_ids: string[] | null
+          genre_names: string[] | null
+          movie_id: string | null
+          movie_uuid: string | null
+          original_language: string | null
+          original_title: string | null
+          popularity: number | null
+          poster_path: string | null
+          release_date: string | null
+          runtime: number | null
+          tagline: string | null
+          title: string | null
+          tmdb_id: number | null
+          vote_average: number | null
+          vote_count: number | null
+        }
+        Relationships: []
+      }
+      watched_movies_with_details: {
+        Row: {
+          backdrop_path: string | null
+          director_ids: string[] | null
+          director_names: string[] | null
+          elo_score: number | null
+          favorite: boolean | null
+          genre_ids: string[] | null
+          genre_names: string[] | null
+          movie_id: string | null
+          movie_uuid: string | null
+          notes: string | null
+          original_language: string | null
+          original_title: string | null
+          overview: string | null
+          popularity: number | null
+          poster_path: string | null
+          rating: number | null
+          release_date: string | null
+          runtime: number | null
+          tagline: string | null
+          title: string | null
+          tmdb_id: number | null
+          user_id: string | null
+          vote_average: number | null
+          vote_count: number | null
+          watched_created_at: string | null
+          watched_date: string | null
+          watched_movie_id: string | null
+          watched_updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watched_movies_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      watchlist_with_details: {
+        Row: {
+          added_date: string | null
+          backdrop_path: string | null
+          director_ids: string[] | null
+          director_names: string[] | null
+          genre_ids: string[] | null
+          genre_names: string[] | null
+          movie_id: string | null
+          movie_uuid: string | null
+          notes: string | null
+          original_language: string | null
+          original_title: string | null
+          overview: string | null
+          popularity: number | null
+          poster_path: string | null
+          priority: string | null
+          release_date: string | null
+          reminder_date: string | null
+          runtime: number | null
+          tagline: string | null
+          title: string | null
+          tmdb_id: number | null
+          user_id: string | null
+          vote_average: number | null
+          vote_count: number | null
+          watchlist_id: string | null
+          watchlist_updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "collection_items_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_id"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watched_movies_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "watchlist_with_details"
+            referencedColumns: ["movie_uuid"]
+          },
+          {
+            foreignKeyName: "watchlist_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_elo_battle: {

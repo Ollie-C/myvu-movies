@@ -5,7 +5,9 @@ import {
   VersusSessionConfigSchema,
   type VersusSessionConfig,
 } from '@/schemas/versus-session-config.schema';
-import { useWatchedMovies } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useWatchedMovies } from '@/utils/hooks/supabase/useWatchedMovies';
+import { useDirectors } from '@/utils/hooks/supabase/useDirectors';
+import { useGenres } from '@/utils/hooks/supabase/useGenres';
 
 export default function VersusConfigModal({
   isOpen,
@@ -26,8 +28,17 @@ export default function VersusConfigModal({
   >('complete');
   const [battleLimit, setBattleLimit] = useState<number | undefined>();
   const [selectedMovieIds, setSelectedMovieIds] = useState<string[]>([]);
-
   const [error, setError] = useState<string | null>(null);
+
+  // new state for filters
+  const [genreIds, setGenreIds] = useState<string[]>([]);
+  const [directorIds, setDirectorIds] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+
+  // options loaded from Supabase
+  const { data: genres = [], isLoading: isGenresLoading } = useGenres();
+  const { data: directors = [], isLoading: isDirectorsLoading } =
+    useDirectors();
 
   const { data: watchedMovies, isLoading } = useWatchedMovies({
     onlyRated: false,
@@ -51,6 +62,11 @@ export default function VersusConfigModal({
       movieIds: movieSelection === 'selection' ? selectedMovieIds : undefined,
       battle_limit_type: battleLimitType,
       battle_limit: battleLimit,
+      filters: {
+        genreIds,
+        directorIds,
+        languages,
+      },
     };
 
     const parsed = VersusSessionConfigSchema.safeParse(rawConfig);
@@ -116,7 +132,7 @@ export default function VersusConfigModal({
                       checked={selectedMovieIds.includes(movie.movie_id!)}
                       onChange={() => toggleMovie(movie.movie_id!)}
                     />
-                    {movie.movie?.title}
+                    {movie.title}
                   </label>
                 ))
             )}
@@ -125,6 +141,80 @@ export default function VersusConfigModal({
             )}
           </div>
         )}
+
+        {/* Filters (new!) */}
+        <div className='space-y-2'>
+          <label className='block text-sm font-medium'>Filters</label>
+
+          {/* Genres */}
+          <div>
+            <label className='block text-xs mb-1'>Genres</label>
+            <select
+              multiple
+              value={genreIds}
+              onChange={(e) =>
+                setGenreIds(
+                  Array.from(e.target.selectedOptions, (opt) => opt.value)
+                )
+              }
+              className='border p-2 w-full h-24'>
+              {isGenresLoading ? (
+                <option>Loading genres...</option>
+              ) : (
+                genres.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {/* Directors */}
+          <div>
+            <label className='block text-xs mb-1'>Directors</label>
+            <select
+              multiple
+              value={directorIds}
+              onChange={(e) =>
+                setDirectorIds(
+                  Array.from(e.target.selectedOptions, (opt) => opt.value)
+                )
+              }
+              className='border p-2 w-full h-24'>
+              {isDirectorsLoading ? (
+                <option>Loading directors...</option>
+              ) : (
+                directors.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {/* Languages */}
+          <div>
+            <label className='block text-xs mb-1'>Languages</label>
+            <select
+              multiple
+              value={languages}
+              onChange={(e) =>
+                setLanguages(
+                  Array.from(e.target.selectedOptions, (opt) => opt.value)
+                )
+              }
+              className='border p-2 w-full h-24'>
+              {/* You could hardcode for now */}
+              <option value='en'>English</option>
+              <option value='ja'>Japanese</option>
+              <option value='fr'>French</option>
+              <option value='de'>German</option>
+              <option value='es'>Spanish</option>
+            </select>
+          </div>
+        </div>
 
         {/* Battle limit */}
         <div>

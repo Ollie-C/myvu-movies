@@ -1,6 +1,6 @@
 // Audited: 11/08/2025
 import { forwardRef } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '@/utils/helpers/cn';
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {

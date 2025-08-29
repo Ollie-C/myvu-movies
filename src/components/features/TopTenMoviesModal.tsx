@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { X, Search } from 'lucide-react';
-import { useAllUserMovies } from '@/utils/hooks/supabase/queries/useUserMovies';
-import { useFavoriteMovies } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useAllUserMovies } from '@/utils/hooks/supabase/useUserMovies';
+import { useFavoriteMovies } from '@/utils/hooks/supabase/useWatchedMovies';
 import { useToggleFavorite } from '@/utils/hooks/supabase/mutations/useWatchedMovieMutations';
 import { Input } from '@/components/common/Input';
 import MoviePoster from '@/components/movie/MoviePoster';

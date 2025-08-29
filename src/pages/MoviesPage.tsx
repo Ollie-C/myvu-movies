@@ -1,55 +1,35 @@
-// AUDITED 06/08/2025
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-// Components
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import MovieCard from '@/components/movie/MovieCard/MovieCard';
 import Loader from '@/components/common/Loader';
 
-// Contexts
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
 
-// Types
-import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
-import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
+import type { WatchlistWithDetails } from '@/schemas/watchlist.schema';
+import type { WatchedMovieWithDetails } from '@/schemas/watched-movies-with-details.schema';
 
-// Services
 import { watchedMoviesService } from '@/services/supabase/watched-movies.service';
 import { watchlistService } from '@/services/supabase/watchlist.service';
 
-// Hooks
-import { useWatchlistInfinite } from '@/utils/hooks/supabase/queries/useWatchlist';
-import { useWatchedMoviesInfinite } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useWatchlistInfinite } from '@/utils/hooks/supabase/useWatchlist';
+import { useWatchedMoviesInfinite } from '@/utils/hooks/supabase/useWatchedMovies';
 
-// Types
-type UserMovie = WatchedMovieWithMovie | WatchlistWithMovie;
+type UserMovie = WatchedMovieWithDetails | WatchlistWithDetails;
 type SortOption = 'watched_date' | 'rating' | 'ranked';
-
-// Type guards
-const isWatchlistItem = (item: UserMovie): item is WatchlistWithMovie => {
-  return 'priority' in item;
-};
-
-const isWatchedItem = (item: UserMovie): item is WatchedMovieWithMovie => {
-  return 'rating' in item;
-};
 
 const Movies = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
 
-  // States
   const [showWatchlist, setShowWatchlist] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('watched_date');
-
-  // Refs
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Queries
   const watchedQuery = useWatchedMoviesInfinite({
     sortBy: sortOption as 'title' | 'rating' | 'watched_date',
     sortOrder: 'desc',
@@ -71,15 +51,17 @@ const Movies = () => {
     isFetchingNextPage,
   } = showWatchlist ? watchlistQuery : watchedQuery;
 
-  const userMovies = useMemo(() => {
+  const userMovies: UserMovie[] = useMemo(() => {
     if (!moviesData?.pages) return [];
 
-    const movies: UserMovie[] = [];
-    for (const page of moviesData.pages) {
-      movies.push(...page.data);
+    if (showWatchlist) {
+      return moviesData.pages.flatMap((p) => p.data as WatchlistWithDetails[]);
+    } else {
+      return moviesData.pages.flatMap(
+        (p) => p.data as WatchedMovieWithDetails[]
+      );
     }
-    return movies;
-  }, [moviesData?.pages]);
+  }, [moviesData?.pages, showWatchlist]);
 
   const moviePositions = useMemo(() => {
     if (sortOption !== 'ranked' || showWatchlist)
@@ -87,7 +69,9 @@ const Movies = () => {
 
     const positions = new Map<string, number>();
     userMovies.forEach((movie, index) => {
-      positions.set(movie.movie.id, index + 1);
+      if ('watched_movie_id' in movie) {
+        positions.set(movie.movie_id!, index + 1);
+      }
     });
     return positions;
   }, [userMovies, sortOption, showWatchlist]);
@@ -95,13 +79,10 @@ const Movies = () => {
   const lastElementRef = useCallback(
     (node: HTMLDivElement | null) => {
       if (isLoading || isFetchingNextPage) return;
-
       if (observerRef.current) observerRef.current.disconnect();
 
       observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && hasNextPage) {
-          fetchNextPage();
-        }
+        if (entries[0].isIntersecting && hasNextPage) fetchNextPage();
       });
 
       if (node) observerRef.current.observe(node);
@@ -109,17 +90,15 @@ const Movies = () => {
     [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]
   );
 
+  // --- Actions ---
   const handleRemoveFromWatched = useCallback(
     async (movieId: string) => {
       if (!user?.id) return;
-
       try {
         await watchedMoviesService.removeWatched(user.id, movieId);
-        queryClient.invalidateQueries({
-          queryKey: ['user-movies-infinite', user.id, 'watched'],
-        });
+        queryClient.invalidateQueries({ queryKey: ['watchedMovies'] });
         showToast('success', 'Movie removed from watched list');
-      } catch (error) {
+      } catch {
         showToast('error', 'Failed to remove movie from watched list');
       }
     },
@@ -129,14 +108,11 @@ const Movies = () => {
   const handleRemoveFromWatchlist = useCallback(
     async (movieId: string) => {
       if (!user?.id) return;
-
       try {
         await watchlistService.removeFromWatchlist(user.id, movieId);
-        queryClient.invalidateQueries({
-          queryKey: ['user-movies-infinite', user.id, 'watchlist'],
-        });
+        queryClient.invalidateQueries({ queryKey: ['watchlist'] });
         showToast('success', 'Movie removed from watchlist');
-      } catch (error) {
+      } catch {
         showToast('error', 'Failed to remove movie from watchlist');
       }
     },
@@ -146,23 +122,19 @@ const Movies = () => {
   const handleMarkAsWatched = useCallback(
     async (movieId: string) => {
       if (!user?.id) return;
-
       try {
         await watchedMoviesService.markAsWatched(user.id, movieId);
-        queryClient.invalidateQueries({
-          queryKey: ['user-movies-infinite', user.id, 'watchlist'],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ['user-movies-infinite', user.id, 'watched'],
-        });
+        queryClient.invalidateQueries({ queryKey: ['watchlist'] });
+        queryClient.invalidateQueries({ queryKey: ['watchedMovies'] });
         showToast('success', 'Movie marked as watched');
-      } catch (error) {
+      } catch {
         showToast('error', 'Failed to mark movie as watched');
       }
     },
     [user?.id, queryClient, showToast]
   );
 
+  // --- UI Components ---
   const EmptyState = () => (
     <Card className='p-12 text-center'>
       <h3 className='text-lg font-semibold mb-2'>
@@ -186,14 +158,20 @@ const Movies = () => {
       <div className='grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2'>
         {userMovies.map((userMovie, index) => {
           const isLastElement = index === userMovies.length - 1;
-          const position = moviePositions.get(userMovie.movie.id) || 0;
+          const position =
+            'watched_movie_id' in userMovie
+              ? moviePositions.get(userMovie.movie_id!) || 0
+              : 0;
+
+          console.log(userMovie);
 
           return (
             <div
-              key={userMovie.movie.id}
+              key={userMovie.movie_id}
               ref={isLastElement ? lastElementRef : null}>
+              {/* Rating/Elo bar (only for watched movies) */}
               {!showWatchlist &&
-                isWatchedItem(userMovie) &&
+                'watched_movie_id' in userMovie &&
                 userMovie.rating && (
                   <div className='text-[6px] text-gray-500 flex justify-between mb-1 px-1'>
                     <span>Rating: {userMovie.rating.toFixed(1)}</span>
@@ -204,15 +182,17 @@ const Movies = () => {
               <MovieCard
                 userMovie={userMovie}
                 onRemoveFromWatched={
-                  isWatchedItem(userMovie) ? handleRemoveFromWatched : undefined
+                  'watched_movie_id' in userMovie
+                    ? handleRemoveFromWatched
+                    : undefined
                 }
                 onRemoveFromWatchlist={
-                  isWatchlistItem(userMovie)
+                  'watchlist_id' in userMovie
                     ? handleRemoveFromWatchlist
                     : undefined
                 }
                 onMarkAsWatched={
-                  isWatchlistItem(userMovie) ? handleMarkAsWatched : undefined
+                  'watchlist_id' in userMovie ? handleMarkAsWatched : undefined
                 }
                 isWatchlistView={showWatchlist}
                 index={position - 1}
@@ -223,10 +203,7 @@ const Movies = () => {
         })}
       </div>
 
-      {/* Loading indicator for next page */}
       {isFetchingNextPage && <Loader />}
-
-      {/* End of results indicator */}
       {!hasNextPage && (
         <div className='text-center mt-8 py-4'>
           <p className='text-secondary text-sm'>
@@ -238,16 +215,12 @@ const Movies = () => {
     </>
   );
 
-  // Early returns
+  // --- Early returns ---
   if (!user) {
     return (
       <div className='space-y-8 animate-fade-in'>
-        <div>
-          <h1 className='text-3xl font-bold text-primary'>Your Movies</h1>
-          <p className='text-secondary mt-2'>
-            Please log in to view your movies
-          </p>
-        </div>
+        <h1 className='text-3xl font-bold text-primary'>Your Movies</h1>
+        <p className='text-secondary mt-2'>Please log in to view your movies</p>
       </div>
     );
   }
@@ -255,9 +228,7 @@ const Movies = () => {
   if (isLoading) {
     return (
       <div className='container mx-auto px-4 py-8 animate-fade-in space-y-6'>
-        <div className='flex items-center justify-between'>
-          <h1 className='text-3xl font-bold text-primary'>Your Movies</h1>
-        </div>
+        <h1 className='text-3xl font-bold text-primary'>Your Movies</h1>
         <Loader />
       </div>
     );
@@ -277,6 +248,7 @@ const Movies = () => {
     );
   }
 
+  // --- Main return ---
   return (
     <div className='container mx-auto px-4 py-8 animate-fade-in space-y-6'>
       {/* Header */}
@@ -294,7 +266,6 @@ const Movies = () => {
         </div>
 
         <div className='flex items-center gap-4'>
-          {/* Sort Options */}
           {!showWatchlist && (
             <div className='flex items-center gap-2'>
               <span className='text-sm text-gray-600'>Sort by:</span>
@@ -308,8 +279,6 @@ const Movies = () => {
               </select>
             </div>
           )}
-
-          {/* View Toggle */}
           <Button
             variant='secondary'
             size='sm'

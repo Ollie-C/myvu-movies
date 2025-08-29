@@ -1,16 +1,21 @@
-// Audited: 11/08/2025
-
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CollectionDropdown } from '@/components/collections/CollectionDropdown';
 import { MovieCardOverlay } from './Overlay';
 import { MovieCardRanking } from './Ranking';
-import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
-import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
+
+import type { WatchedMovieWithDetails } from '@/schemas/watched-movies-with-details.schema';
+import type { WatchlistWithDetails } from '@/schemas/watchlist.schema';
+import type { CollectionItemWithDetails } from '@/schemas/collection-item.schema';
+
+type UserMovie =
+  | WatchedMovieWithDetails
+  | WatchlistWithDetails
+  | CollectionItemWithDetails;
 
 interface MovieCardProps {
-  userMovie: WatchedMovieWithMovie | WatchlistWithMovie;
+  userMovie: UserMovie;
   onRemoveFromWatched?: (movieId: string) => void;
   onRemoveFromWatchlist?: (movieId: string) => void;
   onMarkAsWatched?: (movieId: string) => void;
@@ -30,10 +35,12 @@ const MovieCard = ({
   isWatchedList = false,
   disableLink = false,
 }: MovieCardProps) => {
-  const { movie } = userMovie;
+  const tmdbId = userMovie.tmdb_id!;
+  const posterPath = userMovie.poster_path;
+  const title = userMovie.title ?? '';
+
   const userRating = 'rating' in userMovie ? userMovie.rating : null;
   const navigate = useNavigate();
-
   const plusButtonRef = useRef<HTMLButtonElement>(null);
 
   const ANIMATION_CONFIG = {
@@ -52,8 +59,8 @@ const MovieCard = ({
     showCollectionDropdown: false,
   });
 
-  const imageUrl = movie.poster_path
-    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+  const imageUrl = posterPath
+    ? `https://image.tmdb.org/t/p/w500${posterPath}`
     : '/placeholder-movie.jpg';
 
   // Initial animation delay
@@ -73,11 +80,11 @@ const MovieCard = ({
     }, cardDelay);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [index]);
 
   const handleCardClick = () => {
     if (!cardState.showCollectionDropdown && !disableLink) {
-      navigate(`/movies/${movie.tmdb_id}`);
+      navigate(`/movies/${tmdbId}`);
     }
   };
 
@@ -106,12 +113,20 @@ const MovieCard = ({
           <div className='relative pb-[150%]'>
             <img
               src={imageUrl}
-              alt={movie.title}
+              alt={title}
               className='absolute inset-0 w-full h-full object-cover'
             />
 
             <MovieCardOverlay
-              movie={movie}
+              movie={{
+                movie_id: userMovie.movie_id,
+                tmdb_id: tmdbId,
+                title,
+                poster_path: posterPath,
+                release_date: userMovie.release_date,
+                genre_names: userMovie.genre_names || [],
+                director_names: userMovie.director_names || [],
+              }}
               userRating={userRating}
               isHovered={cardState.isHovered}
               hasInitiallyExpanded={cardState.hasInitiallyExpanded}
@@ -143,7 +158,15 @@ const MovieCard = ({
                     showCollectionDropdown: false,
                   }))
                 }
-                movie={movie}
+                movie={{
+                  movie_id: userMovie.movie_id,
+                  tmdb_id: tmdbId,
+                  title,
+                  poster_path: posterPath,
+                  release_date: userMovie.release_date,
+                  genre_names: userMovie.genre_names || [],
+                  director_names: userMovie.director_names || [],
+                }}
               />
             </motion.div>
           )}

@@ -8,7 +8,7 @@ import VersusConfigModal from '@/components/ranking/versus/VersusConfigModal';
 import { SessionCard } from '@/components/ranking/SessionCard';
 
 import { useAuth } from '@/context/AuthContext';
-import { useWatchedMovies } from '@/utils/hooks/supabase/queries/useWatchedMovies';
+import { useWatchedMovies } from '@/utils/hooks/supabase/useWatchedMovies';
 import { useRankingDashboard } from '@/utils/hooks/supabase/ranking/useRankingDashboard';
 import { useRankingSession } from '@/utils/hooks/supabase/ranking/useRankingSession';
 

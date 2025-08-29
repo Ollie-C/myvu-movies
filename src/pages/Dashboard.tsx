@@ -10,11 +10,11 @@ import { useAuth } from '@/context/AuthContext';
 import {
   useFavoriteMovies,
   useRecentMovies,
-} from '@/utils/hooks/supabase/queries/useWatchedMovies';
-import { useRecentActivity } from '@/utils/hooks/supabase/queries/useUserActivity';
-import { useWatchlistStats } from '@/utils/hooks/supabase/queries/useWatchlist';
-import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
-import { useUserStats } from '@/utils/hooks/supabase/queries/useUserStats';
+} from '@/utils/hooks/supabase/useWatchedMovies';
+import { useRecentActivity } from '@/utils/hooks/supabase/useUserActivity';
+import { useWatchlistStats } from '@/utils/hooks/supabase/useWatchlist';
+import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/useCollections';
+import { useUserStats } from '@/utils/hooks/supabase/useUserStats';
 
 // Components
 import CollectionCard from '@/components/collections/CollectionCard';

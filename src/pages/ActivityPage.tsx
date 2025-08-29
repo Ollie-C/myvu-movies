@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useActivities } from '@/utils/hooks/supabase/queries/useUserActivity';
+import { useActivities } from '@/utils/hooks/supabase/useUserActivity';
 import type { ActivityType } from '@/services/supabase/activity.service';
 import { Link } from 'react-router-dom';
 

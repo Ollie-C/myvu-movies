@@ -1,4 +1,3 @@
-// AUDITED 06/08/2025
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -6,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Folder } from 'lucide-react';
 
 // Hooks
-import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/queries/useCollections';
+import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/useCollections';
 import { useCreateCollection } from '@/utils/hooks/supabase/mutations/useCollectionMutations';
 import { useAuth } from '@/context/AuthContext';
 

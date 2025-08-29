@@ -1,7 +1,7 @@
-// AUDITED 06/08/2025
 import { supabase } from '@/lib/supabase';
-import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
-import type { WatchlistWithMovie } from '@/schemas/watchlist.schema';
+import type { UserMovie } from '@/types/userMovie';
+import type { WatchedMovieWithDetails } from '@/schemas/watched-movies-with-details.schema';
+import type { WatchlistWithDetails } from '@/schemas/watchlist.schema';
 import type { Collection } from '@/schemas/collection.schema';
 
 export interface UserProfile {
@@ -20,16 +20,6 @@ export interface UserStats {
   favoriteGenre: string | null;
 }
 
-export interface UserMovieWithType extends WatchedMovieWithMovie {
-  type: 'watched';
-}
-
-export interface WatchlistItemWithType extends WatchlistWithMovie {
-  type: 'watchlist';
-}
-
-export type UserMovie = UserMovieWithType | WatchlistItemWithType;
-
 export const userService = {
   async getUserProfile(userId: string): Promise<UserProfile | null> {
     const { data, error } = await supabase
@@ -38,14 +28,10 @@ export const userService = {
       .eq('id', userId)
       .single();
 
-    if (error) {
-      return null;
-    }
-
+    if (error) return null;
     return data;
   },
 
-  // Get user statistics for dashboard
   async getUserStats(userId: string): Promise<UserStats> {
     const { data, error } = await supabase.rpc('get_user_stats', {
       user_uuid: userId,
@@ -80,96 +66,88 @@ export const userService = {
       collectionsCount: Number(stats.collections_count) || 0,
       rankingsCount: Number(stats.rankings_count) || 0,
       totalMovies: Number(stats.total_movies) || 0,
-      averageRating: Math.round(Number(stats.average_rating) * 10) / 10, // Round to 1 decimal
+      averageRating: Math.round(Number(stats.average_rating) * 10) / 10,
       favoriteGenre: stats.favorite_genre || null,
     };
   },
 
-  // Get favorite movies (user-marked favorites)
   async getFavoriteMovies(
     userId: string,
     limit: number = 10
-  ): Promise<WatchedMovieWithMovie[]> {
+  ): Promise<WatchedMovieWithDetails[]> {
     const { data, error } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
+      .from('watched_movies_with_details')
+      .select('*')
       .eq('user_id', userId)
       .eq('favorite', true)
-      .order('updated_at', { ascending: false })
+      .order('watched_date', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      return [];
-    }
-
-    return data || [];
+    if (error) return [];
+    return (data || []) as WatchedMovieWithDetails[];
   },
 
-  // Get all user movies (for search functionality)
   async getAllUserMovies(userId: string): Promise<UserMovie[]> {
-    // Get watched movies
     const { data: watchedData, error: watchedError } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
+      .from('watched_movies_with_details')
+      .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('watched_date', { ascending: false });
 
-    // Get watchlist movies
     const { data: watchlistData, error: watchlistError } = await supabase
-      .from('watchlist')
-      .select('*, movie:movies(*)')
+      .from('watchlist_with_details')
+      .select('*')
       .eq('user_id', userId)
-      .order('updated_at', { ascending: false });
+      .order('added_date', { ascending: false });
 
     if (watchedError || watchlistError) {
       return [];
     }
 
-    // Combine and sort by updated_at
-    const allMovies: UserMovie[] = [
-      ...(watchedData || []).map(
-        (item: WatchedMovieWithMovie): UserMovieWithType => ({
-          ...item,
-          type: 'watched',
-        })
-      ),
-      ...(watchlistData || []).map(
-        (item: WatchlistWithMovie): WatchlistItemWithType => ({
-          ...item,
-          type: 'watchlist',
-        })
-      ),
-    ];
+    const watchedMovies = (watchedData || []) as WatchedMovieWithDetails[];
+    const watchlistMovies = (watchlistData || []) as WatchlistWithDetails[];
+
+    const allMovies: UserMovie[] = [...watchedMovies, ...watchlistMovies];
+
+    const getDate = (m: UserMovie): string | null => {
+      if ('watched_updated_at' in m) {
+        return m.watched_updated_at || m.watched_date || null;
+      }
+      if ('watchlist_updated_at' in m) {
+        return m.watchlist_updated_at || m.added_date || null;
+      }
+      if ('added_at' in m) {
+        return m.added_at || null;
+      }
+      return null;
+    };
 
     return allMovies.sort((a, b) => {
-      const dateA = a.updated_at || a.created_at;
-      const dateB = b.updated_at || b.created_at;
-      if (!dateA || !dateB) return 0;
+      const dateA = getDate(a);
+      const dateB = getDate(b);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     });
   },
 
-  // Get recent movies (most recently watched)
   async getRecentMovies(
     userId: string,
     limit: number = 6
-  ): Promise<WatchedMovieWithMovie[]> {
+  ): Promise<WatchedMovieWithDetails[]> {
     const { data, error } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
+      .from('watched_movies_with_details')
+      .select('*')
       .eq('user_id', userId)
       .not('watched_date', 'is', null)
       .order('watched_date', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      return [];
-    }
-
-    return data || [];
+    if (error) return [];
+    return (data || []) as WatchedMovieWithDetails[];
   },
 
-  // Get featured collections (most recently updated)
   async getFeaturedCollections(
     userId: string,
     limit: number = 3
@@ -186,31 +164,14 @@ export const userService = {
       .order('updated_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      return [];
-    }
+    if (error) return [];
 
-    // Transform the data to include count
     return (data || []).map((collection) => ({
       ...collection,
       movieCount: collection.collection_items?.[0]?.count || 0,
     }));
   },
 
-  // Update user profile
-  async updateProfile(
-    userId: string,
-    updates: { username?: string; avatar_url?: string }
-  ): Promise<void> {
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId);
-
-    if (error) throw error;
-  },
-
-  // Get active rankings (collections that are ranked)
   async getActiveRankings(
     userId: string,
     limit: number = 3
@@ -228,14 +189,23 @@ export const userService = {
       .order('updated_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
-      return [];
-    }
+    if (error) return [];
 
-    // Transform the data to include count
     return (data || []).map((collection) => ({
       ...collection,
       movieCount: collection.collection_items?.[0]?.count || 0,
     }));
+  },
+
+  async updateProfile(
+    userId: string,
+    updates: { username?: string; avatar_url?: string }
+  ): Promise<void> {
+    const { error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId);
+
+    if (error) throw error;
   },
 };

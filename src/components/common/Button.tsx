@@ -1,5 +1,5 @@
 // Audited: 11/08/2025
-import { cn } from '@/utils/cn';
+import { cn } from '@/utils/helpers/cn';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost';

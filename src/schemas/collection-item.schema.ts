@@ -1,6 +1,4 @@
-// AUDITED 06/08/2025
 import { z } from 'zod';
-import { MovieSchema } from './movie.schema';
 import type { Database } from '@/types/database.types';
 
 type CollectionItemRow =
@@ -15,9 +13,39 @@ export const CollectionItemSchema = z.object({
   added_at: z.string().nullable(),
 }) satisfies z.ZodType<CollectionItemRow>;
 
-export const CollectionItemWithMovieSchema = CollectionItemSchema.extend({
-  movie: MovieSchema,
-});
+//
+// --- Flattened details view ---
+//
+type CollectionItemWithDetailsRow =
+  Database['public']['Views']['collection_items_with_details']['Row'];
+
+export const CollectionItemWithDetailsSchema = z.object({
+  collection_item_id: z.string(),
+  collection_id: z.string(),
+  movie_id: z.string().nullable(),
+  position: z.number().nullable(),
+  notes: z.string().nullable(),
+  added_at: z.string().nullable(),
+
+  movie_uuid: z.string().nullable(),
+  tmdb_id: z.number().nullable(),
+  title: z.string().nullable(),
+  original_title: z.string().nullable(),
+  original_language: z.string().nullable(),
+  release_date: z.string().nullable(),
+  poster_path: z.string().nullable(),
+  runtime: z.number().nullable(),
+  tagline: z.string().nullable(),
+  backdrop_path: z.string().nullable(),
+  popularity: z.number().nullable(),
+  vote_average: z.number().nullable(),
+  vote_count: z.number().nullable(),
+
+  genre_ids: z.array(z.string()).nullable(),
+  genre_names: z.array(z.string()).nullable(),
+  director_ids: z.array(z.string()).nullable(),
+  director_names: z.array(z.string()).nullable(),
+}) satisfies z.ZodType<CollectionItemWithDetailsRow>;
 
 export const CollectionItemInsertSchema = CollectionItemSchema.omit({
   id: true,
@@ -29,12 +57,6 @@ export const CollectionItemInsertSchema = CollectionItemSchema.omit({
   added_at: z.string().default(() => new Date().toISOString()),
 });
 
-export const CollectionItemUpdateSchema = z.object({
-  position: z.number().min(0).optional(),
-  notes: z.string().max(1000).nullable().optional(),
-});
-
-// Batch update schema for reordering
 export const CollectionItemReorderSchema = z.array(
   z.object({
     id: z.uuid(),
@@ -43,9 +65,8 @@ export const CollectionItemReorderSchema = z.array(
 );
 
 export type CollectionItem = z.infer<typeof CollectionItemSchema>;
-export type CollectionItemWithMovie = z.infer<
-  typeof CollectionItemWithMovieSchema
+export type CollectionItemWithDetails = z.infer<
+  typeof CollectionItemWithDetailsSchema
 >;
 export type CollectionItemInsert = z.infer<typeof CollectionItemInsertSchema>;
-export type CollectionItemUpdate = z.infer<typeof CollectionItemUpdateSchema>;
 export type CollectionItemReorder = z.infer<typeof CollectionItemReorderSchema>;

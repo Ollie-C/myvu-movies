@@ -1,24 +1,23 @@
 import { supabase } from '@/lib/supabase';
 import {
   MovieSchema,
-  movieHelpers,
   type Movie,
   type TMDBMovie,
 } from '@/schemas/movie.schema';
+import type { BaseMovieDetails } from '@/types/userMovie';
+import { movieHelpers } from '@/schemas/movie.schema';
 
 export const movieService = {
-  // cacheMovie: Check if movie exists in Supabase, if not, insert it
   async cacheMovie(tmdbMovie: TMDBMovie): Promise<Movie> {
-    const existingMovie = await this.getMovieByTmdbId(tmdbMovie.id);
+    const existingMovie = await movieService.getMovieByTmdbId(tmdbMovie.id);
 
     if (existingMovie) {
-      if (this.shouldUpdateMovie(existingMovie)) {
-        return this.updateMovie(existingMovie.id, tmdbMovie);
+      if (movieService.shouldUpdateMovie(existingMovie)) {
+        return await movieService.updateMovie(existingMovie.id, tmdbMovie);
       }
       return existingMovie;
     }
 
-    // Use the helper function to properly convert TMDB movie to local format
     const movieData = movieHelpers.fromTMDB(tmdbMovie);
 
     const { data, error } = await supabase
@@ -31,106 +30,14 @@ export const movieService = {
     return MovieSchema.parse(data);
   },
 
-  // getMovie: Get movie from Supabase
-  async getMovie(movieId: number): Promise<Movie | null> {
-    const { data, error } = await supabase
-      .from('movies')
-      .select('*')
-      .eq('id', movieId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return MovieSchema.parse(data);
-  },
-
-  // getMovieByTmdbId: Get movie from Supabase by TMDB ID
-  async getMovieByTmdbId(tmdbId: number): Promise<Movie | null> {
-    const { data, error } = await supabase
-      .from('movies')
-      .select('*')
-      .eq('tmdb_id', tmdbId)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-
-    return MovieSchema.parse(data);
-  },
-
-  // updateMovie: Update movie in Supabase
-  async updateMovie(movieId: number, tmdbMovie: TMDBMovie): Promise<Movie> {
-    // Use the helper function to properly convert TMDB movie to local format
-    const updateData = {
-      ...movieHelpers.fromTMDB(tmdbMovie),
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase
-      .from('movies')
-      .update(updateData)
-      .eq('id', movieId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return MovieSchema.parse(data);
-  },
-
-  // searchMovies: Search for movies in Supabase
-  async searchMovies(query: string, limit = 10): Promise<Movie[]> {
-    const { data, error } = await supabase
-      .from('movies')
-      .select('*')
-      .ilike('title', `%${query}%`)
-      .limit(limit)
-      .order('popularity', { ascending: false });
-
-    if (error) throw error;
-    return data.map((movie) => MovieSchema.parse(movie));
-  },
-
-  // getMoviesByIds: Get movies from Supabase by IDs
-  async getMoviesByIds(movieIds: number[]): Promise<Movie[]> {
-    if (movieIds.length === 0) return [];
-
-    const { data, error } = await supabase
-      .from('movies')
-      .select('*')
-      .in('id', movieIds);
-
-    if (error) throw error;
-    return data.map((movie) => MovieSchema.parse(movie));
-  },
-
-  // getMoviesByTmdbIds: Get movies from Supabase by TMDB IDs
-  async getMoviesByTmdbIds(tmdbIds: number[]): Promise<Movie[]> {
-    if (tmdbIds.length === 0) return [];
-
-    const { data, error } = await supabase
-      .from('movies')
-      .select('*')
-      .in('tmdb_id', tmdbIds);
-
-    if (error) throw error;
-    return data.map((movie) => MovieSchema.parse(movie));
-  },
-
-  // cacheBatchMovies: Cache a batch of movies
   async cacheBatchMovies(tmdbMovies: TMDBMovie[]): Promise<Movie[]> {
     if (tmdbMovies.length === 0) return [];
-
     const tmdbIds = tmdbMovies.map((m) => m.id);
+
     const existingMovies = await this.getMoviesByTmdbIds(tmdbIds);
     const existingTmdbIds = new Set(existingMovies.map((m) => m.tmdb_id));
 
     const newMovies = tmdbMovies.filter((m) => !existingTmdbIds.has(m.id));
-
     if (newMovies.length === 0) return existingMovies;
 
     const movieData = newMovies.map((movie) => movieHelpers.fromTMDB(movie));
@@ -142,91 +49,162 @@ export const movieService = {
 
     if (error) throw error;
 
-    const insertedMovies = data.map((movie) => MovieSchema.parse(movie));
+    const insertedMovies = (data || []).map((row) => MovieSchema.parse(row));
     return [...existingMovies, ...insertedMovies];
   },
 
-  // getPopularMovies: Get popular movies from Supabase
-  async getPopularMovies(limit = 20): Promise<Movie[]> {
+  async updateMovie(movieId: string, tmdbMovie: TMDBMovie): Promise<Movie> {
+    const updateData = movieHelpers.fromTMDB(tmdbMovie);
+
     const { data, error } = await supabase
       .from('movies')
+      .update({ ...updateData, updated_at: new Date().toISOString() })
+      .eq('id', movieId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return MovieSchema.parse(data);
+  },
+
+  shouldUpdateMovie(movie: Movie): boolean {
+    if (!movie.runtime || !movie.tagline) return true;
+    if (!movie.updated_at) return true;
+
+    const lastUpdate = new Date(movie.updated_at);
+    const daysOld = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
+    return daysOld > 7;
+  },
+
+  async getMovieRaw(movieId: string): Promise<Movie | null> {
+    const { data, error } = await supabase
+      .from('movies')
+      .select('*')
+      .eq('id', movieId)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data ? MovieSchema.parse(data) : null;
+  },
+
+  async getMovieByTmdbId(tmdbId: number): Promise<Movie | null> {
+    const { data, error } = await supabase
+      .from('movies')
+      .select('*')
+      .eq('tmdb_id', tmdbId)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data ? MovieSchema.parse(data) : null;
+  },
+
+  async getMoviesByIds(movieIds: string[]): Promise<Movie[]> {
+    if (movieIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('movies')
+      .select('*')
+      .in('id', movieIds);
+    if (error) throw error;
+    return (data || []).map((row) => MovieSchema.parse(row));
+  },
+
+  async getMoviesByTmdbIds(tmdbIds: number[]): Promise<Movie[]> {
+    if (tmdbIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('movies')
+      .select('*')
+      .in('tmdb_id', tmdbIds);
+    if (error) throw error;
+    return (data || []).map((row) => MovieSchema.parse(row));
+  },
+
+  async getMovieWithDetails(movieId: string): Promise<BaseMovieDetails | null> {
+    const { data, error } = await supabase.rpc('get_movie_with_details', {
+      movie_id_param: movieId,
+    });
+    if (error) throw error;
+    return data ? (data as BaseMovieDetails) : null;
+  },
+
+  async getMovieWithDetailsByTmdbId(
+    tmdbId: number
+  ): Promise<BaseMovieDetails | null> {
+    const { data, error } = await supabase.rpc('get_movie_with_details', {
+      tmdb_id_param: tmdbId,
+    });
+    if (error) throw error;
+    return data ? (data as BaseMovieDetails) : null;
+  },
+
+  async getMoviesWithDetailsByIds(
+    movieIds: string[]
+  ): Promise<BaseMovieDetails[]> {
+    if (!movieIds?.length) return [];
+    const { data, error } = await supabase.rpc('get_movies_with_details', {
+      movie_ids_param: movieIds,
+    });
+    if (error) throw error;
+    return (data || []) as BaseMovieDetails[];
+  },
+
+  async getMoviesWithDetailsByTmdbIds(
+    tmdbIds: number[]
+  ): Promise<BaseMovieDetails[]> {
+    if (!tmdbIds?.length) return [];
+    const { data, error } = await supabase.rpc('get_movies_with_details', {
+      tmdb_ids_param: tmdbIds,
+    });
+    if (error) throw error;
+    return (data || []) as BaseMovieDetails[];
+  },
+
+  async getPopularMovies(limit = 20): Promise<BaseMovieDetails[]> {
+    const { data, error } = await supabase
+      .from('movies_with_details')
       .select('*')
       .order('popularity', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    return data.map((movie) => MovieSchema.parse(movie));
+    return (data || []) as BaseMovieDetails[];
   },
 
-  // getRecentMovies: Get recent movies from Supabase
-  async getRecentMovies(days = 30, limit = 20): Promise<Movie[]> {
+  async getRecentMovies(days = 30, limit = 20): Promise<BaseMovieDetails[]> {
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - days);
-
     const { data, error } = await supabase
-      .from('movies')
+      .from('movies_with_details')
       .select('*')
       .gte('release_date', daysAgo.toISOString().split('T')[0])
       .order('release_date', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    return data.map((movie) => MovieSchema.parse(movie));
+    return (data || []) as BaseMovieDetails[];
   },
 
-  // getMoviesByGenre: Get movies from Supabase by genre
-  async getMoviesByGenre(genreName: string, limit = 20): Promise<Movie[]> {
+  async getMoviesByGenre(
+    genreName: string,
+    limit = 20
+  ): Promise<BaseMovieDetails[]> {
     const { data, error } = await supabase
-      .from('movies')
+      .from('movies_with_details')
       .select('*')
+      .ilike('genre_names', `%${genreName}%`) // workable since genre_names is array<string>
       .limit(limit);
 
     if (error) throw error;
-
-    // Filter by genre in memory (Supabase doesn't support JSON array queries well)
-    const movies = data
-      .map((movie) => MovieSchema.parse(movie))
-      .filter((movie) =>
-        movie.genres?.some(
-          (genre) => genre.name.toLowerCase() === genreName.toLowerCase()
-        )
-      );
-
-    return movies;
+    return (data || []) as BaseMovieDetails[];
   },
 
-  // shouldUpdateMovie: Helper to determine if movie data should be updated
-  shouldUpdateMovie(movie: Movie): boolean {
-    if (
-      !movie.runtime ||
-      !movie.tagline ||
-      !movie.credits ||
-      !movie.genres ||
-      !movie.backdrop_path
-    ) {
-      return true;
-    }
-
-    if (!movie.updated_at) return true;
-
-    const lastUpdate = new Date(movie.updated_at);
-    const daysSinceUpdate =
-      (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
-
-    return daysSinceUpdate > 7;
-  },
-
-  // getEnrichedMovie: Get movie with additional computed properties (for UI)
-  async getEnrichedMovie(movieId: number): Promise<
-    | (Movie & {
-        posterUrl: string | null;
-        backdropUrl: string | null;
-        displayTitle: string;
-        releaseYear: number | null;
-      })
-    | null
-  > {
-    const movie = await this.getMovie(movieId);
+  async getEnrichedMovie(movieId: string) {
+    const movie = await this.getMovieWithDetails(movieId);
     if (!movie) return null;
 
     return {
@@ -238,13 +216,12 @@ export const movieService = {
     };
   },
 
-  // getCacheStats: Get basic stats about cached movies
   async getCacheStats(): Promise<{
     totalMovies: number;
     recentlyAdded: number;
     popularMovies: number;
   }> {
-    const [totalResult, recentResult, popularResult] = await Promise.all([
+    const [total, recent, popular] = await Promise.all([
       supabase.from('movies').select('id', { count: 'exact', head: true }),
       supabase
         .from('movies')
@@ -260,9 +237,9 @@ export const movieService = {
     ]);
 
     return {
-      totalMovies: totalResult.count || 0,
-      recentlyAdded: recentResult.count || 0,
-      popularMovies: popularResult.count || 0,
+      totalMovies: total.count || 0,
+      recentlyAdded: recent.count || 0,
+      popularMovies: popular.count || 0,
     };
   },
 };

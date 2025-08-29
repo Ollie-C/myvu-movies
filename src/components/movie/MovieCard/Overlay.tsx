@@ -1,13 +1,20 @@
-// Audited: 11/08/2025
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { MovieCardActions } from './Actions';
-import type { Movie } from '@/schemas/movie.schema';
+
+export interface OverlayMovie {
+  movie_id: string | null;
+  tmdb_id: number | null;
+  title: string | null;
+  poster_path: string | null;
+  release_date: string | null;
+  genre_names?: string[];
+  director_names?: string[];
+}
 
 interface MovieCardOverlayProps {
-  movie: Movie;
+  movie: OverlayMovie;
   userRating: number | null;
   isHovered: boolean;
   hasInitiallyExpanded: boolean;
@@ -35,7 +42,7 @@ export const MovieCardOverlay = ({
 }: MovieCardOverlayProps) => {
   return (
     <motion.div
-      className='absolute bottom-0 left-0 right-0 bg-white border-t border-gray-300 overflow-hidden' // Changed overflow-visible to overflow-hidden
+      className='absolute bottom-0 left-0 right-0 bg-white border-t border-gray-300 overflow-hidden'
       animate={{
         height: !hasInitiallyExpanded ? '100%' : isHovered ? '100%' : '0',
       }}
@@ -51,7 +58,6 @@ export const MovieCardOverlay = ({
           {isWatchedList && userRating && <p>{userRating.toFixed(1)}</p>}
         </div>
 
-        {/* Remove AnimatePresence and just show/hide content */}
         {(!hasInitiallyExpanded || isHovered) && (
           <div className='flex-1 flex flex-col justify-between items-center'>
             {/* Rating Display */}
@@ -66,7 +72,7 @@ export const MovieCardOverlay = ({
               )}
             </div>
 
-            {/* Release Date */}
+            {/* Release Year */}
             <div className='my-2'>
               <div className='grid grid-cols-1 gap-2 text-[9px]'>
                 <p className='text-gray-600 font-bold text-center'>DATE</p>

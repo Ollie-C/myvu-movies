@@ -1,13 +1,14 @@
-// AUDITED 06/08/2025
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
 import {
   WatchedMovieSchema,
-  WatchedMovieWithMovieSchema,
   type WatchedMovie,
-  type WatchedMovieWithMovie,
 } from '@/schemas/watched-movie.schema';
-import { dateHelpers } from '@/utils/dateHelpers';
+import {
+  WatchedMovieWithDetailsSchema,
+  type WatchedMovieWithDetails,
+} from '@/schemas/watched-movies-with-details.schema';
+import { dateHelpers } from '@/utils/helpers/dateHelpers';
 import { activityService } from '@/services/supabase/activity.service';
 
 const DEFAULT_ELO_SCORE = 1200;
@@ -23,11 +24,11 @@ export const watchedMoviesService = {
       limit?: number;
       onlyFavorites?: boolean;
       onlyRated?: boolean;
+      genreIds?: string[];
+      directorIds?: string[];
+      languages?: string[];
     }
-  ): Promise<{
-    data: WatchedMovieWithMovie[];
-    count: number | null;
-  }> {
+  ): Promise<{ data: WatchedMovieWithDetails[]; count: number | null }> {
     const {
       sortBy = 'watched_date',
       sortOrder = 'desc',
@@ -35,37 +36,28 @@ export const watchedMoviesService = {
       limit = 24,
       onlyFavorites = false,
       onlyRated = false,
+      genreIds,
+      directorIds,
+      languages,
     } = options || {};
 
     let query = supabase
-      .from('watched_movies')
-      .select(
-        `
-        *,
-        movie:movies (*)
-      `,
-        { count: 'exact' }
-      )
+      .from('watched_movies_with_details')
+      .select('*', { count: 'exact' })
       .eq('user_id', userId);
 
-    if (onlyFavorites) {
-      query = query.eq('favorite', true);
-    }
-
-    if (onlyRated) {
-      query = query.not('rating', 'is', null);
-    }
+    if (onlyFavorites) query = query.eq('favorite', true);
+    if (onlyRated) query = query.not('rating', 'is', null);
+    if (genreIds?.length) query = query.contains('genre_ids', genreIds);
+    if (directorIds?.length)
+      query = query.contains('director_ids', directorIds);
+    if (languages?.length) query = query.in('original_language', languages);
 
     if (sortBy === 'ranked') {
       query = query
         .not('rating', 'is', null)
-        .order('rating', { ascending: false })
-        .order('elo_score', { ascending: false });
-    } else if (sortBy === 'title') {
-      query = query.order('title', {
-        ascending: sortOrder === 'asc',
-        foreignTable: 'movie',
-      });
+        .order('rating', { ascending: sortOrder === 'asc' })
+        .order('elo_score', { ascending: sortOrder === 'asc' });
     } else {
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
     }
@@ -77,47 +69,27 @@ export const watchedMoviesService = {
     const { data, error, count } = await query;
     if (error) throw error;
 
-    const validatedData = z
-      .array(WatchedMovieWithMovieSchema)
-      .parse(data || []);
-
-    return { data: validatedData, count };
+    const validated = z.array(WatchedMovieWithDetailsSchema).parse(data || []);
+    return { data: validated, count };
   },
 
   async getWatchedMovie(
     userId: string,
-    movieId: string,
-    includeMovie = false
-  ): Promise<WatchedMovie | null> {
-    const { data, error } = await supabase
-      .from('watched_movies')
-      .select(includeMovie ? '*, movie:movies(*)' : '*')
-      .eq('user_id', userId)
-      .eq('movie_id', movieId)
-      .single();
-    if (error) {
-      if (error.code === 'PGRST116') return null;
-      throw error;
-    }
-    return WatchedMovieSchema.parse(data);
-  },
-
-  async getWatchedMovieWithMovie(
-    userId: string,
     movieId: string
-  ): Promise<WatchedMovieWithMovie | null> {
+  ): Promise<WatchedMovieWithDetails | null> {
     const { data, error } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
+      .from('watched_movies_with_details')
+      .select('*')
       .eq('user_id', userId)
       .eq('movie_id', movieId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return WatchedMovieWithMovieSchema.parse(data);
+
+    return data ? WatchedMovieWithDetailsSchema.parse(data) : null;
   },
 
   async markAsWatched(
@@ -135,18 +107,14 @@ export const watchedMoviesService = {
           elo_score: DEFAULT_ELO_SCORE,
           updated_at: dateHelpers.getCurrentTimestamp(),
         },
-        {
-          onConflict: 'user_id,movie_id',
-        }
+        { onConflict: 'user_id,movie_id' }
       )
       .select()
       .single();
 
     if (error) throw error;
-
     const parsed = WatchedMovieSchema.parse(data);
 
-    // Log activity
     try {
       await activityService.logActivity({
         user_id: userId,
@@ -187,7 +155,7 @@ export const watchedMoviesService = {
     const { data, error } = await supabase
       .from('watched_movies')
       .update({
-        rating: rating,
+        rating,
         elo_score: eloScore,
         updated_at: dateHelpers.getCurrentTimestamp(),
       })
@@ -197,8 +165,8 @@ export const watchedMoviesService = {
       .single();
 
     if (error) throw error;
-
     const parsed = WatchedMovieSchema.parse(data);
+
     try {
       await activityService.logActivity({
         user_id: userId,
@@ -211,31 +179,18 @@ export const watchedMoviesService = {
     return parsed;
   },
 
-  async getUnratedMovies(userId: string): Promise<WatchedMovieWithMovie[]> {
-    const { data, error } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
-      .eq('user_id', userId)
-      .is('rating', null)
-      .order('watched_date', { ascending: false });
-
-    if (error) throw error;
-    return z.array(WatchedMovieWithMovieSchema).parse(data || []);
-  },
-
   async toggleFavorite(userId: string, movieId: string): Promise<boolean> {
     const { data: current, error: fetchError } = await supabase
       .from('watched_movies')
       .select('favorite')
       .eq('user_id', userId)
       .eq('movie_id', movieId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) throw fetchError;
     if (!current) throw new Error('Movie not found in watched list');
 
     const newFavoriteValue = !current.favorite;
-
     const { error: updateError } = await supabase
       .from('watched_movies')
       .update({
@@ -276,6 +231,7 @@ export const watchedMoviesService = {
 
     if (error) throw error;
     const parsed = WatchedMovieSchema.parse(data);
+
     try {
       await activityService.logActivity({
         user_id: userId,
@@ -286,34 +242,28 @@ export const watchedMoviesService = {
     return parsed;
   },
 
-  async getFavoriteMovies(
-    userId: string,
-    limit = 10
-  ): Promise<WatchedMovieWithMovie[]> {
+  async getFavoriteMovies(userId: string, limit = 10) {
     const { data, error } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
+      .from('watched_movies_with_details')
+      .select('*')
       .eq('user_id', userId)
       .eq('favorite', true)
-      .order('rating', { ascending: false })
+      .order('watched_date', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    return z.array(WatchedMovieWithMovieSchema).parse(data || []);
+    return z.array(WatchedMovieWithDetailsSchema).parse(data || []);
   },
 
-  async getRecentMovies(
-    userId: string,
-    limit = 10
-  ): Promise<WatchedMovieWithMovie[]> {
+  async getRecentMovies(userId: string, limit = 10) {
     const { data, error } = await supabase
-      .from('watched_movies')
-      .select('*, movie:movies(*)')
+      .from('watched_movies_with_details')
+      .select('*')
       .eq('user_id', userId)
       .order('watched_date', { ascending: false })
       .limit(limit);
 
     if (error) throw error;
-    return z.array(WatchedMovieWithMovieSchema).parse(data || []);
+    return z.array(WatchedMovieWithDetailsSchema).parse(data || []);
   },
 };

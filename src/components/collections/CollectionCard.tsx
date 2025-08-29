@@ -1,5 +1,3 @@
-// audited: 12/08/2025
-
 import { Card } from '../common/Card';
 import type { CollectionPreview } from '@/schemas/collection-combined.schema';
 import { ChartBar } from 'lucide-react';
@@ -32,9 +30,9 @@ const CollectionCard = ({
           <MovieCollectionPreview
             collectionTitle={collection.name}
             movies={collection.collection_items.map((item) => ({
-              id: item.movie.id.toString(),
-              poster_path: item.movie.poster_path || '',
-              title: item.movie.title,
+              id: item.movie_uuid || '',
+              poster_path: item.poster_path || '',
+              title: item.title || '',
               size: previewSize,
             }))}
             onCollectionClick={handleClick}

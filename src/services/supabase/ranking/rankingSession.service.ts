@@ -9,6 +9,7 @@ import {
   type RankingList,
 } from '@/schemas/ranking-list.schema';
 import { RankingItemWithMovieSchema } from '@/schemas/ranking-item.schema';
+import { applyMovieFilters } from '@/utils/helpers/applyMovieFilters';
 
 const DEFAULT_ELO_RATING = 1200;
 
@@ -32,6 +33,7 @@ export const rankingSessionService = {
         elo_handling: parsedConfig.elo_handling,
         battle_limit_type: parsedConfig.battle_limit_type,
         battle_limit: parsedConfig.battle_limit,
+        config: parsedConfig,
       })
       .select('*')
       .single();
@@ -40,15 +42,20 @@ export const rankingSessionService = {
     const session = RankingListSchema.parse(created);
 
     let movieIds: string[] = [];
+
     if (parsedConfig.movieSelection === 'selection' && parsedConfig.movieIds) {
       movieIds = parsedConfig.movieIds;
     } else {
-      const { data: watched, error: watchedError } = await supabase
+      let query = supabase
         .from('watched_movies')
-        .select('movie_id')
+        .select('movie_id, movie:movies(*)')
         .eq('user_id', userId);
 
+      query = applyMovieFilters(query, parsedConfig.filters);
+
+      const { data: watched, error: watchedError } = await query;
       if (watchedError) throw watchedError;
+
       movieIds = watched?.map((m) => m.movie_id!).filter(Boolean) || [];
     }
 
@@ -58,9 +65,11 @@ export const rankingSessionService = {
         movie_id: movieId,
         elo_score: DEFAULT_ELO_RATING,
       }));
+
       const { error: seedError } = await supabase
         .from('ranking_list_items')
         .insert(rankingItems);
+
       if (seedError) throw seedError;
     }
 

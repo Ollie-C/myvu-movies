@@ -1,4 +1,3 @@
-// AUDITED 06/08/2025
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 // Icons
@@ -11,7 +10,7 @@ import {
   useDeleteCollection,
   useRemoveMovieFromCollection,
 } from '@/utils/hooks/supabase/mutations/useCollectionMutations';
-import { useCollection } from '@/utils/hooks/supabase/queries/useCollections';
+import { useCollection } from '@/utils/hooks/supabase/useCollections';
 
 // Components
 import { Button } from '@/components/common/Button';
@@ -34,6 +33,8 @@ const CollectionDetails = () => {
     error,
   } = useCollection(collectionId || undefined);
 
+  console.log(collection);
+
   const updateCollectionMutation = useUpdateCollection(collectionId!);
   const deleteCollectionMutation = useDeleteCollection(collectionId!);
   const removeMovieMutation = useRemoveMovieFromCollection();
@@ -43,7 +44,7 @@ const CollectionDetails = () => {
     setShowDeleteConfirm(false);
   };
 
-  const handleRemoveMovie = async (movieId: number) => {
+  const handleRemoveMovie = async (movieId: string) => {
     await removeMovieMutation.mutateAsync({
       collectionId: collectionId!,
       movieId,
@@ -227,11 +228,11 @@ const CollectionDetails = () => {
               {collection.collection_items
                 .sort((a, b) => (a.position || 0) - (b.position || 0))
                 .map((item) => (
-                  <div key={item.id} className='relative group'>
+                  <div key={item.collection_item_id} className='relative group'>
                     {/* Remove from collction button */}
                     {isOwner && (
                       <button
-                        onClick={() => handleRemoveMovie(item.movie.id)}
+                        onClick={() => handleRemoveMovie(item.movie_uuid || '')}
                         className='absolute -top-2 -right-2 z-20 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
                         title='Remove from collection'>
                         <X className='w-3 h-3' />
@@ -245,28 +246,7 @@ const CollectionDetails = () => {
                       </div>
                     )}
 
-                    {/* Movie Card - Convert collection item to UserMovie format */}
-                    <MovieCard
-                      userMovie={{
-                        id: item.id,
-                        user_id: collection.user_id,
-                        movie_id: item.movie.id,
-                        rating: null,
-                        notes: null,
-                        favorite: false,
-                        elo_score: null,
-                        watched_date: item.added_at || new Date().toISOString(),
-                        created_at: item.added_at,
-                        updated_at: item.added_at,
-                        movie: {
-                          ...item.movie,
-                          original_language: null,
-                          original_title: null,
-                          popularity: null,
-                        },
-                      }}
-                      isWatchlistView={false}
-                    />
+                    <MovieCard userMovie={item} isWatchlistView={false} />
                   </div>
                 ))}
             </div>

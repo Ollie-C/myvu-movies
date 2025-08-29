@@ -6,7 +6,7 @@ import { SearchResults } from '@/components/features/search/SearchResults';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { userService } from '@/services/supabase/user.service';
-import { useSearch } from '@/utils/hooks/useSearch';
+import { useSearch } from '@/utils/hooks/supabase/useSearch';
 
 const Header = () => {
   const { user } = useAuth();
