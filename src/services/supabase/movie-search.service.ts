@@ -2,9 +2,10 @@ import { supabase } from '@/lib/supabase';
 import { tmdb } from '@/lib/api/tmdb';
 
 export interface MovieSearchResult {
-  id: number;
+  movie_uuid: string | null;
+  tmdb_id: number;
   title: string;
-  original_title: string;
+  original_title: string | null;
   overview: string | null;
   poster_path: string | null;
   release_date: string | null;
@@ -17,9 +18,10 @@ export interface MovieSearchResult {
 }
 
 export interface LocalMovieSearchResult {
-  id: number;
+  movie_uuid: string;
+  tmdb_id: number;
   title: string;
-  original_title: string;
+  original_title: string | null;
   overview: string | null;
   poster_path: string | null;
   release_date: string | null;
@@ -31,9 +33,6 @@ export interface LocalMovieSearchResult {
 }
 
 export const movieSearchService = {
-  /**
-   * Main search function that orchestrates local and TMDB search
-   */
   async searchMovies(
     query: string,
     userId?: string
@@ -41,10 +40,8 @@ export const movieSearchService = {
     if (!query.trim()) return [];
 
     try {
-      // First, search local database
       const localResults = await this.searchLocalMovies(query, userId);
 
-      // If we have enough local results, return them
       if (localResults.length >= 5) {
         return localResults.map((movie) => ({
           ...movie,
@@ -52,14 +49,12 @@ export const movieSearchService = {
         }));
       }
 
-      // If local results are sparse, search TMDB and combine
       const tmdbResults = await this.searchTMDB(query);
       const combinedResults = this.combineResults(localResults, tmdbResults);
 
       return combinedResults;
     } catch (error) {
       console.error('Search error:', error);
-      // Fallback to TMDB only if local search fails
       try {
         console.log('Falling back to TMDB search due to local search error');
         const tmdbResults = await this.searchTMDB(query);
@@ -74,21 +69,11 @@ export const movieSearchService = {
     }
   },
 
-  /**
-   * Search local movies using PostgreSQL full-text search
-   */
   async searchLocalMovies(
     query: string,
     userId?: string
   ): Promise<LocalMovieSearchResult[]> {
     try {
-      console.log(
-        'Searching local movies with query:',
-        query,
-        'userId:',
-        userId
-      );
-
       const { data, error } = await supabase.rpc('search_local_movies', {
         search_query: query,
         user_id_param: userId || null,
@@ -99,30 +84,40 @@ export const movieSearchService = {
         return [];
       }
 
-      console.log('Local search results:', data);
-      return data || [];
+      return (data || []).map((row: any) => ({
+        movie_uuid: row.movie_uuid,
+        tmdb_id: row.tmdb_id,
+        title: row.title,
+        original_title: row.original_title,
+        overview: row.overview,
+        poster_path: row.poster_path,
+        release_date: row.release_date,
+        vote_average: row.vote_average,
+        genres: row.genres,
+        is_watched: row.is_watched,
+        is_in_watchlist: row.is_in_watchlist,
+        relevance_score: row.relevance_score,
+      }));
     } catch (error) {
       console.error('Local search RPC error:', error);
       return [];
     }
   },
 
-  /**
-   * Search TMDB API
-   */
   async searchTMDB(query: string): Promise<MovieSearchResult[]> {
     try {
       const response = await tmdb.searchMovies(query);
 
       return response.results.map((movie) => ({
-        id: movie.id,
+        movie_uuid: null,
+        tmdb_id: movie.id,
         title: movie.title,
         original_title: movie.original_title,
         overview: movie.overview,
         poster_path: movie.poster_path,
         release_date: movie.release_date,
         vote_average: movie.vote_average,
-        genres: null, // TMDB doesn't provide genres in search results
+        genres: null,
         source: 'tmdb' as const,
         is_watched: false,
         is_in_watchlist: false,
@@ -134,43 +129,33 @@ export const movieSearchService = {
     }
   },
 
-  /**
-   * Combine and deduplicate local and TMDB results
-   */
   combineResults(
     localResults: LocalMovieSearchResult[],
     tmdbResults: MovieSearchResult[]
   ): MovieSearchResult[] {
     const combined: MovieSearchResult[] = [];
-    const seenIds = new Set<number>();
+    const seenTmdbIds = new Set<number>();
 
-    // Add local results first (they have higher priority)
     for (const localMovie of localResults) {
       combined.push({
         ...localMovie,
         source: 'local' as const,
       });
-      seenIds.add(localMovie.id);
+      seenTmdbIds.add(localMovie.tmdb_id);
     }
 
-    // Add TMDB results that aren't already in local results
     for (const tmdbMovie of tmdbResults) {
-      if (!seenIds.has(tmdbMovie.id)) {
+      if (!seenTmdbIds.has(tmdbMovie.tmdb_id)) {
         combined.push({
           ...tmdbMovie,
           source: 'tmdb' as const,
         });
-        seenIds.add(tmdbMovie.id);
+        seenTmdbIds.add(tmdbMovie.tmdb_id);
       }
     }
 
-    // Sort by relevance (local results first, then by score)
-    return combined.sort((a, b) => {
-      if (a.source === 'local' && b.source === 'tmdb') return -1;
-      if (a.source === 'tmdb' && b.source === 'local') return 1;
-
-      // Within same source, sort by relevance score
-      return (b.relevance_score || 0) - (a.relevance_score || 0);
-    });
+    return combined.sort(
+      (a, b) => (b.relevance_score || 0) - (a.relevance_score || 0)
+    );
   },
 };

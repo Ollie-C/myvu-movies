@@ -2,31 +2,40 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rankingSessionService } from '@/services/supabase/ranking/rankingSession.service';
 import { useAuth } from '@/context/AuthContext';
 import type { RankingList } from '@/schemas/ranking-list.schema';
+import type { BaseMovieDetails } from '@/types/userMovie';
+
+export const rankingKeys = {
+  all: ['rankingSessions'] as const,
+  session: (id: string) => [...rankingKeys.all, 'session', id] as const,
+  movies: (id: string) => [...rankingKeys.all, 'movies', id] as const,
+  progress: (id: string) => [...rankingKeys.all, 'progress', id] as const,
+  leaderboard: (id: string) => [...rankingKeys.all, 'leaderboard', id] as const,
+};
 
 export const useRankingSession = (sessionId: string) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const session = useQuery({
-    queryKey: ['rankingSession', sessionId],
+    queryKey: rankingKeys.session(sessionId),
     queryFn: () => rankingSessionService.get(sessionId),
     enabled: !!sessionId,
   });
 
-  const movies = useQuery({
-    queryKey: ['rankingSessionMovies', sessionId],
+  const movies = useQuery<BaseMovieDetails[]>({
+    queryKey: rankingKeys.movies(sessionId),
     queryFn: () => rankingSessionService.getMovies(sessionId),
     enabled: !!sessionId,
   });
 
   const progress = useQuery({
-    queryKey: ['rankingSessionProgress', sessionId],
+    queryKey: rankingKeys.progress(sessionId),
     queryFn: () => rankingSessionService.getProgress(sessionId),
     enabled: !!sessionId,
   });
 
   const leaderboard = useQuery({
-    queryKey: ['rankingSessionLeaderboard', sessionId],
+    queryKey: rankingKeys.leaderboard(sessionId),
     queryFn: () => rankingSessionService.getLeaderboard(sessionId),
     enabled: !!sessionId,
   });
@@ -36,17 +45,16 @@ export const useRankingSession = (sessionId: string) => {
       rankingSessionService.create(user?.id ?? '', args),
     onSuccess: (newSession) => {
       queryClient.invalidateQueries({
-        queryKey: ['rankingSession', newSession.id],
+        queryKey: rankingKeys.session(newSession.id),
       });
+      queryClient.invalidateQueries({ queryKey: rankingKeys.all });
     },
   });
 
   const convertToCollection = useMutation({
     mutationFn: () => rankingSessionService.convertToCollection(sessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ['collections'],
-      });
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
     },
   });
 
@@ -54,23 +62,23 @@ export const useRankingSession = (sessionId: string) => {
     mutationFn: () => rankingSessionService.softDelete(sessionId),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['rankingSession', sessionId],
+        queryKey: rankingKeys.session(sessionId),
       });
-      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+      queryClient.invalidateQueries({ queryKey: rankingKeys.all });
     },
   });
 
   const pause = useMutation({
     mutationFn: () => rankingSessionService.pause(sessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+      queryClient.invalidateQueries({ queryKey: rankingKeys.all });
     },
   });
 
   const resume = useMutation({
     mutationFn: () => rankingSessionService.resume(sessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+      queryClient.invalidateQueries({ queryKey: rankingKeys.all });
     },
   });
 
@@ -79,9 +87,9 @@ export const useRankingSession = (sessionId: string) => {
       rankingSessionService.update(sessionId, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ['rankingSession', sessionId],
+        queryKey: rankingKeys.session(sessionId),
       });
-      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+      queryClient.invalidateQueries({ queryKey: rankingKeys.all });
     },
   });
 

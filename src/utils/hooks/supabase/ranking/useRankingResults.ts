@@ -3,18 +3,19 @@ import { rankingSessionService } from '@/services/supabase/ranking/rankingSessio
 import { versusService } from '@/services/supabase/ranking/methods/versus.service';
 
 import type { RankingList } from '@/schemas/ranking-list.schema';
-import type { RankingItemWithMovie } from '@/schemas/ranking-item.schema';
+import type { RankingItemWithDetails } from '@/schemas/ranking-item.schema';
 import type { RankingBattleWithTitles } from '@/schemas/ranking-battle.schema';
+import { rankingKeys } from './useRankingSession';
 
 export function useRankingResults(sessionId: string) {
   const session = useQuery<RankingList>({
-    queryKey: ['rankingSession', sessionId],
+    queryKey: rankingKeys.session(sessionId),
     queryFn: () => rankingSessionService.get(sessionId),
     enabled: !!sessionId,
   });
 
-  const leaderboard = useQuery<RankingItemWithMovie[]>({
-    queryKey: ['rankingSessionLeaderboard', sessionId],
+  const leaderboard = useQuery<RankingItemWithDetails[]>({
+    queryKey: rankingKeys.leaderboard(sessionId),
     queryFn: () => rankingSessionService.getLeaderboard(sessionId),
     enabled: !!sessionId,
   });

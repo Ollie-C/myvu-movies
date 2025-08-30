@@ -25,15 +25,6 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [isFavoriteModalOpen, setIsFavoriteModalOpen] = useState(false);
 
-  // Log dashboard access
-  // useEffect(() => {
-  //   console.log('🏠 [Dashboard] Page loaded:', {
-  //     userId: user?.id,
-  //     email: user?.email,
-  //     pathname: window.location.pathname,
-  //   });
-  // }, [user]);
-
   const { data: userStats, isLoading: userStatsLoading } = useUserStats();
   const { data: favoriteMovies } = useFavoriteMovies(10);
   const { data: recentMovies } = useRecentMovies(5);
@@ -41,13 +32,6 @@ const Dashboard = () => {
   const { data: collections = [], isLoading: collectionsLoading } =
     useCollectionsWithPreviews(3);
   const { data: watchlistStats } = useWatchlistStats();
-
-  // console.log('🏠 [Dashboard] Data loaded:', {
-  //   userStats,
-  //   favoriteMoviesCount: favoriteMovies?.length,
-  //   recentMoviesCount: recentMovies?.length,
-  //   collectionsCount: collections?.length,
-  // });
 
   const formatWatchedDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -153,7 +137,7 @@ const Dashboard = () => {
               favoriteMovies
                 .slice(0, 10)
                 .map((item) => (
-                  <MovieCard key={item.movie.id} userMovie={item} />
+                  <MovieCard key={item.movie_uuid} userMovie={item} />
                 ))
             ) : (
               <div className='col-span-full text-center py-8 text-gray-500'>
@@ -222,8 +206,8 @@ const Dashboard = () => {
           <div className='bg-white border border-gray-200 rounded-lg divide-y divide-gray-100'>
             {activities.length > 0 ? (
               activities.map((act) => {
-                const link = act.movie_id
-                  ? `/movies/${act.movie_id}`
+                const link = act.movie?.tmdb_id
+                  ? `/movies/${act.movie.tmdb_id}`
                   : act.collection_id
                   ? `/collections/${act.collection_id}`
                   : '#';
@@ -427,7 +411,7 @@ const Dashboard = () => {
                 {userStatsLoading
                   ? '...'
                   : userStats.averageRating?.toFixed(1) || '0'}
-                /5
+                /10
               </p>
               {userStats.favoriteGenre && (
                 <p className='text-sm text-gray-600 mt-1'>

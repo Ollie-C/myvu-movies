@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import type { MovieSearchResult } from '@/services/supabase/movie-search.service';
-import type { TMDBMovie } from '@/schemas/movie.schema';
 import {
   useToggleWatched,
   useToggleWatchlist,
-} from '@/utils/hooks/supabase/mutations/useWatchedMovieMutations';
+} from '@/utils/hooks/supabase/useWatchedMovieMutations';
 import { useMovieStore } from '@/stores/useMovieStore';
 import { MovieSearchItem } from './MovieSearchItem';
 
@@ -21,7 +20,6 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
   const toggleWatchedMutation = useToggleWatched();
   const toggleWatchlistMutation = useToggleWatchlist();
 
-  // Get store actions
   const { setOptimisticUpdate, clearOptimisticUpdate, setMovieState } =
     useMovieStore();
 
@@ -29,56 +27,31 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
     movie: MovieSearchResult,
     isWatched: boolean
   ) => {
-    setLoadingStates((prev) => ({ ...prev, [movie.id]: 'watched' }));
+    const storeKey = movie.tmdb_id;
 
-    // Set optimistic update immediately for instant UI feedback
-    setOptimisticUpdate(movie.id, { isWatched: !isWatched });
+    setLoadingStates((prev) => ({ ...prev, [storeKey]: 'watched' }));
+    setOptimisticUpdate(storeKey, { isWatched: !isWatched });
 
     try {
-      if (movie.source === 'tmdb') {
-        const tmdbMovie: TMDBMovie = {
-          id: movie.id,
-          title: movie.title,
-          original_title: movie.original_title,
-          overview: movie.overview || '',
-          poster_path: movie.poster_path,
-          release_date: movie.release_date || '',
-          vote_average: movie.vote_average || 0,
-          vote_count: 0,
-          popularity: 0,
-          original_language: 'en',
-          backdrop_path: null,
-          genre_ids: [],
-          genres: undefined,
-          runtime: undefined,
-          tagline: undefined,
-          credits: undefined,
-        };
-        await toggleWatchedMutation.mutateAsync({
-          movie: tmdbMovie,
-          isWatched,
-        });
-      } else {
-        const movieData = {
-          movieId: movie.id,
-          tmdbId: movie.id,
-          ...movie,
-        };
-        await toggleWatchedMutation.mutateAsync({
-          movie: movieData,
-          isWatched,
-        });
-      }
+      await toggleWatchedMutation.mutateAsync({
+        movie_uuid: movie.movie_uuid,
+        tmdb_id: movie.tmdb_id,
+        isWatched,
+        title: movie.title,
+        original_title: movie.original_title,
+        overview: movie.overview,
+        poster_path: movie.poster_path,
+        release_date: movie.release_date,
+        vote_average: movie.vote_average,
+      });
 
-      // On success, update the permanent state
-      setMovieState(movie.id, { isWatched: !isWatched });
-      clearOptimisticUpdate(movie.id);
+      setMovieState(storeKey, { isWatched: !isWatched });
+      clearOptimisticUpdate(storeKey);
     } catch (error) {
-      // On error, clear optimistic update (reverts to original state)
-      clearOptimisticUpdate(movie.id);
+      clearOptimisticUpdate(storeKey);
       console.error('Failed to toggle watched status:', error);
     } finally {
-      setLoadingStates((prev) => ({ ...prev, [movie.id]: '' }));
+      setLoadingStates((prev) => ({ ...prev, [storeKey]: '' }));
     }
   };
 
@@ -86,56 +59,31 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
     movie: MovieSearchResult,
     isInWatchlist: boolean
   ) => {
-    setLoadingStates((prev) => ({ ...prev, [movie.id]: 'watchlist' }));
+    const storeKey = movie.tmdb_id;
 
-    // Set optimistic update
-    setOptimisticUpdate(movie.id, { isInWatchlist: !isInWatchlist });
+    setLoadingStates((prev) => ({ ...prev, [storeKey]: 'watchlist' }));
+    setOptimisticUpdate(storeKey, { isInWatchlist: !isInWatchlist });
 
     try {
-      if (movie.source === 'tmdb') {
-        const tmdbMovie: TMDBMovie = {
-          id: movie.id,
-          title: movie.title,
-          original_title: movie.original_title,
-          overview: movie.overview || '',
-          poster_path: movie.poster_path,
-          release_date: movie.release_date || '',
-          vote_average: movie.vote_average || 0,
-          vote_count: 0,
-          popularity: 0,
-          original_language: 'en',
-          backdrop_path: null,
-          genre_ids: [],
-          genres: undefined,
-          runtime: undefined,
-          tagline: undefined,
-          credits: undefined,
-        };
-        await toggleWatchlistMutation.mutateAsync({
-          movie: tmdbMovie,
-          isInWatchlist,
-        });
-      } else {
-        const movieData = {
-          movieId: movie.id,
-          tmdbId: movie.id,
-          ...movie,
-        };
-        await toggleWatchlistMutation.mutateAsync({
-          movie: movieData,
-          isInWatchlist,
-        });
-      }
+      await toggleWatchlistMutation.mutateAsync({
+        movie_uuid: movie.movie_uuid,
+        tmdb_id: movie.tmdb_id,
+        title: movie.title,
+        original_title: movie.original_title,
+        overview: movie.overview,
+        poster_path: movie.poster_path,
+        release_date: movie.release_date,
+        vote_average: movie.vote_average,
+        isInWatchlist,
+      });
 
-      // Update permanent state
-      setMovieState(movie.id, { isInWatchlist: !isInWatchlist });
-      clearOptimisticUpdate(movie.id);
+      setMovieState(storeKey, { isInWatchlist: !isInWatchlist });
+      clearOptimisticUpdate(storeKey);
     } catch (error) {
-      // Revert on error
-      clearOptimisticUpdate(movie.id);
+      clearOptimisticUpdate(storeKey);
       console.error('Failed to toggle watchlist status:', error);
     } finally {
-      setLoadingStates((prev) => ({ ...prev, [movie.id]: '' }));
+      setLoadingStates((prev) => ({ ...prev, [storeKey]: '' }));
     }
   };
 
@@ -150,15 +98,14 @@ export function SearchResults({ results, onClose }: SearchResultsProps) {
     <div className='absolute top-full mt-2 w-full bg-surface rounded-lg shadow-neo-lg border border-border max-h-[600px] overflow-y-auto scrollbar-thin z-20'>
       <div className='p-2'>
         {results.map((movie) => {
-          // Use a separate component to ensure proper re-renders
           return (
             <MovieSearchItem
-              key={movie.id}
+              key={movie.tmdb_id}
               movie={movie}
               onToggleWatched={handleToggleWatched}
               onToggleWatchlist={handleToggleWatchlist}
-              isLoadingWatched={loadingStates[movie.id] === 'watched'}
-              isLoadingWatchlist={loadingStates[movie.id] === 'watchlist'}
+              isLoadingWatched={loadingStates[movie.tmdb_id] === 'watched'}
+              isLoadingWatchlist={loadingStates[movie.tmdb_id] === 'watchlist'}
             />
           );
         })}

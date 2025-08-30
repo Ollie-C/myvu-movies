@@ -9,7 +9,7 @@ import {
 import {
   useCreateCollection,
   useToggleMovieInCollection,
-} from '@/utils/hooks/supabase/mutations/useCollectionMutations';
+} from '@/utils/hooks/supabase/useCollectionMutations';
 import type { CollectionInsert } from '@/schemas/collection.schema';
 import type { OverlayMovie } from '@/components/movie/MovieCard/Overlay';
 
@@ -59,7 +59,7 @@ export function CollectionDropdown({
       setLoadingCollectionId(collectionId);
       await toggleMovieInCollection.mutateAsync({
         collectionId,
-        movieId: movieUuid,
+        movie_uuid: movieUuid,
       });
     } catch (error) {
       console.error('Error toggling collection:', error);

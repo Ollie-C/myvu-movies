@@ -94,7 +94,7 @@ export const watchedMoviesService = {
 
   async markAsWatched(
     userId: string,
-    movieId: string,
+    movie_uuid: string,
     watchedDate?: string
   ): Promise<WatchedMovie> {
     const { data, error } = await supabase
@@ -102,7 +102,7 @@ export const watchedMoviesService = {
       .upsert(
         {
           user_id: userId,
-          movie_id: movieId,
+          movie_id: movie_uuid,
           watched_date: watchedDate || dateHelpers.getCurrentDate(),
           elo_score: DEFAULT_ELO_SCORE,
           updated_at: dateHelpers.getCurrentTimestamp(),
@@ -119,7 +119,7 @@ export const watchedMoviesService = {
       await activityService.logActivity({
         user_id: userId,
         type: 'watched_added',
-        movie_id: movieId,
+        movie_id: movie_uuid,
         metadata: { watched_date: parsed.watched_date },
       });
     } catch (_) {}
@@ -127,12 +127,12 @@ export const watchedMoviesService = {
     return parsed;
   },
 
-  async removeWatched(userId: string, movieId: string): Promise<void> {
+  async removeWatched(userId: string, movie_uuid: string): Promise<void> {
     const { error } = await supabase
       .from('watched_movies')
       .delete()
       .eq('user_id', userId)
-      .eq('movie_id', movieId);
+      .eq('movie_id', movie_uuid);
 
     if (error) throw error;
 
@@ -140,7 +140,7 @@ export const watchedMoviesService = {
       await activityService.logActivity({
         user_id: userId,
         type: 'watched_removed',
-        movie_id: movieId,
+        movie_id: movie_uuid,
       });
     } catch (_) {}
   },

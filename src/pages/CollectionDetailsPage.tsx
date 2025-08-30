@@ -9,7 +9,7 @@ import {
   useUpdateCollection,
   useDeleteCollection,
   useRemoveMovieFromCollection,
-} from '@/utils/hooks/supabase/mutations/useCollectionMutations';
+} from '@/utils/hooks/supabase/useCollectionMutations';
 import { useCollection } from '@/utils/hooks/supabase/useCollections';
 
 // Components

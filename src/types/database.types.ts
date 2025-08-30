@@ -1317,15 +1317,16 @@ export type Database = {
         Args: { search_query: string; user_id_param?: string }
         Returns: {
           genres: string[]
-          id: number
           is_in_watchlist: boolean
           is_watched: boolean
+          movie_uuid: string
           original_title: string
           overview: string
           poster_path: string
           release_date: string
           relevance_score: number
           title: string
+          tmdb_id: number
           vote_average: number
         }[]
       }

@@ -1,35 +1,17 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star } from 'lucide-react';
+
 import MoviePoster from '@/components/movie/MoviePoster';
 import { Button } from '@/components/common/Button';
 import { Textarea } from '@/components/common/Textarea';
 
-// We'll define this interface to match what MovieDetails page provides
-interface MovieDetailsData {
-  movieId: number;
-  tmdbId: number;
-  title: string;
-  original_title: string;
-  original_language: string;
-  overview: string;
-  release_date: string;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  popularity: number;
-  vote_average: number;
-  vote_count: number;
-  genre_ids: number[];
-  genres: Array<{ id: number; name: string }> | null;
-  runtime?: number;
-  tagline?: string;
-  credits?: any;
-}
+import type { BaseMovieDetails } from '@/types/userMovie';
 
 interface SimpleRatingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  movie: MovieDetailsData;
+  movie: BaseMovieDetails;
   currentRating: number | null;
   onRateMovie: (rating: number, notes?: string) => Promise<void>;
 }
@@ -54,7 +36,6 @@ export default function SimpleRatingModal({
       setRating(0);
       return;
     }
-
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue >= 0 && numValue <= 10) {
       setRating(numValue);
@@ -73,7 +54,6 @@ export default function SimpleRatingModal({
 
   const handleSubmit = async () => {
     if (!rating) return;
-
     setIsSubmitting(true);
     try {
       await onRateMovie(rating, notes || undefined);
@@ -113,30 +93,7 @@ export default function SimpleRatingModal({
               {/* Movie Info */}
               <div className='flex gap-4'>
                 <div className='flex-shrink-0'>
-                  <MoviePoster
-                    movie={{
-                      id: movie.movieId,
-                      tmdb_id: movie.tmdbId,
-                      title: movie.title,
-                      original_title: movie.original_title,
-                      original_language: movie.original_language,
-                      overview: movie.overview,
-                      release_date: movie.release_date,
-                      poster_path: movie.poster_path,
-                      backdrop_path: movie.backdrop_path,
-                      popularity: movie.popularity,
-                      vote_average: movie.vote_average,
-                      vote_count: movie.vote_count,
-                      genres: movie.genres,
-                      runtime: movie.runtime || null,
-                      tagline: movie.tagline || null,
-                      credits: movie.credits || null,
-                      created_at: null,
-                      updated_at: null,
-                      search_vector: null,
-                    }}
-                    className='w-24 h-36'
-                  />
+                  <MoviePoster movie={movie} className='w-24 h-36' />
                 </div>
                 <div className='flex-1 min-w-0'>
                   <h3 className='text-xl font-bold mb-2 truncate'>
@@ -154,8 +111,8 @@ export default function SimpleRatingModal({
               <div className='space-y-4'>
                 <h4 className='text-lg font-medium'>Your Rating</h4>
 
-                {/* Star Rating */}
                 <div className='flex flex-col sm:flex-row sm:items-center gap-4'>
+                  {/* Star Rating */}
                   <div className='flex items-center gap-1'>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
                       <button
@@ -173,7 +130,7 @@ export default function SimpleRatingModal({
                     ))}
                   </div>
 
-                  {/* Numerical Input */}
+                  {/* Numeric input */}
                   <div className='flex items-center gap-2'>
                     <input
                       type='number'
@@ -191,13 +148,13 @@ export default function SimpleRatingModal({
                 </div>
               </div>
 
-              {/* Notes Section */}
+              {/* Notes */}
               <div className='space-y-2'>
                 <label className='text-sm font-medium'>Notes (optional)</label>
                 <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder='Add your thoughts about this movie...'
+                  placeholder='Add your thoughts…'
                   className='min-h-[80px]'
                 />
               </div>
@@ -214,7 +171,7 @@ export default function SimpleRatingModal({
                   onClick={handleSubmit}
                   disabled={!rating || isSubmitting}
                   className='flex items-center gap-2'>
-                  {isSubmitting ? 'Saving...' : 'Save Rating'}
+                  {isSubmitting ? 'Saving…' : 'Save Rating'}
                 </Button>
               </div>
             </div>

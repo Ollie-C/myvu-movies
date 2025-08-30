@@ -27,7 +27,30 @@ export const movieService = {
       .single();
 
     if (error) throw error;
-    return MovieSchema.parse(data);
+    const movie = MovieSchema.parse(data);
+
+    const { data: genres, error: genreError } = await supabase
+      .from('genres')
+      .upsert(
+        tmdbMovie.genres?.map((g) => ({
+          tmdb_id: g.id,
+          name: g.name,
+        })),
+        { onConflict: 'tmdb_id' }
+      )
+      .select();
+
+    if (genreError) throw genreError;
+
+    if (genres) {
+      const movieGenreLinks = genres.map((g) => ({
+        movie_id: movie.id,
+        genre_id: g.id,
+      }));
+      await supabase.from('movie_genres').upsert(movieGenreLinks);
+    }
+
+    return movie;
   },
 
   async cacheBatchMovies(tmdbMovies: TMDBMovie[]): Promise<Movie[]> {
@@ -124,31 +147,41 @@ export const movieService = {
     return (data || []).map((row) => MovieSchema.parse(row));
   },
 
-  async getMovieWithDetails(movieId: string): Promise<BaseMovieDetails | null> {
-    const { data, error } = await supabase.rpc('get_movie_with_details', {
-      movie_id_param: movieId,
-    });
+  async getMovieWithDetails(
+    movie_uuid: string
+  ): Promise<BaseMovieDetails | null> {
+    const { data, error } = await supabase
+      .from('movies_with_details')
+      .select('*')
+      .eq('movie_uuid', movie_uuid)
+      .maybeSingle();
+
     if (error) throw error;
     return data ? (data as BaseMovieDetails) : null;
   },
 
   async getMovieWithDetailsByTmdbId(
-    tmdbId: number
+    tmdb_id: number
   ): Promise<BaseMovieDetails | null> {
-    const { data, error } = await supabase.rpc('get_movie_with_details', {
-      tmdb_id_param: tmdbId,
-    });
+    const { data, error } = await supabase
+      .from('movies_with_details')
+      .select('*')
+      .eq('tmdb_id', tmdb_id)
+      .maybeSingle();
+
     if (error) throw error;
     return data ? (data as BaseMovieDetails) : null;
   },
 
   async getMoviesWithDetailsByIds(
-    movieIds: string[]
+    movieUuids: string[]
   ): Promise<BaseMovieDetails[]> {
-    if (!movieIds?.length) return [];
-    const { data, error } = await supabase.rpc('get_movies_with_details', {
-      movie_ids_param: movieIds,
-    });
+    if (!movieUuids?.length) return [];
+    const { data, error } = await supabase
+      .from('movies_with_details')
+      .select('*')
+      .in('movie_uuid', movieUuids);
+
     if (error) throw error;
     return (data || []) as BaseMovieDetails[];
   },
@@ -157,13 +190,14 @@ export const movieService = {
     tmdbIds: number[]
   ): Promise<BaseMovieDetails[]> {
     if (!tmdbIds?.length) return [];
-    const { data, error } = await supabase.rpc('get_movies_with_details', {
-      tmdb_ids_param: tmdbIds,
-    });
+    const { data, error } = await supabase
+      .from('movies_with_details')
+      .select('*')
+      .in('tmdb_id', tmdbIds);
+
     if (error) throw error;
     return (data || []) as BaseMovieDetails[];
   },
-
   async getPopularMovies(limit = 20): Promise<BaseMovieDetails[]> {
     const { data, error } = await supabase
       .from('movies_with_details')

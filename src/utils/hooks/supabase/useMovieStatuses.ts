@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useMovieStore } from '@/stores/useMovieStore';
 
 export interface MovieStatus {
   isWatched: boolean;
@@ -15,6 +16,7 @@ export const movieStatusKeys = {
 
 export const useMovieStatuses = (tmdbIds: number[]) => {
   const { user } = useAuth();
+  const { setMultipleMovieStates } = useMovieStore.getState();
 
   return useQuery<Map<number, MovieStatus>, Error>({
     queryKey: movieStatusKeys.byTmdbIds(tmdbIds),
@@ -31,27 +33,53 @@ export const useMovieStatuses = (tmdbIds: number[]) => {
 
       const { data: watchedData, error: watchedError } = await supabase
         .from('watched_movies_with_details')
-        .select('tmdb_id, movie_uuid')
+        .select('tmdb_id, movie_uuid, favorite, rating')
         .eq('user_id', user.id)
         .in('tmdb_id', tmdbIds);
 
       if (watchedError) throw watchedError;
 
       const watchedMap = new Map(
-        (watchedData || []).map((m) => [m.tmdb_id, m.movie_uuid])
+        (watchedData || []).map((m) => [m.tmdb_id, m])
       );
       const watchlistMap = new Map(
-        (watchlistData || []).map((m) => [m.tmdb_id, m.movie_uuid])
+        (watchlistData || []).map((m) => [m.tmdb_id, m])
       );
 
       const statusMap = new Map<number, MovieStatus>();
+
+      const updates: Array<{
+        id: number;
+        isWatched?: boolean;
+        isInWatchlist?: boolean;
+        isFavorite?: boolean;
+        rating?: number;
+        movie_uuid?: string | null;
+      }> = [];
+
       tmdbIds.forEach((tmdbId) => {
-        statusMap.set(tmdbId, {
-          isWatched: watchedMap.has(tmdbId),
-          isInWatchlist: watchlistMap.has(tmdbId),
-          movieId: watchedMap.get(tmdbId) || watchlistMap.get(tmdbId) || null,
+        const watched = watchedMap.get(tmdbId);
+        const inWatchlist = watchlistMap.get(tmdbId);
+
+        const status: MovieStatus = {
+          isWatched: !!watched,
+          isInWatchlist: !!inWatchlist,
+          movieId: watched?.movie_uuid || inWatchlist?.movie_uuid || null,
+        };
+
+        statusMap.set(tmdbId, status);
+
+        updates.push({
+          id: tmdbId,
+          isWatched: !!watched,
+          isInWatchlist: !!inWatchlist,
+          isFavorite: watched?.favorite ?? undefined,
+          rating: watched?.rating ?? undefined,
+          movie_uuid: watched?.movie_uuid || inWatchlist?.movie_uuid || null,
         });
       });
+
+      setMultipleMovieStates(updates);
 
       return statusMap;
     },

@@ -7,6 +7,7 @@ interface MovieState {
   isInWatchlist: boolean;
   isFavorite: boolean;
   rating?: number;
+  movie_uuid?: string | null;
 }
 
 interface MovieStore {
@@ -50,6 +51,7 @@ const defaultMovieState: MovieState = {
   isInWatchlist: false,
   isFavorite: false,
   rating: undefined,
+  movie_uuid: null,
 };
 
 export const useMovieStore = create<MovieStore>()(
@@ -115,20 +117,30 @@ export const useMovieStore = create<MovieStore>()(
             'clearAllOptimisticUpdates'
           ),
 
-        hydrateFromSearchResults: (results) =>
+        hydrateFromSearchResults: (
+          results: Array<{
+            tmdb_id: number;
+            is_watched?: boolean;
+            is_in_watchlist?: boolean;
+            is_favorite?: boolean;
+            rating?: number;
+            movie_uuid?: string | null;
+          }>
+        ) =>
           set(
             (store) => {
               const newMap = new Map(store.movieStates);
               results.forEach((movie) => {
-                const current = newMap.get(movie.id) || {
+                const current = newMap.get(movie.tmdb_id) || {
                   ...defaultMovieState,
                 };
-                newMap.set(movie.id, {
+                newMap.set(movie.tmdb_id, {
                   ...current,
                   isWatched: movie.is_watched ?? current.isWatched,
                   isInWatchlist: movie.is_in_watchlist ?? current.isInWatchlist,
                   isFavorite: movie.is_favorite ?? current.isFavorite,
                   rating: movie.rating ?? current.rating,
+                  movie_uuid: movie.movie_uuid ?? current.movie_uuid,
                 });
               });
               return { movieStates: newMap };
@@ -137,25 +149,58 @@ export const useMovieStore = create<MovieStore>()(
             'hydrateFromSearchResults'
           ),
 
-        hydrateFromWatchedMovies: (movies) =>
+        hydrateFromWatchedMovies: (
+          movies: Array<{
+            tmdb_id: number;
+            movie_uuid: string | null;
+            favorite: boolean | null;
+            rating: number | null;
+          }>
+        ) =>
           set(
             (store) => {
               const newMap = new Map(store.movieStates);
               movies.forEach((movie) => {
-                const current = newMap.get(movie.movie_id) || {
+                const current = newMap.get(movie.tmdb_id) || {
                   ...defaultMovieState,
                 };
-                newMap.set(movie.movie_id, {
+                newMap.set(movie.tmdb_id, {
                   ...current,
                   isWatched: true,
-                  isFavorite: movie.is_favorite,
-                  rating: movie.rating ?? undefined,
+                  isFavorite: movie.favorite ?? current.isFavorite,
+                  rating: movie.rating ?? current.rating,
+                  movie_uuid: movie.movie_uuid ?? current.movie_uuid,
                 });
               });
               return { movieStates: newMap };
             },
             false,
             'hydrateFromWatchedMovies'
+          ),
+
+        hydrateFromWatchlistMovies: (
+          movies: Array<{
+            tmdb_id: number;
+            movie_uuid: string | null;
+          }>
+        ) =>
+          set(
+            (store) => {
+              const newMap = new Map(store.movieStates);
+              movies.forEach((movie) => {
+                const current = newMap.get(movie.tmdb_id) || {
+                  ...defaultMovieState,
+                };
+                newMap.set(movie.tmdb_id, {
+                  ...current,
+                  isInWatchlist: true,
+                  movie_uuid: movie.movie_uuid ?? current.movie_uuid,
+                });
+              });
+              return { movieStates: newMap };
+            },
+            false,
+            'hydrateFromWatchlistMovies'
           ),
 
         getMovieState: (movieId) => {

@@ -33,7 +33,7 @@ import {
   useToggleWatched,
   useToggleWatchlist,
   useUpdateRating,
-} from '@/utils/hooks/supabase/mutations/useWatchedMovieMutations';
+} from '@/utils/hooks/supabase/useWatchedMovieMutations';
 
 const MovieDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,17 +43,13 @@ const MovieDetails = () => {
   const [showCollectionDropdown, setShowCollectionDropdown] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
 
-  // Fetch movie details (from TMDB / cached movies table)
   const { data: movie, isLoading } = useMovieDetails(id);
-  // Fetch user-specific status (watched / watchlist / rating)
-  const { data: userStatus } = useUserMovieStatus(movie?.tmdbId);
+  const { data: userStatus } = useUserMovieStatus(movie?.tmdb_id || undefined);
 
-  // Mutations
   const toggleWatched = useToggleWatched();
   const toggleWatchlist = useToggleWatchlist();
   const updateRating = useUpdateRating();
 
-  // Derived state
   const isWatched = !!userStatus?.watchedMovie;
   const isInWatchlist = !!userStatus?.watchlistItem;
   const userRating = userStatus?.watchedMovie?.rating || null;
@@ -61,28 +57,31 @@ const MovieDetails = () => {
   const handleToggleWatched = () => {
     if (!movie) return;
     toggleWatched.mutate({
-      movie_id: movie.movieId,
-      tmdb_id: movie.tmdbId,
+      movie_uuid: movie.movie_uuid || '',
+      tmdb_id: movie.tmdb_id || 0,
       isWatched,
+      title: movie.title || '',
     });
   };
 
   const handleToggleWatchlist = () => {
     if (!movie) return;
     toggleWatchlist.mutate({
-      movie_id: movie.movieId,
-      tmdb_id: movie.tmdbId,
+      movie_uuid: movie.movie_uuid || '',
+      tmdb_id: movie.tmdb_id || 0,
       isInWatchlist,
+      title: movie.title || '',
     });
   };
 
   const handleRateMovie = async (rating: number) => {
     if (!movie) return;
     updateRating.mutate({
-      movie_id: movie.movieId,
-      tmdb_id: movie.tmdbId,
+      movie_uuid: movie.movie_uuid || '',
+      tmdb_id: movie.tmdb_id || 0,
       rating,
       isWatched,
+      title: movie.title || '',
     });
   };
 
@@ -93,6 +92,8 @@ const MovieDetails = () => {
       </div>
     );
   }
+
+  console.log('Movie:', movie);
 
   if (!movie) {
     return (
@@ -128,18 +129,7 @@ const MovieDetails = () => {
       </Button>
 
       {/* Hero Section */}
-      <MovieHero
-        movie={{
-          title: movie.title,
-          backdrop_path: movie.backdrop_path,
-          release_date: movie.release_date || '',
-          runtime: movie.runtime,
-          genres: [],
-          vote_average: movie.vote_average || 0,
-          overview: movie.overview || '',
-        }}
-        director={undefined}
-      />
+      <MovieHero movie={movie} />
 
       {/* Ratings Display */}
       {(movie.vote_average || userRating) && (
@@ -225,14 +215,7 @@ const MovieDetails = () => {
       </Card>
 
       {/* Cast */}
-      {/* {movie.credits?.cast && (
-        <MovieCast
-          cast={movie.credits.cast.map((member: any, index: number) => ({
-            ...member,
-            order: index,
-          }))}
-        />
-      )} */}
+      {/* {movie.credits?.cast && <MovieCast cast={movie.credits.cast} />} */}
 
       {/* Collections Dropdown */}
       {showCollectionDropdown && (
@@ -240,13 +223,13 @@ const MovieDetails = () => {
           isOpen={showCollectionDropdown}
           onClose={() => setShowCollectionDropdown(false)}
           movie={{
-            movie_id: movie.movieId,
-            tmdb_id: movie.tmdbId,
+            movie_id: movie.movie_id,
+            tmdb_id: movie.tmdb_id,
             title: movie.title,
             poster_path: movie.poster_path,
             release_date: movie.release_date,
-            genre_names: movie.genres?.map((g: any) => g.name) || [],
-            director_names: [],
+            genre_names: movie.genre_names ?? [],
+            director_names: movie.director_names ?? [],
           }}
         />
       )}

@@ -18,6 +18,7 @@ export interface BaseMovieDetails {
   genre_names: string[] | null;
   director_ids: string[] | null;
   director_names: string[] | null;
+  overview: string | null;
 }
 
 // ---- Watched ----

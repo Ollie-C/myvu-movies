@@ -6,7 +6,7 @@ import { Plus, Folder } from 'lucide-react';
 
 // Hooks
 import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/useCollections';
-import { useCreateCollection } from '@/utils/hooks/supabase/mutations/useCollectionMutations';
+import { useCreateCollection } from '@/utils/hooks/supabase/useCollectionMutations';
 import { useAuth } from '@/context/AuthContext';
 
 // Components

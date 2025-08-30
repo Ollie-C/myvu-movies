@@ -83,7 +83,7 @@ export const watchlistService = {
 
   async addToWatchlist(
     userId: string,
-    movieId: string,
+    movie_uuid: string,
     priority: WatchlistPriority = 'medium',
     notes?: string
   ): Promise<WatchlistWithDetails> {
@@ -92,7 +92,7 @@ export const watchlistService = {
       .upsert(
         {
           user_id: userId,
-          movie_id: movieId,
+          movie_id: movie_uuid,
           priority,
           notes,
           added_date: new Date().toISOString().split('T')[0],
@@ -111,19 +111,19 @@ export const watchlistService = {
       await activityService.logActivity({
         user_id: userId,
         type: 'watchlist_added',
-        movie_id: movieId,
+        movie_id: movie_uuid,
         metadata: { priority },
       });
     } catch (_) {}
     return parsed;
   },
 
-  async removeFromWatchlist(userId: string, movieId: string): Promise<void> {
+  async removeFromWatchlist(userId: string, movie_uuid: string): Promise<void> {
     const { data: existing, error: checkError } = await supabase
       .from('watchlist')
       .select('id')
       .eq('user_id', userId)
-      .eq('movie_id', movieId)
+      .eq('movie_id', movie_uuid)
       .maybeSingle();
 
     if (checkError) throw checkError;
@@ -133,7 +133,7 @@ export const watchlistService = {
       .from('watchlist')
       .delete()
       .eq('user_id', userId)
-      .eq('movie_id', movieId);
+      .eq('movie_id', movie_uuid);
 
     if (error) throw error;
 
@@ -141,7 +141,7 @@ export const watchlistService = {
       await activityService.logActivity({
         user_id: userId,
         type: 'watchlist_removed',
-        movie_id: movieId,
+        movie_id: movie_uuid,
       });
     } catch (_) {}
   },

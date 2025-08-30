@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { X, Search } from 'lucide-react';
-import { useAllUserMovies } from '@/utils/hooks/supabase/useUserMovies';
+import { useUserMovies } from '@/utils/hooks/supabase/useUserMovies';
 import { useFavoriteMovies } from '@/utils/hooks/supabase/useWatchedMovies';
-import { useToggleFavorite } from '@/utils/hooks/supabase/mutations/useWatchedMovieMutations';
+import { useToggleFavorite } from '@/utils/hooks/supabase/useWatchedMovieMutations';
 import { Input } from '@/components/common/Input';
 import MoviePoster from '@/components/movie/MoviePoster';
-import type { WatchedMovieWithMovie } from '@/schemas/watched-movie.schema';
+import type { WatchedMovieWithDetails } from '@/schemas/watched-movies-with-details.schema';
 
 interface TopTenMoviesModalProps {
   isOpen: boolean;
@@ -17,23 +17,22 @@ interface TopTenMoviesModalProps {
 const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: allUserMovies = [] } = useAllUserMovies();
+  const { data: allUserMovies = [] } = useUserMovies();
   const { data: currentFavorites = [] } = useFavoriteMovies(50);
   const toggleFavoriteMutation = useToggleFavorite();
 
   const watchedMovies = allUserMovies.filter(
     (userMovie) => userMovie.type === 'watched'
-  ) as WatchedMovieWithMovie[];
+  ) as WatchedMovieWithDetails[];
   const filteredMovies = watchedMovies.filter((userMovie) =>
     userMovie.movie.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const favoriteMovieIds = new Set(currentFavorites.map((fav) => fav.movie.id));
+  const favoriteMovieIds = new Set(currentFavorites.map((fav) => fav.id));
 
   const handleToggleFavorite = async (movieId: number) => {
     try {
       await toggleFavoriteMutation.mutateAsync(movieId);
-      // Optional: could log a top_ten_changed aggregate in the future
     } catch (error) {
       console.error('Error toggling favorite:', error);
     }
@@ -84,9 +83,9 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
               <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-1'>
                 {currentFavorites.map((userMovie, index) => (
                   <MoviePoster
-                    key={`favorite-${userMovie.movie.id}-${index}`}
+                    key={`favorite-${userMovie.id}-${index}`}
                     userMovie={userMovie}
-                    onClick={() => handleToggleFavorite(userMovie.movie.id)}
+                    onClick={() => handleToggleFavorite(userMovie.id)}
                     className='w-full h-auto hover:opacity-75 transition-opacity'
                   />
                 ))}
@@ -110,19 +109,17 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
               {filteredMovies.length > 0 ? (
                 <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-1'>
                   {filteredMovies
-                    .filter(
-                      (userMovie) => !favoriteMovieIds.has(userMovie.movie.id)
-                    )
+                    .filter((userMovie) => !favoriteMovieIds.has(userMovie.id))
                     .map((userMovie, index) => {
                       const isAtLimit = currentFavorites.length >= 10;
                       return (
                         <MoviePoster
-                          key={`available-${userMovie.movie.id}-${index}`}
-                          userMovie={userMovie as WatchedMovieWithMovie}
+                          key={`available-${userMovie.id}-${index}`}
+                          userMovie={userMovie as WatchedMovieWithDetails}
                           disabled={isAtLimit}
                           onClick={() => {
                             if (!isAtLimit) {
-                              handleToggleFavorite(userMovie.movie.id);
+                              handleToggleFavorite(userMovie.id);
                             }
                           }}
                           className={`w-full h-auto transition-opacity ${

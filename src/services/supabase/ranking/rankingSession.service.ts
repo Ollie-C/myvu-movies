@@ -8,7 +8,7 @@ import {
   RankingListSchema,
   type RankingList,
 } from '@/schemas/ranking-list.schema';
-import { RankingItemWithMovieSchema } from '@/schemas/ranking-item.schema';
+import { RankingItemWithDetailsSchema } from '@/schemas/ranking-item.schema';
 import { applyMovieFilters } from '@/utils/helpers/applyMovieFilters';
 
 const DEFAULT_ELO_RATING = 1200;
@@ -113,8 +113,10 @@ export const rankingSessionService = {
       .select('*, movie:movies(*)')
       .eq('ranking_list_id', sessionId);
 
+    console.log(data);
+
     if (error) throw error;
-    return (data || []).map((item) => RankingItemWithMovieSchema.parse(item));
+    return (data || []).map((item) => RankingItemWithDetailsSchema.parse(item));
   },
 
   async update(sessionId: string, update: Partial<RankingList>) {
@@ -205,7 +207,7 @@ export const rankingSessionService = {
       .eq('ranking_list_id', sessionId)
       .order('elo_score', { ascending: false });
     if (error) throw error;
-    return (data || []).map((item) => RankingItemWithMovieSchema.parse(item));
+    return (data || []).map((item) => RankingItemWithDetailsSchema.parse(item));
   },
 
   async convertToCollection(sessionId: string) {

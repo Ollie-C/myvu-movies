@@ -1,24 +1,12 @@
-// AUDITED 11/08/2025
-
 import React from 'react';
 import { tmdb } from '@/lib/api/tmdb';
+import type { BaseMovieDetails } from '@/types/userMovie';
 
 interface MovieHeroProps {
-  movie: {
-    title: string;
-    backdrop_path: string | null;
-    release_date: string;
-    runtime?: number;
-    genres: { id: number; name: string }[];
-    vote_average: number;
-    overview: string;
-  };
-  director?: {
-    name: string;
-  };
+  movie: BaseMovieDetails;
 }
 
-const MovieHero: React.FC<MovieHeroProps> = ({ movie, director }) => {
+const MovieHero: React.FC<MovieHeroProps> = ({ movie }) => {
   const backdropUrl = movie.backdrop_path
     ? tmdb.getImageUrl(movie.backdrop_path, 'original')
     : '/movie-placeholder-backdrop.jpg';
@@ -33,7 +21,7 @@ const MovieHero: React.FC<MovieHeroProps> = ({ movie, director }) => {
       <div className='relative h-96 md:h-[500px] overflow-hidden rounded-lg'>
         <img
           src={backdropUrl}
-          alt={movie.title}
+          alt={movie.title || ''}
           className='w-full h-full object-cover'
         />
         {/* Gradient Overlay */}
@@ -54,19 +42,19 @@ const MovieHero: React.FC<MovieHeroProps> = ({ movie, director }) => {
                 </span>
               )}
 
-              {director && (
+              {/* {movie.director && (
                 <span className='text-lg'>Directed by {director.name}</span>
-              )}
+              )} */}
             </div>
 
             {/* Genres */}
-            {movie.genres && movie.genres.length > 0 && (
+            {movie.genre_names && movie.genre_names.length > 0 && (
               <div className='flex flex-wrap gap-2 mb-4'>
-                {movie.genres.slice(0, 3).map((genre) => (
+                {movie.genre_names.slice(0, 3).map((genre, idx) => (
                   <span
-                    key={genre.id}
+                    key={genre + idx}
                     className='px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm'>
-                    {genre.name}
+                    {genre}
                   </span>
                 ))}
               </div>

@@ -92,10 +92,10 @@ const Movies = () => {
 
   // --- Actions ---
   const handleRemoveFromWatched = useCallback(
-    async (movieId: string) => {
+    async (movieUuid: string) => {
       if (!user?.id) return;
       try {
-        await watchedMoviesService.removeWatched(user.id, movieId);
+        await watchedMoviesService.removeWatched(user.id, movieUuid);
         queryClient.invalidateQueries({ queryKey: ['watchedMovies'] });
         showToast('success', 'Movie removed from watched list');
       } catch {
@@ -106,10 +106,10 @@ const Movies = () => {
   );
 
   const handleRemoveFromWatchlist = useCallback(
-    async (movieId: string) => {
+    async (movieUuid: string) => {
       if (!user?.id) return;
       try {
-        await watchlistService.removeFromWatchlist(user.id, movieId);
+        await watchlistService.removeFromWatchlist(user.id, movieUuid);
         queryClient.invalidateQueries({ queryKey: ['watchlist'] });
         showToast('success', 'Movie removed from watchlist');
       } catch {
@@ -163,8 +163,6 @@ const Movies = () => {
               ? moviePositions.get(userMovie.movie_id!) || 0
               : 0;
 
-          console.log(userMovie);
-
           return (
             <div
               key={userMovie.movie_id}
@@ -172,9 +170,9 @@ const Movies = () => {
               {/* Rating/Elo bar (only for watched movies) */}
               {!showWatchlist &&
                 'watched_movie_id' in userMovie &&
-                userMovie.rating && (
+                userMovie.elo_score && (
                   <div className='text-[6px] text-gray-500 flex justify-between mb-1 px-1'>
-                    <span>Rating: {userMovie.rating.toFixed(1)}</span>
+                    <span>Rating: {userMovie.rating?.toFixed(1)}</span>
                     <span>ELO: {userMovie.elo_score}</span>
                   </div>
                 )}
@@ -183,16 +181,18 @@ const Movies = () => {
                 userMovie={userMovie}
                 onRemoveFromWatched={
                   'watched_movie_id' in userMovie
-                    ? handleRemoveFromWatched
+                    ? () => handleRemoveFromWatched(userMovie.movie_uuid!)
                     : undefined
                 }
                 onRemoveFromWatchlist={
                   'watchlist_id' in userMovie
-                    ? handleRemoveFromWatchlist
+                    ? () => handleRemoveFromWatchlist(userMovie.movie_uuid!)
                     : undefined
                 }
                 onMarkAsWatched={
-                  'watchlist_id' in userMovie ? handleMarkAsWatched : undefined
+                  'watchlist_id' in userMovie
+                    ? () => handleMarkAsWatched(userMovie.movie_uuid!)
+                    : undefined
                 }
                 isWatchlistView={showWatchlist}
                 index={position - 1}

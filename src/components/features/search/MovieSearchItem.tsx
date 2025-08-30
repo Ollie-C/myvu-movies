@@ -18,14 +18,13 @@ export const MovieSearchItem = ({
   isLoadingWatched: boolean;
   isLoadingWatchlist: boolean;
 }) => {
-  // Use the hook to get reactive state from store
-  const movieState = useMovieState(movie.id);
+  const movieState = useMovieState(movie.tmdb_id);
   const isWatched = movieState.isWatched;
   const isInWatchlist = movieState.isInWatchlist;
 
   return (
     <div
-      key={movie.id}
+      key={movie.tmdb_id}
       className='flex gap-3 p-2 hover:bg-surface-hover rounded transition-colors'>
       {/* Movie Poster */}
       <img

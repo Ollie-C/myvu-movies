@@ -5,8 +5,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { RankingList } from '@/schemas/ranking-list.schema';
-import type { RankingItemWithMovie } from '@/schemas/ranking-item.schema';
+import type { RankingItemWithDetails } from '@/schemas/ranking-item.schema';
 import type { RankingBattleWithTitles } from '@/schemas/ranking-battle.schema';
+import { rankingKeys } from './useRankingSession';
 
 export interface RankingProgress {
   totalMovies: number;
@@ -21,11 +22,11 @@ export function useVersusSession(sessionId: string) {
   const navigate = useNavigate();
 
   const [queue, setQueue] = useState<
-    { movie1: RankingItemWithMovie; movie2: RankingItemWithMovie }[]
+    { movie1: RankingItemWithDetails; movie2: RankingItemWithDetails }[]
   >([]);
 
   const session = useQuery<RankingList>({
-    queryKey: ['rankingSession', sessionId],
+    queryKey: rankingKeys.session(sessionId),
     queryFn: () => rankingSessionService.get(sessionId),
     enabled: !!sessionId,
   });
@@ -36,14 +37,14 @@ export function useVersusSession(sessionId: string) {
     enabled: !!sessionId,
   });
 
-  const movies = useQuery<RankingItemWithMovie[]>({
-    queryKey: ['rankingSessionMovies', sessionId],
+  const movies = useQuery<RankingItemWithDetails[]>({
+    queryKey: rankingKeys.movies(sessionId),
     queryFn: () => rankingSessionService.getMovies(sessionId),
     enabled: !!sessionId,
   });
 
   const progress = useQuery<RankingProgress>({
-    queryKey: ['rankingSessionProgress', sessionId],
+    queryKey: rankingKeys.progress(sessionId),
     queryFn: () => rankingSessionService.getProgress(sessionId),
     enabled: !!sessionId,
   });
@@ -61,10 +62,10 @@ export function useVersusSession(sessionId: string) {
     onSuccess: () => {
       setQueue((prev) => prev.slice(1));
       queryClient.invalidateQueries({
-        queryKey: ['rankingSessionProgress', sessionId],
+        queryKey: rankingKeys.progress(sessionId),
       });
       queryClient.invalidateQueries({
-        queryKey: ['rankingSessionLeaderboard', sessionId],
+        queryKey: rankingKeys.leaderboard(sessionId),
       });
       queryClient.invalidateQueries({ queryKey: ['versusBattles', sessionId] });
     },
@@ -79,7 +80,7 @@ export function useVersusSession(sessionId: string) {
   const pause = useMutation({
     mutationFn: () => rankingSessionService.pause(sessionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rankingSessions'] });
+      queryClient.invalidateQueries({ queryKey: rankingKeys.all });
     },
   });
 
@@ -87,13 +88,13 @@ export function useVersusSession(sessionId: string) {
     mutationFn: () =>
       versusService.skipBattle(
         sessionId,
-        nextPair?.movie1.movie_id!,
-        nextPair?.movie2.movie_id!
+        nextPair?.movie1.movie_uuid!,
+        nextPair?.movie2.movie_uuid!
       ),
     onSuccess: () => {
       setQueue((prev) => prev.slice(1));
       queryClient.invalidateQueries({
-        queryKey: ['rankingSessionProgress', sessionId],
+        queryKey: rankingKeys.progress(sessionId),
       });
       queryClient.invalidateQueries({
         queryKey: ['versusCompletedPairs', sessionId],
