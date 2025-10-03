@@ -24,7 +24,7 @@ interface MovieStore {
 
   hydrateFromSearchResults: (
     results: Array<{
-      id: number;
+      tmdb_id: number;
       is_watched?: boolean;
       is_in_watchlist?: boolean;
       is_favorite?: boolean;

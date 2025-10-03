@@ -219,10 +219,32 @@ export const rankingSessionService = {
 
     if (!rankingList) throw new Error('Ranking list not found');
 
-    return collectionService.createFromRankingList(
+    const collection = await collectionService.createCollection(
       rankingList.user_id,
-      rankingList
+      {
+        name: rankingList.name || 'Untitled Ranking',
+        description: rankingList.description,
+        is_ranked: true,
+        is_public: false,
+        ranking_list_id: sessionId,
+        slug: null,
+      }
     );
+
+    const { data: items } = await supabase
+      .from('ranking_list_items')
+      .select('movie_id')
+      .eq('ranking_list_id', sessionId)
+      .order('elo_score', { ascending: false });
+
+    if (items && items.length > 0) {
+      await collectionService.addMoviesToCollection(
+        collection.id,
+        items.map((i) => i.movie_id)
+      );
+    }
+
+    return collection;
   },
 
   async softDelete(sessionId: string) {

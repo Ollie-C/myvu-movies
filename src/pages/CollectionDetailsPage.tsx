@@ -44,9 +44,11 @@ const CollectionDetails = () => {
   };
 
   const handleRemoveMovie = async (movieId: string) => {
+    if (!movieId) return;
+
     await removeMovieMutation.mutateAsync({
       collectionId: collectionId!,
-      movieId,
+      movie_uuid: movieId,
     });
   };
 
@@ -231,7 +233,7 @@ const CollectionDetails = () => {
                     {/* Remove from collction button */}
                     {isOwner && (
                       <button
-                        onClick={() => handleRemoveMovie(item.movie_uuid || '')}
+                        onClick={() => handleRemoveMovie(item.movie_uuid!)}
                         className='absolute -top-2 -right-2 z-20 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200'
                         title='Remove from collection'>
                         <X className='w-3 h-3' />

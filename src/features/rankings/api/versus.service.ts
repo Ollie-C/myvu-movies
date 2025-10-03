@@ -1,6 +1,6 @@
 import { supabase } from '@/shared/lib/supabase';
 import { RankingBattleWithTitlesSchema } from '@/features/rankings/models/ranking-battle.schema';
-import { type RankingItemWithMovie } from '@/features/rankings/models/ranking-item.schema';
+import { type RankingItemWithDetails } from '@/features/rankings/models/ranking-item.schema';
 
 export const versusService = {
   async getCompletedPairs(sessionId: string): Promise<Set<string>> {
@@ -20,7 +20,7 @@ export const versusService = {
   },
 
   generatePairs(
-    movies: RankingItemWithMovie[],
+    movies: RankingItemWithDetails[],
     completed: Set<string>,
     battleLimitType:
       | 'complete'
@@ -37,8 +37,8 @@ export const versusService = {
     }
 
     const pairs: Array<{
-      movie1: RankingItemWithMovie;
-      movie2: RankingItemWithMovie;
+      movie1: RankingItemWithDetails;
+      movie2: RankingItemWithDetails;
     }> = [];
     for (let i = 0; i < validMovies.length; i++) {
       for (let j = i + 1; j < validMovies.length; j++) {
@@ -110,7 +110,7 @@ export const versusService = {
   },
 };
 
-function pickRandomPair(movies: RankingItemWithMovie[]) {
+function pickRandomPair(movies: RankingItemWithDetails[]) {
   if (movies.length < 2) return null;
   const i = Math.floor(Math.random() * movies.length);
   let j = i;

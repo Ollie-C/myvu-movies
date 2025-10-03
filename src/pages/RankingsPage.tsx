@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, BarChart3, Trophy, Brain } from 'lucide-react';
+import { Star, BarChart3, Trophy, Brain, Loader } from 'lucide-react';
 
 // Components
 import { Card } from '@/shared/ui/Card';
@@ -27,10 +27,8 @@ const RankingsPage = () => {
   const [selectedMethod, setSelectedMethod] = useState<RankingMethod | null>(
     null
   );
-  const [isStandardOpen, setIsStandardOpen] = useState(false);
   const [isVersusConfigOpen, setIsVersusConfigOpen] = useState(false);
 
-  // Queries
   const { data: watchedMoviesData, isLoading: watchedLoading } =
     useWatchedMovies({ onlyRated: false, sortOrder: 'desc', limit: 24 });
 
@@ -46,7 +44,6 @@ const RankingsPage = () => {
     if (!selectedMethod) return;
     switch (selectedMethod) {
       case 'standard':
-        setIsStandardOpen(true);
         break;
       case 'versus':
         setIsVersusConfigOpen(true);
@@ -60,8 +57,9 @@ const RankingsPage = () => {
 
   function handleCreateVersusSession(config: VersusSessionConfig) {
     if (!user?.id) return;
+
     createSession.mutate(
-      { method: 'versus', ...config },
+      { ...config, method: 'versus' },
       {
         onSuccess: (session) => {
           setIsVersusConfigOpen(false);
@@ -88,6 +86,8 @@ const RankingsPage = () => {
   }
 
   const stats = calculateStats();
+
+  if (watchedLoading) return <Loader />;
 
   return (
     <div className='container mx-auto px-4 py-8'>

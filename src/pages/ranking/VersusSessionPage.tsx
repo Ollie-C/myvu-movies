@@ -85,8 +85,8 @@ export default function VersusSessionPage() {
                     : {}
                 }
                 transition={{ duration: 0.4 }}
-                src={`https://image.tmdb.org/t/p/w300${nextPair.movie1.movie?.poster_path}`}
-                alt={nextPair.movie1.movie?.title}
+                src={`https://image.tmdb.org/t/p/w300${nextPair.movie1.poster_path}`}
+                alt={nextPair.movie1.title || ''}
                 className='rounded shadow-lg mb-2 max-w-[280px] object-cover'
               />
             </motion.div>
@@ -146,8 +146,8 @@ export default function VersusSessionPage() {
                     : {}
                 }
                 transition={{ duration: 0.4 }}
-                src={`https://image.tmdb.org/t/p/w300${nextPair.movie2.movie?.poster_path}`}
-                alt={nextPair.movie2.movie?.title}
+                src={`https://image.tmdb.org/t/p/w300${nextPair.movie2.poster_path}`}
+                alt={nextPair.movie2.title || ''}
                 className='rounded shadow-lg mb-2 max-w-[280px] object-cover'
               />
             </motion.div>

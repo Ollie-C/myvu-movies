@@ -33,17 +33,17 @@ export function MiniLeaderboard({ sessionId }: MiniLeaderboardProps) {
               </span>
             </div>
 
-            {item.movie?.poster_path && (
+            {item.poster_path && (
               <img
-                src={`https://image.tmdb.org/t/p/w92${item.movie.poster_path}`}
-                alt={item.movie?.title}
+                src={`https://image.tmdb.org/t/p/w92${item.poster_path}`}
+                alt={item.title || ''}
                 className='w-6 h-9 object-cover rounded flex-shrink-0'
               />
             )}
 
             <div className='flex-1 min-w-0'>
               <p className='font-medium text-gray-900 truncate text-sm'>
-                {item.movie?.title}
+                {item.title}
               </p>
               <p className='text-xs text-gray-500'>Elo {item.elo_score}</p>
             </div>

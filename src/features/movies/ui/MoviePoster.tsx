@@ -1,10 +1,8 @@
 // Schemas
-import type { Movie } from '@/features/movies/models/movie.schema';
-import type { WatchedMovieWithDetails } from '@/features/watched-movies/models/watched-movies-with-details.schema';
+import type { BaseMovieDetails } from '@/shared/types/userMovie';
 
 interface MoviePosterProps {
-  movie?: Movie;
-  userMovie?: WatchedMovieWithDetails;
+  movie?: BaseMovieDetails;
   disabled?: boolean;
   onClick?: () => void;
   className?: string;
@@ -14,14 +12,13 @@ interface MoviePosterProps {
 
 const MoviePoster = ({
   movie,
-  userMovie,
   disabled = false,
   onClick,
   className = '',
   showTitle = false,
   variant = 'default',
 }: MoviePosterProps) => {
-  const movieData = movie || userMovie;
+  const movieData = movie;
 
   if (!movieData) {
     return null;
@@ -43,14 +40,14 @@ const MoviePoster = ({
     <div
       className={combinedClassName}
       onClick={disabled ? undefined : onClick}
-      title={movieData.title}>
+      title={movieData.title ?? undefined}>
       <div
         className={`w-auto h-auto bg-gray-200 overflow-hidden flex items-center justify-center ${
           variant === 'rounded' ? 'rounded' : ''
         }`}>
         <img
           src={imageUrl}
-          alt={movieData.title}
+          alt={movieData.title ?? undefined}
           className='w-full h-full object-cover'
           draggable={false}
         />

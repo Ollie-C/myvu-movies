@@ -312,7 +312,7 @@ export default function VersusConfigModal({
                                 onClick={() => toggleMovie(movie.movie_id!)}>
                                 <div className='aspect-[2/3] relative overflow-hidden rounded-lg bg-surface'>
                                   <MoviePoster
-                                    userMovie={movie}
+                                    movie={movie}
                                     className='w-full h-full'
                                     variant='rounded'
                                   />

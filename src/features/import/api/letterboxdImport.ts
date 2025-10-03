@@ -130,7 +130,7 @@ async function batchCacheMovies(movies: TMDBMovie[]) {
   }
 }
 
-async function batchCheckUserMovies(userId: string, movieIds: number[]) {
+async function batchCheckUserMovies(userId: string, movieIds: string[]) {
   if (movieIds.length === 0) return new Set();
 
   const { data: userMovies } = await watchedMoviesService.getWatchedMovies(
@@ -151,7 +151,7 @@ async function batchCheckUserMovies(userId: string, movieIds: number[]) {
 
 async function batchInsertUserMovies(
   userId: string,
-  movies: Array<{ movieId: number; rating: number; watchedDate: string | null }>
+  movies: Array<{ movieId: string; rating: number; watchedDate: string | null }>
 ) {
   if (movies.length === 0) return;
 
@@ -229,7 +229,7 @@ async function processBatch(
   );
 
   const moviesToInsert: Array<{
-    movieId: number;
+    movieId: string;
     rating: number;
     watchedDate: string | null;
   }> = [];

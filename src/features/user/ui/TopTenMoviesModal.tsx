@@ -88,7 +88,7 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
                 {currentFavorites.map((userMovie, index) => (
                   <MoviePoster
                     key={`favorite-${userMovie.id}-${index}`}
-                    userMovie={userMovie}
+                    movie={userMovie}
                     onClick={() => handleToggleFavorite(userMovie.id)}
                     className='w-full h-auto hover:opacity-75 transition-opacity'
                   />

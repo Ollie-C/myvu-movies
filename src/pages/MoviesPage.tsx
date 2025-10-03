@@ -87,7 +87,6 @@ const Movies = () => {
     [isLoading, isFetchingNextPage, hasNextPage, fetchNextPage]
   );
 
-  // --- MUTATIONS ---
   const toggleWatchedMutation = useToggleWatched();
   const toggleWatchlistMutation = useToggleWatchlist();
 
@@ -97,7 +96,7 @@ const Movies = () => {
       toggleWatchedMutation.mutate({
         movie_uuid: movieUuid,
         tmdb_id,
-        isWatched: true, // we’re *removing* from watched
+        isWatched: true,
         title: '',
       });
     },
@@ -110,7 +109,7 @@ const Movies = () => {
       toggleWatchlistMutation.mutate({
         movie_uuid: movieUuid,
         tmdb_id,
-        isInWatchlist: true, // we’re *removing* from watchlist
+        isInWatchlist: true,
         title: '',
       });
     },
@@ -123,14 +122,13 @@ const Movies = () => {
       toggleWatchedMutation.mutate({
         movie_uuid: movieUuid,
         tmdb_id,
-        isWatched: false, // not watched → marking as watched
+        isWatched: false,
         title: '',
       });
     },
     [user?.id, toggleWatchedMutation]
   );
 
-  // --- UI ---
   const EmptyState = () => (
     <Card className='p-12 text-center'>
       <h3 className='text-lg font-semibold mb-2'>

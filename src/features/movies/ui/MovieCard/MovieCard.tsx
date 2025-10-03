@@ -9,7 +9,7 @@ import { MovieCardRanking } from './Ranking';
 
 // Schemas
 import type { WatchedMovieWithDetails } from '@/features/watched-movies/models/watched-movies-with-details.schema';
-import type { WatchlistWithDetails } from '@/features/watchlist/ models/watchlist.schema';
+import type { WatchlistWithDetails } from '@/features/watchlist/models/watchlist.schema';
 import type { CollectionItemWithDetails } from '@/features/collections/models/collection-item.schema';
 
 type UserMovie =

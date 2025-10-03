@@ -31,7 +31,7 @@ export const WatchlistWithDetailsSchema = z.object({
   watchlist_updated_at: z.string().nullable(),
 
   movie_uuid: z.uuid().nullable(),
-  tmdb_id: z.number().nullable(),
+  tmdb_id: z.number(),
   title: z.string().nullable(),
   original_title: z.string().nullable(),
   original_language: z.string().nullable(),

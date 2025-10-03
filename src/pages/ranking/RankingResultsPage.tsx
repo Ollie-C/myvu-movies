@@ -51,14 +51,14 @@ export default function RankingResultsPage() {
                     ? 'bg-orange-50 border-orange-200'
                     : 'bg-white'
                 }`}>
-                {item.movie?.poster_path && (
+                {item.poster_path && (
                   <img
-                    src={`https://image.tmdb.org/t/p/w200${item.movie.poster_path}`}
-                    alt={item.movie?.title}
+                    src={`https://image.tmdb.org/t/w200${item.poster_path}`}
+                    alt={item.title || ''}
                     className='rounded-md shadow-md mb-3 w-full max-w-[140px] object-cover'
                   />
                 )}
-                <span className='font-semibold'>{item.movie?.title}</span>
+                <span className='font-semibold'>{item.title}</span>
                 <span className='text-xs text-gray-500 mt-1'>
                   Elo: {item.elo_score}
                 </span>
@@ -79,7 +79,7 @@ export default function RankingResultsPage() {
                 <Card className='p-3 flex justify-between items-center'>
                   <div>
                     <span className='font-semibold mr-2'>#{idx + 6}</span>
-                    {item.movie?.title}
+                    {item.title}
                   </div>
                   <span className='text-sm text-gray-500'>
                     Elo: {item.elo_score}
