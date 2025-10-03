@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
-import { useActivities } from '@/utils/hooks/supabase/useUserActivity';
-import type { ActivityType } from '@/services/supabase/activity.service';
+import { useState } from 'react';
+import { useActivities } from '@/features/user/api/hooks/useUserActivity';
+import type { ActivityType } from '@/features/activity/api/activity.service';
 import { Link } from 'react-router-dom';
 
 const ALL_TYPES: ActivityType[] = [

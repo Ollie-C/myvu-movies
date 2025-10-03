@@ -1,13 +1,18 @@
-// AUDITED 06/08/2025
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card } from '@/components/common/Card';
-import { Button } from '@/components/common/Button';
-import { Input } from '@/components/common/Input';
-import { ArrowLeft, User, Save, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { userService } from '@/services/supabase/user.service';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, User, Save, LogOut } from 'lucide-react';
+
+// Components
+import { Card } from '@/shared/ui/Card';
+import { Button } from '@/shared/ui/Button';
+import { Input } from '@/shared/ui/Input';
+
+// Contexts
+import { useAuth } from '@/shared/context/AuthContext';
+
+// !
+import { userService } from '@/features/user/api/user.service';
 
 const Settings = () => {
   const { user, signOut } = useAuth();

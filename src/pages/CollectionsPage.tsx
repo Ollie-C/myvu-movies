@@ -5,17 +5,17 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Folder } from 'lucide-react';
 
 // Hooks
-import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/useCollections';
-import { useCreateCollection } from '@/utils/hooks/supabase/useCollectionMutations';
-import { useAuth } from '@/context/AuthContext';
+import { useCollectionsWithPreviews } from '@/features/collections/api/hooks/useCollections';
+import { useCreateCollection } from '@/features/collections/api/hooks/useCollectionMutations';
+import { useAuth } from '@/shared/context/AuthContext';
 
 // Components
-import { Card } from '@/components/common/Card';
-import { Input } from '@/components/common/Input';
-import { Button } from '@/components/common/Button';
-import { CollectionModal } from '@/components/collections/CollectionModal';
-import CollectionCard from '@/components/collections/CollectionCard';
-import Loader from '@/components/common/Loader';
+import { Card } from '@/shared/ui/Card';
+import { Input } from '@/shared/ui/Input';
+import { Button } from '@/shared/ui/Button';
+import { CollectionModal } from '@/features/collections/ui/CollectionModal';
+import CollectionCard from '@/features/collections/ui/CollectionCard';
+import Loader from '@/shared/ui/Loader';
 
 const Collections = () => {
   const { user } = useAuth();

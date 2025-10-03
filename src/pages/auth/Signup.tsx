@@ -1,11 +1,14 @@
-// AUDITED 11/08/2025
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/common/Button';
-import { Input } from '@/components/common/Input';
-import { Card } from '@/components/common/Card';
 import { Film, AlertCircle, CheckCircle } from 'lucide-react';
+
+// Context
+import { useAuth } from '@/shared/context/AuthContext';
+
+// Components
+import { Button } from '@/shared/ui/Button';
+import { Input } from '@/shared/ui/Input';
+import { Card } from '@/shared/ui/Card';
 
 export function Signup() {
   const [email, setEmail] = useState('');

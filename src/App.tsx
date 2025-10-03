@@ -6,12 +6,14 @@ import {
 } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { AuthProvider } from '@/context/AuthContext';
-import { ToastProvider } from '@/context/ToastContext';
+// Contexts
+import { AuthProvider } from '@/shared/context/AuthContext';
+import { ToastProvider } from '@/shared/context/ToastContext';
 
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import Layout from '@/components/layout/Layout';
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+// Components
+import { ProtectedRoute } from '@/features/auth/ui/ProtectedRoute';
+import Layout from '@/shared/ui/layout/Layout';
+import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 
 // Pages
 import { Login } from '@/pages/auth/Login';
@@ -25,7 +27,7 @@ import Collections from '@/pages/CollectionsPage';
 import CollectionDetails from '@/pages/CollectionDetailsPage';
 import Settings from '@/pages/Settings';
 import ActivityPage from '@/pages/ActivityPage';
-import VersusSessionPage from '@/pages/versus/VersusSessionPage';
+import VersusSessionPage from '@/pages/ranking/VersusSessionPage';
 import RankingResultsPage from '@/pages/ranking/RankingResultsPage';
 
 const queryClient = new QueryClient({

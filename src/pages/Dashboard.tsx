@@ -1,33 +1,24 @@
-// Audited: 2025-08-05
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, TrendingUp, BarChart3, Folder } from 'lucide-react';
 
-// Contexts
-import { useAuth } from '@/context/AuthContext';
-
 // Hooks
-import {
-  useFavoriteMovies,
-  useRecentMovies,
-} from '@/utils/hooks/supabase/useWatchedMovies';
-import { useRecentActivity } from '@/utils/hooks/supabase/useUserActivity';
-import { useWatchlistStats } from '@/utils/hooks/supabase/useWatchlist';
-import { useCollectionsWithPreviews } from '@/utils/hooks/supabase/useCollections';
-import { useUserStats } from '@/utils/hooks/supabase/useUserStats';
+import { useFavoriteMovies } from '@/features/watched-movies/api/hooks/useWatchedMovies';
+import { useRecentActivity } from '@/features/user/api/hooks/useUserActivity';
+import { useWatchlistStats } from '@/features/watchlist/api/hooks/useWatchlist';
+import { useCollectionsWithPreviews } from '@/features/collections/api/hooks/useCollections';
+import { useUserStats } from '@/features/user/api/hooks/useUserStats';
 
 // Components
-import CollectionCard from '@/components/collections/CollectionCard';
-import MovieCard from '@/components/movie/MovieCard/MovieCard';
-import TopTenMoviesModal from '@/components/features/TopTenMoviesModal';
+import CollectionCard from '@/features/collections/ui/CollectionCard';
+import MovieCard from '@/features/movies/ui/MovieCard/MovieCard';
+import TopTenMoviesModal from '@/features/user/ui/TopTenMoviesModal';
 
 const Dashboard = () => {
-  const { user } = useAuth();
   const [isFavoriteModalOpen, setIsFavoriteModalOpen] = useState(false);
 
   const { data: userStats, isLoading: userStatsLoading } = useUserStats();
   const { data: favoriteMovies } = useFavoriteMovies(10);
-  const { data: recentMovies } = useRecentMovies(5);
   const { data: activities = [] } = useRecentActivity(10);
   const { data: collections = [], isLoading: collectionsLoading } =
     useCollectionsWithPreviews(3);

@@ -1,22 +1,21 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-// Icons
 import { ArrowLeft, Edit2, Trash2, Users, Calendar, X } from 'lucide-react';
 
 // Hooks
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/shared/context/AuthContext';
 import {
   useUpdateCollection,
   useDeleteCollection,
   useRemoveMovieFromCollection,
-} from '@/utils/hooks/supabase/useCollectionMutations';
-import { useCollection } from '@/utils/hooks/supabase/useCollections';
+} from '@/features/collections/api/hooks/useCollectionMutations';
+import { useCollection } from '@/features/collections/api/hooks/useCollections';
 
 // Components
-import { Button } from '@/components/common/Button';
-import { Card } from '@/components/common/Card';
-import MovieCard from '@/components/movie/MovieCard/MovieCard';
-import { CollectionModal } from '@/components/collections/CollectionModal';
+import { Button } from '@/shared/ui/Button';
+import { Card } from '@/shared/ui/Card';
+import MovieCard from '@/features/movies/ui/MovieCard/MovieCard';
+import { CollectionModal } from '@/features/collections/ui/CollectionModal';
 
 const CollectionDetails = () => {
   const { id } = useParams<{ id: string }>();

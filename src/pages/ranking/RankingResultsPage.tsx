@@ -1,8 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useRankingResults } from '@/utils/hooks/supabase/ranking/useRankingResults';
-import { Button } from '@/components/common/Button';
-import { Card } from '@/components/common/Card';
-import { useRankingSession } from '@/utils/hooks/supabase/ranking/useRankingSession';
+
+// Hooks
+import { useRankingResults } from '@/features/rankings/api/hooks/useRankingResults';
+import { useRankingSession } from '@/features/rankings/api/hooks/useRankingSession';
+
+// Components
+import { Button } from '@/shared/ui/Button';
+import { Card } from '@/shared/ui/Card';
 
 export default function RankingResultsPage() {
   const { id } = useParams<{ id: string }>();

@@ -1,7 +1,6 @@
-// AUDITED 06/08/2025
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 import { Loader2 } from 'lucide-react';
 
 export function AuthCallback() {

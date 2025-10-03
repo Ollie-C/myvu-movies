@@ -2,17 +2,22 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, BarChart3, Trophy, Brain } from 'lucide-react';
 
-import { Card } from '@/components/common/Card';
-import { Button } from '@/components/common/Button';
-import VersusConfigModal from '@/components/ranking/versus/VersusConfigModal';
-import { SessionCard } from '@/components/ranking/SessionCard';
+// Components
+import { Card } from '@/shared/ui/Card';
+import { Button } from '@/shared/ui/Button';
+import VersusConfigModal from '@/features/rankings/ui/VersusConfigModal';
+import { SessionCard } from '@/features/rankings/ui/SessionCard';
 
-import { useAuth } from '@/context/AuthContext';
-import { useWatchedMovies } from '@/utils/hooks/supabase/useWatchedMovies';
-import { useRankingDashboard } from '@/utils/hooks/supabase/ranking/useRankingDashboard';
-import { useRankingSession } from '@/utils/hooks/supabase/ranking/useRankingSession';
+// Contexts
+import { useAuth } from '@/shared/context/AuthContext';
 
-import type { VersusSessionConfig } from '@/schemas/versus-session-config.schema';
+// Hooks
+import { useWatchedMovies } from '@/features/watched-movies/api/hooks/useWatchedMovies';
+import { useRankingDashboard } from '@/features/rankings/api/hooks/useRankingDashboard';
+import { useRankingSession } from '@/features/rankings/api/hooks/useRankingSession';
+
+// !
+import type { VersusSessionConfig } from '@/features/rankings/models/versus-session-config.schema';
 
 type RankingMethod = 'standard' | 'versus' | 'tiers' | 'smart';
 
