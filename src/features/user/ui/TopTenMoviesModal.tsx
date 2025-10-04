@@ -26,17 +26,21 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
   const toggleFavoriteMutation = useToggleFavorite();
 
   const watchedMovies = allUserMovies.filter(
-    (userMovie) => userMovie.type === 'watched'
-  ) as WatchedMovieWithDetails[];
-  const filteredMovies = watchedMovies.filter((userMovie) =>
-    userMovie.movie.title.toLowerCase().includes(searchQuery.toLowerCase())
+    (userMovie): userMovie is WatchedMovieWithDetails =>
+      'watched_movie_id' in userMovie
   );
 
-  const favoriteMovieIds = new Set(currentFavorites.map((fav) => fav.id));
+  const filteredMovies = watchedMovies.filter((userMovie) =>
+    userMovie.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const handleToggleFavorite = async (movieId: number) => {
+  const favoriteMovieIds = new Set(
+    currentFavorites.map((fav) => fav.watched_movie_id)
+  );
+
+  const handleToggleFavorite = async (movieUuid: string) => {
     try {
-      await toggleFavoriteMutation.mutateAsync(movieId);
+      await toggleFavoriteMutation.mutateAsync({ movie_uuid: movieUuid });
     } catch (error) {
       console.error('Error toggling favorite:', error);
     }
@@ -73,9 +77,7 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
           </div>
         </div>
 
-        {/* Content - Scrollable */}
         <div className='flex-1 flex flex-col overflow-hidden min-h-0'>
-          {/* Top Section - Current Favorites */}
           <div className='p-6 border-b border-gray-200 flex-shrink-0'>
             <h3 className='text-lg font-medium text-gray-900 mb-4 text-center'>
               Top 10{' '}
@@ -87,9 +89,9 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
               <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-1'>
                 {currentFavorites.map((userMovie, index) => (
                   <MoviePoster
-                    key={`favorite-${userMovie.id}-${index}`}
+                    key={`favorite-${userMovie.movie_uuid}-${index}`}
                     movie={userMovie}
-                    onClick={() => handleToggleFavorite(userMovie.id)}
+                    onClick={() => handleToggleFavorite(userMovie.movie_uuid)}
                     className='w-full h-auto hover:opacity-75 transition-opacity'
                   />
                 ))}
@@ -101,7 +103,6 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
             )}
           </div>
 
-          {/* Bottom Section - Remaining Movies - Scrollable */}
           <div className='flex-1 flex flex-col overflow-hidden'>
             <div className='p-6 border-b border-gray-200 flex-shrink-0'>
               <h3 className='text-lg font-medium text-gray-900 mb-4 text-center'>
@@ -113,17 +114,20 @@ const TopTenMoviesModal = ({ isOpen, onClose }: TopTenMoviesModalProps) => {
               {filteredMovies.length > 0 ? (
                 <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-10 gap-1'>
                   {filteredMovies
-                    .filter((userMovie) => !favoriteMovieIds.has(userMovie.id))
+                    .filter(
+                      (userMovie) =>
+                        !favoriteMovieIds.has(userMovie.watched_movie_id)
+                    )
                     .map((userMovie, index) => {
                       const isAtLimit = currentFavorites.length >= 10;
                       return (
                         <MoviePoster
-                          key={`available-${userMovie.id}-${index}`}
-                          userMovie={userMovie as WatchedMovieWithDetails}
+                          key={`available-${userMovie.movie_uuid}-${index}`}
+                          movie={userMovie}
                           disabled={isAtLimit}
                           onClick={() => {
                             if (!isAtLimit) {
-                              handleToggleFavorite(userMovie.id);
+                              handleToggleFavorite(userMovie.movie_uuid);
                             }
                           }}
                           className={`w-full h-auto transition-opacity ${

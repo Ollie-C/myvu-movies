@@ -12,10 +12,10 @@ import { activityKeys } from '@/features/user/api/hooks/useUserActivity';
 import { movieService } from '@/features/movies/api/movies.service';
 import { tmdb } from '@/shared/lib/tmdb';
 
-export interface ActionMovie {
-  movie_uuid: string | null;
-  tmdb_id: number;
-  title: string;
+export interface MovieActionPayload {
+  movie_uuid: string;
+  tmdb_id?: number | null;
+  title?: string | null;
   original_title?: string | null;
   overview?: string | null;
   poster_path?: string | null;
@@ -29,14 +29,18 @@ export const useToggleFavorite = () => {
   const { setMovieState } = useMovieStore.getState();
 
   return useMutation({
-    mutationFn: async ({ movie_uuid }: ActionMovie) => {
+    mutationFn: async ({ movie_uuid }: MovieActionPayload) => {
       if (!user?.id) throw new Error('User not authenticated');
       if (!movie_uuid) throw new Error('Movie UUID is required');
       return watchedMoviesService.toggleFavorite(user.id, movie_uuid);
     },
     onSuccess: (newFavoriteValue, { tmdb_id }) => {
-      setMovieState(tmdb_id, { isFavorite: newFavoriteValue });
+      // Only update movie store if tmdb_id is provided (optimistic update)
+      if (tmdb_id) {
+        setMovieState(tmdb_id, { isFavorite: newFavoriteValue });
+      }
 
+      // Query invalidation will ensure correct state regardless
       queryClient.invalidateQueries({ queryKey: watchedMoviesKeys.all });
       queryClient.invalidateQueries({ queryKey: userMoviesKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
@@ -59,12 +63,15 @@ export const useToggleWatched = () => {
       movie_uuid,
       tmdb_id,
       isWatched,
-    }: ActionMovie & { isWatched: boolean }) => {
+    }: MovieActionPayload & { isWatched: boolean }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
       let ensuredUuid = movie_uuid;
 
       if (!ensuredUuid) {
+        if (!tmdb_id) {
+          throw new Error('Either movie_uuid or tmdb_id is required');
+        }
         const fullDetails = await tmdb.getMovie(tmdb_id);
         const movie = await movieService.cacheMovie(fullDetails);
         ensuredUuid = movie.id;
@@ -83,10 +90,13 @@ export const useToggleWatched = () => {
       return { tmdb_id, wasWatched: isWatched, movie_uuid: ensuredUuid };
     },
     onSuccess: ({ tmdb_id, wasWatched }) => {
-      setMovieState(tmdb_id, {
-        isWatched: !wasWatched,
-        isInWatchlist: false,
-      });
+      // Only update movie store if tmdb_id is provided (optimistic update)
+      if (tmdb_id) {
+        setMovieState(tmdb_id, {
+          isWatched: !wasWatched,
+          isInWatchlist: false,
+        });
+      }
 
       if (user?.id) {
         queryClient.invalidateQueries({ queryKey: watchedMoviesKeys.all });
@@ -113,12 +123,15 @@ export const useToggleWatchlist = () => {
       movie_uuid,
       tmdb_id,
       isInWatchlist,
-    }: ActionMovie & { isInWatchlist: boolean }) => {
+    }: MovieActionPayload & { isInWatchlist: boolean }) => {
       if (!user?.id) throw new Error('User not authenticated');
 
       let ensuredUuid = movie_uuid;
 
       if (!ensuredUuid) {
+        if (!tmdb_id) {
+          throw new Error('Either movie_uuid or tmdb_id is required');
+        }
         const fullDetails = await tmdb.getMovie(tmdb_id);
         const movie = await movieService.cacheMovie(fullDetails);
         ensuredUuid = movie.id;
@@ -139,9 +152,12 @@ export const useToggleWatchlist = () => {
       };
     },
     onSuccess: ({ tmdb_id, wasInWatchlist }) => {
-      setMovieState(tmdb_id, {
-        isInWatchlist: !wasInWatchlist,
-      });
+      // Only update movie store if tmdb_id is provided (optimistic update)
+      if (tmdb_id) {
+        setMovieState(tmdb_id, {
+          isInWatchlist: !wasInWatchlist,
+        });
+      }
 
       if (user?.id) {
         queryClient.invalidateQueries({ queryKey: watchlistKeys.all });
@@ -162,7 +178,7 @@ export const useUpdateRating = () => {
       tmdb_id,
       rating,
       isWatched,
-    }: ActionMovie & { rating: number; isWatched: boolean }) => {
+    }: MovieActionPayload & { rating: number; isWatched: boolean }) => {
       if (!user?.id) throw new Error('User not authenticated');
       if (!movie_uuid) throw new Error('Movie UUID is required');
 
@@ -173,12 +189,17 @@ export const useUpdateRating = () => {
       return { tmdb_id, rating };
     },
     onSuccess: ({ tmdb_id, rating }) => {
-      setMovieState(tmdb_id, { rating });
+      // Only update movie store if tmdb_id is provided (optimistic update)
+      if (tmdb_id) {
+        setMovieState(tmdb_id, { rating });
+      }
 
       if (!user?.id) return;
-      queryClient.invalidateQueries({
-        queryKey: movieKeys.userStatus(user.id, tmdb_id),
-      });
+      if (tmdb_id) {
+        queryClient.invalidateQueries({
+          queryKey: movieKeys.userStatus(user.id, tmdb_id),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: watchedMoviesKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
@@ -195,7 +216,10 @@ export const useUpdateNotes = () => {
       tmdb_id,
       notes,
       type,
-    }: ActionMovie & { notes: string; type: 'watched' | 'watchlist' }) => {
+    }: MovieActionPayload & {
+      notes: string;
+      type: 'watched' | 'watchlist';
+    }) => {
       if (!user?.id) throw new Error('User not authenticated');
       if (!movie_uuid) throw new Error('Movie UUID is required');
       if (type === 'watched') {
@@ -207,9 +231,11 @@ export const useUpdateNotes = () => {
     },
     onSuccess: ({ tmdb_id }) => {
       if (!user?.id) return;
-      queryClient.invalidateQueries({
-        queryKey: movieKeys.userStatus(user.id, tmdb_id),
-      });
+      if (tmdb_id) {
+        queryClient.invalidateQueries({
+          queryKey: movieKeys.userStatus(user.id, tmdb_id),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: activityKeys.all });
     },
   });
@@ -224,7 +250,7 @@ export const useUpdateWatchlistPriority = () => {
       movie_uuid,
       tmdb_id,
       priority,
-    }: ActionMovie & { priority: 'high' | 'medium' | 'low' }) => {
+    }: MovieActionPayload & { priority: 'high' | 'medium' | 'low' }) => {
       if (!user?.id) throw new Error('User not authenticated');
       if (!movie_uuid) throw new Error('Movie UUID is required');
       await watchlistService.updatePriority(user.id, movie_uuid, priority);
@@ -232,9 +258,11 @@ export const useUpdateWatchlistPriority = () => {
     },
     onSuccess: ({ tmdb_id }) => {
       if (!user?.id) return;
-      queryClient.invalidateQueries({
-        queryKey: movieKeys.userStatus(user.id, tmdb_id),
-      });
+      if (tmdb_id) {
+        queryClient.invalidateQueries({
+          queryKey: movieKeys.userStatus(user.id, tmdb_id),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: watchlistKeys.all });
       queryClient.invalidateQueries({ queryKey: activityKeys.recent(user.id) });
     },
